@@ -56,86 +56,91 @@ program_query = (
     else program_choice
 )
 
-with st.expander("🔍 Look up a live cash price (optional)", expanded=False):
-    if not flight_search.is_configured():
-        st.info(
-            "Not configured. Get a free API key at https://serpapi.com (self-serve, 250 "
-            "searches/month free), then set `SERPAPI_KEY` as an environment variable or in "
-            "`.streamlit/secrets.toml` and restart the app."
-        )
-    else:
-        lc1, lc2, lc3, lc4 = st.columns(4)
-        with lc1:
-            origin = st.text_input("Origin", placeholder="SFO", max_chars=3)
-        with lc2:
-            destination = st.text_input("Destination", placeholder="NRT", max_chars=3)
-        with lc3:
-            dep_date = st.date_input("Departure date")
-        with lc4:
-            cabin = st.selectbox("Cabin", ["ECONOMY", "PREMIUM_ECONOMY", "BUSINESS", "FIRST"])
-
-        if st.button("Search live prices"):
-            if not origin or not destination:
-                st.error("Enter both airport codes.")
-            else:
-                try:
-                    with st.spinner("Searching..."):
-                        st.session_state["flight_offers"] = flight_search.search_cash_price(
-                            origin, destination, dep_date.isoformat(), cabin
-                        )
-                    if not st.session_state["flight_offers"]:
-                        st.warning("No offers found for that route/date/cabin.")
-                except flight_search.NotConfigured as e:
-                    st.error(str(e))
-                except requests.HTTPError as e:
-                    st.error(f"SerpApi error: {e}")
-
-        for i, offer in enumerate(st.session_state.get("flight_offers", [])[:5]):
-            with st.container(border=True):
-                head_l, head_r = st.columns([3, 1])
-                flight_numbers = ", ".join(s.flight_number for s in offer.segments if s.flight_number)
-                head_l.markdown(f"**{offer.airline}** · {flight_numbers} · {offer.cabin.replace('_', ' ').title()}")
-                head_r.markdown(f"### ${offer.price_usd:,.0f}")
-
-                dep_date_s, dep_time_s = _split_datetime(offer.departure_time)
-                arr_date_s, arr_time_s = _split_datetime(offer.arrival_time)
-                stop_label = "Nonstop" if offer.stops == 0 else f"{offer.stops} stop" + ("s" if offer.stops > 1 else "")
-
-                route_l, route_m, route_r = st.columns([2, 3, 2])
-                with route_l:
-                    st.markdown(f"**{dep_time_s}**")
-                    st.caption(f"{offer.origin} · {dep_date_s}")
-                with route_m:
-                    st.markdown(f"**{_fmt_duration(offer.total_duration_minutes)}**")
-                    st.caption(stop_label)
-                with route_r:
-                    st.markdown(f"**{arr_time_s}**")
-                    st.caption(f"{offer.destination} · {arr_date_s}")
-
-                if offer.layovers:
-                    layover_desc = "; ".join(
-                        f"{lay.name or lay.airport} ({lay.airport}) — {_fmt_duration(lay.duration_minutes)} layover"
-                        for lay in offer.layovers
-                    )
-                    st.caption(f"Via {layover_desc}")
-
-                if len(offer.segments) > 1:
-                    with st.popover("Flight details"):
-                        for seg in offer.segments:
-                            seg_dep_date, seg_dep_time = _split_datetime(seg.dep_time)
-                            seg_arr_date, seg_arr_time = _split_datetime(seg.arr_time)
-                            st.write(
-                                f"**{seg.airline} {seg.flight_number}** — "
-                                f"{seg.dep_airport} {seg_dep_time} ({seg_dep_date}) → "
-                                f"{seg.arr_airport} {seg_arr_time} ({seg_arr_date}) · "
-                                f"{_fmt_duration(seg.duration_minutes)}"
-                            )
-
-                if st.button("Use this price", key=f"use_offer_{i}", use_container_width=True):
-                    st.session_state["cash_price_input"] = offer.price_usd
-                    st.rerun()
-
 st.session_state.setdefault("cash_price_input", 1500.0)
+
+st.subheader("🔍 Search live prices")
+
+if not flight_search.is_configured():
+    st.info(
+        "Live search isn't configured. Get a free API key at https://serpapi.com (self-serve, "
+        "250 searches/month free), then set `SERPAPI_KEY` as an environment variable or in "
+        "`.streamlit/secrets.toml` and restart the app. In the meantime, enter the cash price "
+        "manually below."
+    )
+else:
+    lc1, lc2, lc3, lc4 = st.columns(4)
+    with lc1:
+        origin = st.text_input("Origin", placeholder="SFO", max_chars=3)
+    with lc2:
+        destination = st.text_input("Destination", placeholder="NRT", max_chars=3)
+    with lc3:
+        dep_date = st.date_input("Departure date")
+    with lc4:
+        cabin = st.selectbox("Cabin", ["ECONOMY", "PREMIUM_ECONOMY", "BUSINESS", "FIRST"])
+
+    if st.button("Search live prices", type="primary"):
+        if not origin or not destination:
+            st.error("Enter both airport codes.")
+        else:
+            try:
+                with st.spinner("Searching..."):
+                    st.session_state["flight_offers"] = flight_search.search_cash_price(
+                        origin, destination, dep_date.isoformat(), cabin
+                    )
+                if not st.session_state["flight_offers"]:
+                    st.warning("No offers found for that route/date/cabin.")
+            except flight_search.NotConfigured as e:
+                st.error(str(e))
+            except requests.HTTPError as e:
+                st.error(f"SerpApi error: {e}")
+
+    for i, offer in enumerate(st.session_state.get("flight_offers", [])[:5]):
+        with st.container(border=True):
+            head_l, head_r = st.columns([3, 1])
+            flight_numbers = ", ".join(s.flight_number for s in offer.segments if s.flight_number)
+            head_l.markdown(f"**{offer.airline}** · {flight_numbers} · {offer.cabin.replace('_', ' ').title()}")
+            head_r.markdown(f"### ${offer.price_usd:,.0f}")
+
+            dep_date_s, dep_time_s = _split_datetime(offer.departure_time)
+            arr_date_s, arr_time_s = _split_datetime(offer.arrival_time)
+            stop_label = "Nonstop" if offer.stops == 0 else f"{offer.stops} stop" + ("s" if offer.stops > 1 else "")
+
+            route_l, route_m, route_r = st.columns([2, 3, 2])
+            with route_l:
+                st.markdown(f"**{dep_time_s}**")
+                st.caption(f"{offer.origin} · {dep_date_s}")
+            with route_m:
+                st.markdown(f"**{_fmt_duration(offer.total_duration_minutes)}**")
+                st.caption(stop_label)
+            with route_r:
+                st.markdown(f"**{arr_time_s}**")
+                st.caption(f"{offer.destination} · {arr_date_s}")
+
+            if offer.layovers:
+                layover_desc = "; ".join(
+                    f"{lay.name or lay.airport} ({lay.airport}) — {_fmt_duration(lay.duration_minutes)} layover"
+                    for lay in offer.layovers
+                )
+                st.caption(f"Via {layover_desc}")
+
+            if len(offer.segments) > 1:
+                with st.popover("Flight details"):
+                    for seg in offer.segments:
+                        seg_dep_date, seg_dep_time = _split_datetime(seg.dep_time)
+                        seg_arr_date, seg_arr_time = _split_datetime(seg.arr_time)
+                        st.write(
+                            f"**{seg.airline} {seg.flight_number}** — "
+                            f"{seg.dep_airport} {seg_dep_time} ({seg_dep_date}) → "
+                            f"{seg.arr_airport} {seg_arr_time} ({seg_arr_date}) · "
+                            f"{_fmt_duration(seg.duration_minutes)}"
+                        )
+
+            if st.button("Use this price", key=f"use_offer_{i}", use_container_width=True):
+                st.session_state["cash_price_input"] = offer.price_usd
+                st.rerun()
+
+st.divider()
+st.subheader("✏️ Or enter manually")
 
 col1, col2, col3 = st.columns(3)
 with col1:
