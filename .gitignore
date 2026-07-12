@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+.DS_Store
+
+# Local secrets — never commit real API keys
+.streamlit/secrets.toml
+.env
