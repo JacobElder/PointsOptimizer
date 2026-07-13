@@ -6,3 +6,7 @@ __pycache__/
 # Local secrets — never commit real API keys
 .streamlit/secrets.toml
 .env
+
+# Personal data — balances and analysis history stay local
+balances.json
+history.csv

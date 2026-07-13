@@ -26,6 +26,11 @@ class NotConfigured(Exception):
     """Raised when a SerpApi key isn't set."""
 
 
+class SearchFailed(Exception):
+    """Raised when the live search fails. Message is safe to display — it never
+    contains the request URL, which embeds the API key as a query parameter."""
+
+
 @dataclass
 class FlightSegment:
     airline: str
@@ -115,32 +120,39 @@ def search_cash_price(
     """
     Query live one-way cash prices for a route/date/cabin via Google Flights, cheapest first.
 
-    Raises NotConfigured if no API key is set, or requests.HTTPError if the
-    SerpApi call itself fails (bad route, rate limit, etc).
+    Raises NotConfigured if no API key is set, or SearchFailed if the SerpApi
+    call itself fails (network error, rate limit, bad response).
     """
     api_key = _get_api_key()
-    resp = requests.get(
-        SEARCH_URL,
-        params={
-            "engine": "google_flights",
-            "departure_id": origin.upper(),
-            "arrival_id": destination.upper(),
-            "outbound_date": departure_date,
-            "type": 2,  # one way
-            "travel_class": _TRAVEL_CLASS.get(cabin.upper(), 1),
-            "currency": "USD",
-            "hl": "en",
-            "api_key": api_key,
-        },
-        timeout=20,
-    )
-    resp.raise_for_status()
-    payload = resp.json()
+    try:
+        resp = requests.get(
+            SEARCH_URL,
+            params={
+                "engine": "google_flights",
+                "departure_id": origin.upper(),
+                "arrival_id": destination.upper(),
+                "outbound_date": departure_date,
+                "type": 2,  # one way
+                "travel_class": _TRAVEL_CLASS.get(cabin.upper(), 1),
+                "currency": "USD",
+                "hl": "en",
+                "api_key": api_key,
+            },
+            timeout=20,
+        )
+        resp.raise_for_status()
+        payload = resp.json()
+    except requests.HTTPError:
+        raise SearchFailed(f"SerpApi returned HTTP {resp.status_code}. Check your key/quota at serpapi.com.")
+    except requests.RequestException as e:
+        raise SearchFailed(f"Network error during search: {type(e).__name__}. Try again.")
+    except ValueError:
+        raise SearchFailed("SerpApi returned an unreadable response. Try again.")
 
     offers = []
     for item in payload.get("best_flights", []) + payload.get("other_flights", []):
         raw_segments = item.get("flights", [])
-        if not raw_segments:
+        if not raw_segments or item.get("price") is None:
             continue
 
         segments = [

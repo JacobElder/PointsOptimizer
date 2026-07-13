@@ -5,6 +5,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import streamlit as st
 
+import ledger
 from cards_data import CARDS, POOLS, cards_in_pool, pool_is_active
 
 st.set_page_config(page_title="Wallet — PointsOptimizer", page_icon="💳", layout="centered")
@@ -30,6 +31,29 @@ if planned:
     for card in planned:
         note = f" — {card.notes}" if card.notes else ""
         st.write(f"- **{card.name}** ({card.issuer}) → {POOLS[card.pool_key].currency_name}{note}")
+
+st.divider()
+st.header("Point Balances")
+st.caption("Saved locally to balances.json (gitignored) and used by the Flight Analyzer.")
+
+balances = ledger.load_balances()
+points_pools = [p for p in POOLS.values() if p.key != "cashback" and cards_in_pool(p.key, status="held")]
+
+bal_cols = st.columns(len(points_pools))
+new_balances = {}
+for col, pool in zip(bal_cols, points_pools):
+    with col:
+        new_balances[pool.key] = st.number_input(
+            pool.currency_name,
+            min_value=0,
+            value=balances.get(pool.key, 0),
+            step=1000,
+            key=f"bal_{pool.key}",
+        )
+
+if st.button("Save balances"):
+    ledger.save_balances(new_balances)
+    st.success("Balances saved.")
 
 st.divider()
 st.header("Point Pools & Transfer Partners")

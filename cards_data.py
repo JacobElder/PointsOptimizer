@@ -147,7 +147,6 @@ POOLS: dict[str, Pool] = {
 CARDS: list[Card] = [
     Card("Bank of America Customized Cash Rewards", "Bank of America", "cashback", "held"),
     Card("US Bank Cash Plus", "U.S. Bank", "cashback", "held"),
-    Card("US Bank Cash Plus", "U.S. Bank", "cashback", "held", notes="Listed twice — two accounts?"),
     Card("US Bank Altitude Go", "U.S. Bank", "usbank_points", "held"),
     Card("Discover It", "Discover", "cashback", "held"),
     Card("Chase Freedom Flex", "Chase", "chase_ur", "held"),

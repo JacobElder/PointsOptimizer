@@ -46,7 +46,7 @@ def run_valuation_simulation(
     mu_cost: float = 11.0,
     sigma_cost: float = 0.5,
     depreciation_rate: float = 0.05,
-    market_return: float = 0.07,
+    market_return: float = 0.05,
     n_iterations: int = 10_000,
     rng_seed: int | None = None,
 ) -> SimulationResult:
@@ -79,7 +79,7 @@ def run_valuation_simulation(
         Models the steady erosion of award-chart purchasing power.
     market_return : float
         Annual opportunity-cost rate r for the cash you DON'T spend today.
-        Default 0.07 (7 % — long-run market return).
+        Default 0.05 (5 % — inflation-adjusted conservative return, per PRD).
     n_iterations : int
         Monte Carlo iterations.  Default 10 000.
     rng_seed : int | None

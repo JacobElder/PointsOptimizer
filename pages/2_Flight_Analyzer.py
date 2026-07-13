@@ -3,10 +3,12 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-import requests
+from datetime import datetime
+
 import streamlit as st
 
 import flight_search
+import ledger
 from cards_data import (
     POOLS,
     all_partner_names,
@@ -28,8 +30,6 @@ def _split_datetime(dt_str: str) -> tuple[str, str]:
     """'2026-08-15 08:00' -> ('Aug 15', '08:00')"""
     try:
         date_part, time_part = dt_str.split(" ")
-        from datetime import datetime
-
         return datetime.strptime(date_part, "%Y-%m-%d").strftime("%b %d"), time_part
     except (ValueError, AttributeError):
         return dt_str, ""
@@ -82,6 +82,7 @@ else:
         if not origin or not destination:
             st.error("Enter both airport codes.")
         else:
+            st.session_state["flight_offers"] = []
             try:
                 with st.spinner("Searching..."):
                     st.session_state["flight_offers"] = flight_search.search_cash_price(
@@ -89,10 +90,8 @@ else:
                     )
                 if not st.session_state["flight_offers"]:
                     st.warning("No offers found for that route/date/cabin.")
-            except flight_search.NotConfigured as e:
+            except (flight_search.NotConfigured, flight_search.SearchFailed) as e:
                 st.error(str(e))
-            except requests.HTTPError as e:
-                st.error(f"SerpApi error: {e}")
 
     for i, offer in enumerate(st.session_state.get("flight_offers", [])[:5]):
         with st.container(border=True):
@@ -153,13 +152,15 @@ with col3:
     taxes_fees = st.number_input("Taxes & fees on the award ($)", min_value=0.0, value=50.0, step=5.0)
 
 net_value = max(cash_price - taxes_fees, 0.0)
-current_cpp = (net_value / points_required) * 100 if points_required else 0.0
+current_cpp = (net_value / points_required) * 100
 st.metric("Value per point (CPP)", f"{current_cpp:.2f}¢", help="(cash price − award taxes/fees) / points × 100")
 
 st.divider()
 
 # ── Which of your cards can fund this ───────────────────────────────────────
 st.header("Funding This Redemption")
+
+balances = ledger.load_balances()
 
 matches = find_partner_pools(program_query) if program_query else []
 if not program_query:
@@ -178,6 +179,15 @@ else:
         with st.container(border=True):
             st.markdown(f"{icon} **{pool.currency_name}** → {partner.name} ({partner.ratio})")
             st.write(f"Needs **{pts_needed_in_pool:,.0f}** {pool.currency_name} to get {points_required:,.0f} miles.")
+            stored = balances.get(pool.key)
+            if stored is not None and active:
+                if stored >= pts_needed_in_pool:
+                    st.caption(f"✅ Covered — you have {stored:,} {pool.currency_name} saved on the Wallet page.")
+                else:
+                    st.caption(
+                        f"⚠️ Short by {pts_needed_in_pool - stored:,.0f} — you have {stored:,} "
+                        f"{pool.currency_name} saved on the Wallet page."
+                    )
             if not active:
                 st.caption("Locked — you don't currently hold a card that unlocks transfer for this pool.")
 
@@ -187,29 +197,54 @@ st.divider()
 st.header("Redeem Now or Hoard?")
 st.caption("Evaluates this specific deal's CPP against the simulated future value of holding points.")
 
-point_balance = st.number_input("Your current balance in the relevant pool", min_value=1000, value=100000, step=1000)
+active_matched_pools = [pool for pool, _ in matches if pool_is_active(pool.key)]
+pool_options = {pool.currency_name: pool.key for pool in active_matched_pools}
+pool_options["Other / manual"] = None
+
+pool_col, bal_col, rep_col = st.columns(3)
+with pool_col:
+    chosen_pool_name = st.selectbox("Pool to burn", list(pool_options.keys()))
+    chosen_pool_key = pool_options[chosen_pool_name]
+with bal_col:
+    default_balance = balances.get(chosen_pool_key, 100000) if chosen_pool_key else 100000
+    point_balance = st.number_input(
+        "Balance in this pool",
+        min_value=1000,
+        value=max(default_balance, 1000),
+        step=1000,
+        key=f"sim_balance_{chosen_pool_key}",
+        help="Defaults from your saved Wallet balances when a pool is selected.",
+    )
+with rep_col:
+    representative_trip_price = st.number_input(
+        "Typical cash value of your future high-value trips ($)",
+        min_value=100.0,
+        value=1500.0,
+        step=100.0,
+        help="What a typical trip you'd redeem points for costs in cash — NOT this flight's "
+        "price. The simulation values hoarded points against future trips like this one.",
+    )
 
 with st.expander("Simulation settings", expanded=False):
     c3, c4 = st.columns(2)
     with c3:
         lambda_trips = st.slider("Expected high-value trips per year (λ)", 0.5, 10.0, 2.0, 0.5)
         time_horizon = st.selectbox("Time horizon (years)", [3, 5], index=0)
-        depreciation_rate = st.slider(
-            "Annual point devaluation rate", 0.01, 0.20, 0.05, 0.01, format="%.0f%%"
-        )
+        depreciation_pct = st.slider("Annual point devaluation rate (%)", 1, 20, 5)
     with c4:
         mu_cost = st.slider("Avg log-cost of future trips (μ)", 9.0, 13.0, 11.0, 0.5)
         sigma_cost = st.slider("Variability of future trip costs (σ)", 0.1, 1.5, 0.5, 0.1)
-        market_return = st.slider(
-            "Annual opportunity cost of cash", 0.01, 0.15, 0.07, 0.01, format="%.0f%%"
-        )
+        market_return_pct = st.slider("Annual opportunity cost of cash (%)", 1, 15, 5)
+
+depreciation_rate = depreciation_pct / 100
+market_return = market_return_pct / 100
 
 if st.button("Run Simulation", type="primary", use_container_width=True):
     with st.spinner("Running 10,000 iterations..."):
         result = run_valuation_simulation(
             current_cpp=current_cpp,
             point_balance=point_balance,
-            cash_price=net_value,
+            cash_price=representative_trip_price,
             time_horizon=time_horizon,
             lambda_trips=lambda_trips,
             mu_cost=mu_cost,
@@ -217,6 +252,18 @@ if st.button("Run Simulation", type="primary", use_container_width=True):
             depreciation_rate=depreciation_rate,
             market_return=market_return,
         )
+
+    ledger.append_history(
+        route=flight_label or "",
+        program=program_query or "",
+        pool_key=chosen_pool_key or "",
+        cash_price=cash_price,
+        taxes_fees=taxes_fees,
+        points_required=points_required,
+        cpp=result.current_cpp,
+        avg_simulated_cpp=result.avg_simulated_cpp,
+        verdict="redeem" if result.recommend_redeem else "hoard",
+    )
 
     label = flight_label or "This flight"
     if result.recommend_redeem:
