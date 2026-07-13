@@ -203,3 +203,56 @@ def transfer_ratio_multiplier(ratio: str) -> float:
     """Convert a 'X:Y' ratio string into a multiplier: partner_units = pool_units * multiplier."""
     left, right = ratio.split(":")
     return float(right) / float(left)
+
+
+def unique_partners(pool_key: str) -> list[str]:
+    """Partners reachable from this pool but from no OTHER currently-active pool.
+
+    These are the pool's 'escape hatches' — burning this pool's points costs you
+    optionality on exactly these programs.
+    """
+    other_names = {
+        pt.name
+        for k, p in POOLS.items()
+        if k != pool_key and pool_is_active(k)
+        for pt in p.partners
+    }
+    return [pt.name for pt in POOLS[pool_key].partners if pt.name not in other_names]
+
+
+def rank_funding_pools(
+    matches: list[tuple[Pool, Partner]],
+    points_required: float,
+    balances: dict[str, int],
+) -> list[dict]:
+    """Rank active matched pools by which to burn first, best candidate first.
+
+    Ordering: pools whose stored balance covers the transfer beat those that
+    don't; among covered pools, burn the LEAST flexible pool (fewest unique
+    partners) to preserve optionality; ties break on fewer points needed.
+    """
+    ranked = []
+    for pool, partner in matches:
+        if not pool_is_active(pool.key):
+            continue
+        pts_needed = points_required / transfer_ratio_multiplier(partner.ratio)
+        balance = balances.get(pool.key, 0)
+        uniques = unique_partners(pool.key)
+        ranked.append(
+            {
+                "pool": pool,
+                "partner": partner,
+                "pts_needed": pts_needed,
+                "balance": balance,
+                "covered": balance >= pts_needed,
+                "flexibility": len(uniques),
+                "unique_partners": uniques,
+            }
+        )
+    ranked.sort(key=lambda r: (not r["covered"], r["flexibility"], r["pts_needed"]))
+    return ranked
+
+
+def reachable_partner_names(active_pool_keys: set[str]) -> set[str]:
+    """All partner programs reachable from the given set of pool keys."""
+    return {pt.name for k in active_pool_keys for pt in POOLS[k].partners}

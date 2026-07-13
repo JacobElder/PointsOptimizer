@@ -14,6 +14,7 @@ from cards_data import (
     all_partner_names,
     find_partner_pools,
     pool_is_active,
+    rank_funding_pools,
     transfer_ratio_multiplier,
 )
 from simulation import run_valuation_simulation
@@ -171,25 +172,46 @@ elif not matches:
         "Check spelling, or this program isn't a partner of any card you hold/plan to get."
     )
 else:
-    for pool, partner in matches:
-        active = pool_is_active(pool.key)
-        mult = transfer_ratio_multiplier(partner.ratio)
-        pts_needed_in_pool = points_required / mult
-        icon = "🟢" if active else "🟡"
+    ranked = rank_funding_pools(matches, points_required, balances)
+
+    if len(ranked) > 1:
+        best = ranked[0]
+        others = ", ".join(r["pool"].currency_name for r in ranked[1:])
+        reason = (
+            f"it's your least flexible option ({best['flexibility']} partners only it can reach), "
+            f"so burning it preserves optionality in {others}"
+            if best["flexibility"] <= min(r["flexibility"] for r in ranked[1:])
+            else "it best covers the transfer from your saved balances"
+        )
+        st.info(f"💡 **Burn {best['pool'].currency_name}** — {reason}.")
+
+    for rank_pos, r in enumerate(ranked):
+        pool, partner = r["pool"], r["partner"]
+        badge = " · ⭐ Recommended" if rank_pos == 0 and len(ranked) > 1 else ""
         with st.container(border=True):
-            st.markdown(f"{icon} **{pool.currency_name}** → {partner.name} ({partner.ratio})")
-            st.write(f"Needs **{pts_needed_in_pool:,.0f}** {pool.currency_name} to get {points_required:,.0f} miles.")
-            stored = balances.get(pool.key)
-            if stored is not None and active:
-                if stored >= pts_needed_in_pool:
-                    st.caption(f"✅ Covered — you have {stored:,} {pool.currency_name} saved on the Wallet page.")
+            st.markdown(f"🟢 **{pool.currency_name}** → {partner.name} ({partner.ratio}){badge}")
+            st.write(f"Needs **{r['pts_needed']:,.0f}** {pool.currency_name} to get {points_required:,.0f} miles.")
+            if r["balance"]:
+                if r["covered"]:
+                    st.caption(f"✅ Covered — you have {r['balance']:,} saved on the Wallet page.")
                 else:
                     st.caption(
-                        f"⚠️ Short by {pts_needed_in_pool - stored:,.0f} — you have {stored:,} "
-                        f"{pool.currency_name} saved on the Wallet page."
+                        f"⚠️ Short by {r['pts_needed'] - r['balance']:,.0f} — you have {r['balance']:,} "
+                        "saved on the Wallet page."
                     )
-            if not active:
-                st.caption("Locked — you don't currently hold a card that unlocks transfer for this pool.")
+            if r["unique_partners"]:
+                st.caption(
+                    f"Only this pool reaches: {', '.join(r['unique_partners'][:6])}"
+                    + ("…" if len(r["unique_partners"]) > 6 else "")
+                )
+
+    locked = [(pool, partner) for pool, partner in matches if not pool_is_active(pool.key)]
+    for pool, partner in locked:
+        pts_needed_in_pool = points_required / transfer_ratio_multiplier(partner.ratio)
+        with st.container(border=True):
+            st.markdown(f"🟡 **{pool.currency_name}** → {partner.name} ({partner.ratio})")
+            st.write(f"Needs **{pts_needed_in_pool:,.0f}** {pool.currency_name} to get {points_required:,.0f} miles.")
+            st.caption("Locked — you don't currently hold a card that unlocks transfer for this pool.")
 
 st.divider()
 
