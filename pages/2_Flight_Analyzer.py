@@ -295,6 +295,24 @@ net_value = max(cash_price - taxes_fees, 0.0)
 current_cpp = (net_value / points_required) * 100
 st.metric("Value per point (CPP)", f"{current_cpp:.2f}¢", help="(cash price − award taxes/fees) / points × 100")
 
+with st.expander("Quick verdict thresholds", expanded=False):
+    st.caption(
+        "A fast heuristic, independent of your actual balance/opportunity cost — the "
+        "simulation below is the fuller answer."
+    )
+    tc1, tc2 = st.columns(2)
+    with tc1:
+        skip_floor = st.slider("Below this = skip (¢)", 0.5, 2.0, 1.0, 0.1, key="skip_floor")
+    with tc2:
+        book_floor = st.slider("Above this = book (¢)", 1.0, 3.0, 1.7, 0.1, key="book_floor")
+
+if current_cpp < st.session_state["skip_floor"]:
+    st.error(f"⛔ **Skip** — {current_cpp:.2f}¢/pt is below your {st.session_state['skip_floor']:.1f}¢ floor.")
+elif current_cpp >= st.session_state["book_floor"]:
+    st.success(f"✅ **Book it** — {current_cpp:.2f}¢/pt clears your {st.session_state['book_floor']:.1f}¢ bar.")
+else:
+    st.warning(f"🟡 **Borderline** — {current_cpp:.2f}¢/pt. Run the simulation below for a real answer.")
+
 st.divider()
 
 # ── Which of your cards can fund this ───────────────────────────────────────
