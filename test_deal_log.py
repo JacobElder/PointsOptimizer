@@ -38,3 +38,20 @@ def test_existing_keys_covers_both_deals_and_pending():
     assert deal_log.make_key("United MileagePlus", "SFO", "NRT", "FIRST", "2027-01-15", 80000) in keys
     assert deal_log.make_key("JetBlue TrueBlue", "EWR", "MBJ", "ECONOMY", "2026-10-28", 14200) in keys
     assert len(keys) == 2
+
+
+def test_is_great_uses_lower_bar_for_economy():
+    assert deal_log.is_great(dict(cabin="ECONOMY", cpp=1.6)) is True
+    assert deal_log.is_great(dict(cabin="ECONOMY", cpp=1.4)) is False
+    assert deal_log.is_great(dict(cabin="PREMIUM_ECONOMY", cpp=1.6)) is True
+
+
+def test_is_great_uses_higher_bar_for_business_and_first():
+    assert deal_log.is_great(dict(cabin="BUSINESS", cpp=2.1)) is True
+    assert deal_log.is_great(dict(cabin="BUSINESS", cpp=1.6)) is False
+    assert deal_log.is_great(dict(cabin="FIRST", cpp=1.9)) is False
+
+
+def test_is_great_false_when_cpp_missing():
+    assert deal_log.is_great(dict(cabin="ECONOMY", cpp=None)) is False
+    assert deal_log.is_great(dict(cabin="ECONOMY")) is False

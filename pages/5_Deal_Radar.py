@@ -10,8 +10,6 @@ import deal_log
 
 st.set_page_config(page_title="Deal Radar — PointsOptimizer", page_icon="📡", layout="centered")
 
-GREAT_CPP = 2.0
-
 st.title("Deal Radar")
 st.caption(
     "A scheduled cloud routine checks your seats.aero alert emails every few hours, computes real "
@@ -35,7 +33,7 @@ last_checked = max((d.get("checked_at", "") for d in deals), default="")
 
 st.caption(f"{len(deals)} deals evaluated · last update {last_checked}")
 
-great = [d for d in deals_sorted if (d.get("cpp") or 0) >= GREAT_CPP]
+great = [d for d in deals_sorted if deal_log.is_great(d)]
 if great:
     st.header(f"🎯 {len(great)} standout deal(s)")
     for d in great:

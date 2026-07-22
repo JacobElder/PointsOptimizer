@@ -56,3 +56,23 @@ def _key_of(d: dict) -> str:
 def existing_keys(data: dict) -> set[str]:
     """Keys already captured, whether priced (deals) or still queued (pending)."""
     return {_key_of(d) for d in data["deals"]} | {_key_of(d) for d in data["pending"]}
+
+
+# "Great deal" bar for notifications/highlighting -- higher for Business/First since
+# committing a much larger points balance to one seat warrants more proof it's a
+# standout, vs. Economy where less is at stake per redemption. Premium Economy is
+# bucketed with Economy. Confirmed with the user 2026-07-22.
+GREAT_CPP_BY_CABIN = {
+    "ECONOMY": 1.5,
+    "PREMIUM_ECONOMY": 1.5,
+    "BUSINESS": 2.0,
+    "FIRST": 2.0,
+}
+
+
+def is_great(deal: dict) -> bool:
+    cpp = deal.get("cpp")
+    if cpp is None:
+        return False
+    floor = GREAT_CPP_BY_CABIN.get(deal.get("cabin", "").upper(), 2.0)
+    return cpp >= floor

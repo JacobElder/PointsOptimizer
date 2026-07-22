@@ -20,7 +20,6 @@ import deal_log
 import flight_search
 
 CAP_PER_RUN = 15  # protects the shared SerpApi 250/month free quota
-GREAT_CPP = 2.0
 
 
 def _notify_mac(message: str) -> None:
@@ -55,7 +54,7 @@ def main() -> None:
     for p in priced:
         p["key"] = deal_log.make_key(p["program"], p["origin"], p["dest"], p["cabin"], p["date"], p["points"])
         p["checked_at"] = checked_at
-        p["notified"] = p.get("cpp") is not None and p["cpp"] >= GREAT_CPP
+        p["notified"] = deal_log.is_great(p)
         if p["notified"]:
             great.append(p)
         data["deals"].append(p)
