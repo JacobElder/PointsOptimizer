@@ -53,15 +53,24 @@
       all work correctly. Only the live cash-price call is blocked. The routine
       correctly refuses to write placeholder/fake prices, so nothing is lost — ~90+
       unpriced alerts sit safely unprocessed waiting for this to be resolved.
-- [ ] Two real options to actually fix this:
-      1. **Report it** — contact Anthropic support (per the README's own instruction)
-         and ask for `serpapi.com` egress to be allowed for this account's scheduled
-         routines. This is the only path if you want the pricing lookup to happen
-         *inside* the routine itself.
-      2. **Split the pipeline instead** (no support ticket needed) — have the routine
-         only do what only it can do (Gmail access: fetch/parse/dedupe new alerts into
-         a pending queue), and do the actual cash-price lookup somewhere that already
-         has normal internet access — e.g. locally in a Claude Code session (proven
-         working all session), or inside the deployed Streamlit app itself once it's
-         on Streamlit Cloud (see TODO item 1), which runs outside this sandboxed proxy
-         entirely. Ask to have this built if you'd rather not wait on a support ticket.
+- [x] **DONE 2026-07-22 (option 2, split the pipeline)**: rather than wait on a
+      support ticket, the pipeline now splits across two places — see
+      [[seats-aero-integration]] and the "Deal Radar split pipeline" section there
+      for full detail. Cloud routine only captures (Gmail); a local Mac LaunchAgent
+      (`price_pending_deals.py`, hourly + on login/wake) does the actual pricing,
+      updates `deal_log.json`, fires a macOS notification, and emails full deal
+      details via Gmail SMTP. Confirmed working end to end with real data.
+- [ ] Still open, lower priority now that option 2 works: contacting Anthropic
+      support to get `serpapi.com` allowed in the cloud environment directly would
+      let the whole pipeline live in the cloud again (removing the "only works
+      while your Mac is on" gap) — not urgent since the local split is functioning.
+
+## 5. Gmail App Password stored locally for Deal Radar emails
+- [ ] `.streamlit/secrets.toml` now has `GMAIL_ADDRESS` / `GMAIL_APP_PASSWORD`
+      (added 2026-07-22) so `price_pending_deals.py` can send you email alerts via
+      Gmail SMTP for "great" deals (≥2.0¢/pt). This is a local-only file,
+      gitignored, never leaves your Mac (lower exposure than the SerpApi key
+      embedded in the cloud routine's config, item 3 above).
+- [ ] If you ever want to revoke it: Google Account → Security →
+      2-Step Verification → App Passwords → delete "PointsOptimizer Deal Radar"
+      (or whatever you named it), then remove the two lines from secrets.toml.
