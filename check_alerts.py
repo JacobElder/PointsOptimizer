@@ -1,0 +1,80 @@
+"""
+Batch-evaluate seats.aero alert emails against live cash prices.
+
+seats.aero alerts tell you a route clears your points/fee thresholds, but not
+whether it's actually good value in cents-per-point terms — that still needs a
+live cash price for the same route/date/cabin. This script closes that gap:
+feed it a JSON list of parsed alerts (see seats_aero_alerts.parse_alert_email
+for how to produce one from raw alert email HTML) and it looks up each route's
+live cash price via flight_search, computes CPP, and ranks the results.
+
+There's no way to fetch the alert emails themselves from here — seats.aero's
+API has no "list my alerts" endpoint, and this script has no Gmail credentials.
+Fetching + parsing the emails happens in a Claude Code session with Gmail
+access; this script is the second half of that pipeline.
+
+Usage:
+    python3 check_alerts.py alerts.json
+
+alerts.json is a list of objects with: origin, dest, program, cabin, date,
+points, taxes, currency (default "USD").
+"""
+
+from __future__ import annotations
+
+import json
+import sys
+
+import flight_search
+
+# Not a live FX rate -- approximate, for ballpark CPP only. Refresh occasionally.
+_FX_TO_USD = {"USD": 1.0, "CAD": 0.73, "EUR": 1.08, "GBP": 1.27}
+
+SKIP_FLOOR = 1.0
+BOOK_FLOOR = 1.7
+
+
+def evaluate_alerts(alerts: list[dict], skip_floor: float = SKIP_FLOOR, book_floor: float = BOOK_FLOOR) -> list[dict]:
+    results = []
+    for a in alerts:
+        taxes_usd = a["taxes"] * _FX_TO_USD.get(a.get("currency", "USD"), 1.0)
+        cash_price = None
+        error = None
+        try:
+            offers = flight_search.search_cash_price(a["origin"], a["dest"], a["date"], a["cabin"], max_results=1)
+            cash_price = offers[0].price_usd if offers else None
+        except (flight_search.NotConfigured, flight_search.SearchFailed) as e:
+            error = str(e)
+
+        if cash_price is None:
+            results.append({**a, "taxes_usd": taxes_usd, "cash_price": None, "cpp": None,
+                             "verdict": "NO CASH PRICE", "error": error})
+            continue
+
+        net = max(cash_price - taxes_usd, 0.0)
+        cpp = (net / a["points"]) * 100
+        verdict = "BOOK" if cpp >= book_floor else ("SKIP" if cpp < skip_floor else "BORDERLINE")
+        results.append({**a, "taxes_usd": taxes_usd, "cash_price": cash_price, "cpp": cpp, "verdict": verdict})
+
+    results.sort(key=lambda r: (r["cpp"] is None, -(r["cpp"] or 0)))
+    return results
+
+
+def print_report(results: list[dict]) -> None:
+    header = f"{'Route':10} {'Program':28} {'Cabin':9} {'Date':11} {'Pts':>8} {'Taxes$':>8} {'Cash$':>8} {'CPP':>6}  Verdict"
+    print(header)
+    for r in results:
+        cash_s = f"{r['cash_price']:.0f}" if r["cash_price"] is not None else "N/A"
+        cpp_s = f"{r['cpp']:.2f}" if r["cpp"] is not None else "N/A"
+        route = f"{r['origin']}-{r['dest']}"
+        print(f"{route:10} {r['program']:28} {r['cabin']:9} {r['date']:11} "
+              f"{r['points']:8,} {r['taxes_usd']:8.2f} {cash_s:>8} {cpp_s:>6}  {r['verdict']}")
+
+
+if __name__ == "__main__":
+    if len(sys.argv) != 2:
+        print("Usage: python3 check_alerts.py alerts.json")
+        sys.exit(1)
+    with open(sys.argv[1]) as f:
+        alerts = json.load(f)
+    print_report(evaluate_alerts(alerts))

@@ -250,6 +250,16 @@ else:
                     st.session_state["flight_label_input"] = st.session_state.get(
                         "flight_label_input", ""
                     ) or f"{award.origin}–{award.destination} {award.cabin.title()}"
+                if flight_search.is_configured():
+                    try:
+                        with st.spinner("Looking up the cash price for this same flight..."):
+                            cash_offers = flight_search.search_cash_price(
+                                award.origin, award.destination, award.date, award.cabin, max_results=1
+                            )
+                        if cash_offers:
+                            st.session_state["cash_price_input"] = cash_offers[0].price_usd
+                    except (flight_search.NotConfigured, flight_search.SearchFailed):
+                        pass
                 st.rerun()
 
 st.divider()
