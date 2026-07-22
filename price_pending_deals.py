@@ -33,6 +33,11 @@ def main() -> None:
         print("SERPAPI_KEY not configured (env var or .streamlit/secrets.toml) -- nothing to do.")
         sys.exit(1)
 
+    pull = subprocess.run(["git", "pull", "--ff-only", "origin", "main"], capture_output=True, text=True)
+    if pull.returncode != 0:
+        print(f"git pull failed, aborting so we don't work on a stale local copy:\n{pull.stderr}")
+        sys.exit(1)
+
     data = deal_log.load()
     pending = data["pending"]
     if not pending:
@@ -62,7 +67,9 @@ def main() -> None:
         ["git", "commit", "-m", f"Deal Radar (local): priced {len(priced)} pending deal(s)"],
     )
     if commit.returncode == 0:
-        subprocess.run(["git", "push", "origin", "main"], check=True)
+        push = subprocess.run(["git", "push", "origin", "main"], capture_output=True, text=True)
+        if push.returncode != 0:
+            print(f"git push failed (someone else pushed in the meantime?):\n{push.stderr}")
 
     print(f"Priced {len(priced)} deal(s), {len(still_pending)} left in queue, {len(great)} great.")
     if great:
