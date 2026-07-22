@@ -36,6 +36,24 @@
       "key": "jetblue trueblue|EWR|MBJ|ECONOMY|2026-10-28|14200",
       "checked_at": "2026-07-22T21:22:17Z",
       "notified": false
+    },
+    {
+      "origin": "SFO",
+      "dest": "NRT",
+      "program": "United MileagePlus",
+      "cabin": "FIRST",
+      "date": "2027-01-15",
+      "points": 80000,
+      "taxes": 100.0,
+      "currency": "USD",
+      "message_id": "m3",
+      "taxes_usd": 100.0,
+      "cash_price": 12182.0,
+      "cpp": 15.1025,
+      "verdict": "BOOK",
+      "key": "united mileageplus|SFO|NRT|FIRST|2027-01-15|80000",
+      "checked_at": "2026-07-22T21:23:19Z",
+      "notified": true
     }
   ],
   "pending": []
