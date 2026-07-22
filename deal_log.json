@@ -358,7 +358,7 @@
       "verdict": "BOOK",
       "key": "virgin atlantic|EWR|OSL|ECONOMY|2026-11-20|20500",
       "checked_at": "2026-07-22T22:39:12Z",
-      "notified": false
+      "notified": true
     },
     {
       "origin": "JFK",
@@ -376,7 +376,7 @@
       "verdict": "BOOK",
       "key": "air france/klm flying blue|JFK|EZE|ECONOMY|2027-06-10|29000",
       "checked_at": "2026-07-22T22:39:12Z",
-      "notified": false
+      "notified": true
     },
     {
       "origin": "JFK",
@@ -394,7 +394,7 @@
       "verdict": "BOOK",
       "key": "air france/klm flying blue|JFK|EZE|ECONOMY|2027-03-04|29000",
       "checked_at": "2026-07-22T22:39:12Z",
-      "notified": false
+      "notified": true
     },
     {
       "origin": "JFK",
@@ -412,7 +412,7 @@
       "verdict": "BORDERLINE",
       "key": "virgin atlantic|JFK|OSL|ECONOMY|2026-09-05|20500",
       "checked_at": "2026-07-22T22:39:12Z",
-      "notified": false
+      "notified": true
     },
     {
       "origin": "JFK",
@@ -430,7 +430,7 @@
       "verdict": "BORDERLINE",
       "key": "air france/klm flying blue|JFK|SCL|ECONOMY|2027-02-04|27500",
       "checked_at": "2026-07-22T22:39:12Z",
-      "notified": false
+      "notified": true
     },
     {
       "origin": "JFK",
@@ -448,7 +448,7 @@
       "verdict": "BORDERLINE",
       "key": "air france/klm flying blue|JFK|SCL|ECONOMY|2027-02-03|27500",
       "checked_at": "2026-07-22T22:39:12Z",
-      "notified": false
+      "notified": true
     },
     {
       "origin": "JFK",
@@ -466,7 +466,7 @@
       "verdict": "BORDERLINE",
       "key": "air france/klm flying blue|JFK|SCL|ECONOMY|2026-10-22|27500",
       "checked_at": "2026-07-22T22:39:12Z",
-      "notified": false
+      "notified": true
     },
     {
       "origin": "JFK",
@@ -484,7 +484,7 @@
       "verdict": "BORDERLINE",
       "key": "air france/klm flying blue|JFK|EZE|ECONOMY|2026-08-25|29000",
       "checked_at": "2026-07-22T22:39:12Z",
-      "notified": false
+      "notified": true
     },
     {
       "origin": "JFK",
@@ -686,7 +686,7 @@
       "verdict": "BOOK",
       "key": "virgin atlantic|EWR|ARN|ECONOMY|2026-10-22|20500",
       "checked_at": "2026-07-22T22:49:15Z",
-      "notified": false
+      "notified": true
     },
     {
       "origin": "EWR",
@@ -705,7 +705,7 @@
       "verdict": "BOOK",
       "key": "virgin atlantic|EWR|ARN|ECONOMY|2026-10-11|20500",
       "checked_at": "2026-07-22T22:49:15Z",
-      "notified": false
+      "notified": true
     },
     {
       "origin": "EWR",
@@ -724,7 +724,7 @@
       "verdict": "BOOK",
       "key": "virgin atlantic|EWR|ARN|ECONOMY|2026-10-19|20500",
       "checked_at": "2026-07-22T22:49:15Z",
-      "notified": false
+      "notified": true
     },
     {
       "origin": "JFK",
@@ -743,7 +743,7 @@
       "verdict": "BOOK",
       "key": "air france/klm flying blue|JFK|EZE|ECONOMY|2026-11-16|29000",
       "checked_at": "2026-07-22T22:49:15Z",
-      "notified": false
+      "notified": true
     },
     {
       "origin": "JFK",
