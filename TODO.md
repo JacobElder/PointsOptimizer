@@ -24,3 +24,15 @@
 - [ ] Hand the API key over the same way as SERPAPI_KEY/SEATS_AERO_API_KEY, and
       `flight_lookup.py` gets built mirroring the existing `flight_search.py` /
       `seats_aero.py` pattern.
+
+## 3. Rotate the SerpApi key exposed in the Deal Radar routine
+- [ ] The "seats.aero Deal Radar" scheduled cloud routine
+      (https://claude.ai/code/routines/trig_01XYHpqapanTMazeAp1R2srW) has your real
+      SerpApi key embedded in plaintext in its stored prompt/config — there's no
+      secrets vault for scheduled routines, so this was the only way to give it
+      live-pricing access. You approved this tradeoff on 2026-07-22.
+- [ ] Whenever you want that key out of the routine's stored config (e.g. before
+      sharing account access with anyone, or just for general hygiene), rotate the
+      SerpApi key at serpapi.com, update `.streamlit/secrets.toml` locally (and
+      Streamlit Cloud's secrets once deployed), and update/recreate the routine with
+      the new key.
