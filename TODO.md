@@ -68,9 +68,32 @@
 ## 5. Gmail App Password stored locally for Deal Radar emails
 - [ ] `.streamlit/secrets.toml` now has `GMAIL_ADDRESS` / `GMAIL_APP_PASSWORD`
       (added 2026-07-22) so `price_pending_deals.py` can send you email alerts via
-      Gmail SMTP for "great" deals (≥2.0¢/pt). This is a local-only file,
-      gitignored, never leaves your Mac (lower exposure than the SerpApi key
-      embedded in the cloud routine's config, item 3 above).
+      Gmail SMTP for "great" deals (cabin-aware bar, see item 6). This is a
+      local-only file, gitignored, never leaves your Mac (lower exposure than the
+      SerpApi key embedded in the cloud routine's config, item 3 above).
 - [ ] If you ever want to revoke it: Google Account → Security →
       2-Step Verification → App Passwords → delete "PointsOptimizer Deal Radar"
       (or whatever you named it), then remove the two lines from secrets.toml.
+
+## 6. IN PROGRESS: GitHub Actions removes the "Mac must be on" dependency
+- [x] `price_pending_deals.py` fixed to be cross-platform safe (was going to
+      crash with FileNotFoundError on Linux runners via an unconditional
+      `osascript` call) — pushed 2026-07-22.
+- [ ] **`.github/workflows/deal_radar_pricing.yml` is written but NOT pushed** —
+      my git credential here lacks the `workflow` OAuth scope GitHub requires to
+      push changes under `.github/workflows/`. Two ways to finish this:
+      1. Add the `workflow` scope to your PAT (GitHub → Developer settings →
+         Personal access tokens) and tell me — I'll push it.
+      2. Or add the file yourself directly on github.com (Add file → Create new
+         file → `.github/workflows/deal_radar_pricing.yml`) — works around the
+         token-scope issue since it's authenticated as you, not the token.
+- [ ] Then add 3 repo secrets (Settings → Secrets and variables → Actions):
+      `SERPAPI_KEY`, `GMAIL_ADDRESS`, `GMAIL_APP_PASSWORD` (same values as your
+      local `.streamlit/secrets.toml`).
+- [ ] Test via Actions tab → "Deal Radar pricing" → **Run workflow** (manual
+      `workflow_dispatch` trigger, no need to wait for the hourly schedule).
+- [ ] **Once confirmed working**: unload the Mac LaunchAgent
+      (`launchctl bootout gui/$(id -u)/com.pointsoptimizer.dealradar`) so there's
+      only one pricing scheduler running — right now both would fire hourly and
+      could send duplicate emails for the same newly-priced deals if their runs
+      overlap. Keeping just GitHub Actions is the whole point of this migration.
