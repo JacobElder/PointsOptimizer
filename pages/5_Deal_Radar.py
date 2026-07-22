@@ -41,11 +41,11 @@ if great:
     for d in great:
         with st.container(border=True):
             st.markdown(
-                f"### {d['origin']}→{d['destination']} · {d['program']} · {d['cabin'].title()} — "
+                f"### {d['origin']}→{d['dest']} · {d['program']} · {d['cabin'].title()} — "
                 f"**{d['cpp']:.2f}¢/pt**"
             )
             st.write(
-                f"{d['points']:,} pts + ${d['taxes_fees']:.2f} {d.get('taxes_currency', 'USD')} taxes "
+                f"{d['points']:,} pts + ${d['taxes']:.2f} {d.get('currency', 'USD')} taxes "
                 f"vs. ${d['cash_price']:,.0f} cash · travel {d['date']}"
             )
     st.divider()
@@ -56,13 +56,13 @@ for d in deals_sorted:
     with st.container(border=True):
         cols = st.columns([3, 1])
         cols[0].markdown(
-            f"{badge} **{d['origin']}→{d['destination']}** · {d['program']} · {d['cabin'].title()} · "
+            f"{badge} **{d['origin']}→{d['dest']}** · {d['program']} · {d['cabin'].title()} · "
             f"{d['date']}"
         )
         cpp_s = f"{d['cpp']:.2f}¢" if d.get("cpp") is not None else "N/A"
         cols[1].markdown(f"### {cpp_s}")
         cash_s = f"${d['cash_price']:,.0f}" if d.get("cash_price") is not None else "no cash price"
         st.caption(
-            f"{d['points']:,} pts + ${d['taxes_fees']:.2f} {d.get('taxes_currency', 'USD')} taxes · "
+            f"{d['points']:,} pts + ${d['taxes']:.2f} {d.get('currency', 'USD')} taxes · "
             f"{cash_s} · checked {d.get('checked_at', '?')}"
         )
