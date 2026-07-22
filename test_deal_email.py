@@ -64,6 +64,29 @@ def test_build_html_omits_empty_section():
     assert "Business / First" not in html
 
 
+def test_format_deal_includes_listing_url_when_present():
+    deal = {**ECONOMY_DEAL, "listing_url": "https://c.seats.aero/CL0/https:%2F%2Fseats.aero%2Fi%2Fabc"}
+    text = deal_email._format_deal(deal)
+    assert "https://c.seats.aero/CL0/https:%2F%2Fseats.aero%2Fi%2Fabc" in text
+
+
+def test_format_deal_omits_listing_line_when_absent():
+    text = deal_email._format_deal(ECONOMY_DEAL)
+    assert "View listing" not in text
+
+
+def test_deal_card_html_includes_listing_link_when_present():
+    deal = {**ECONOMY_DEAL, "listing_url": "https://c.seats.aero/CL0/https:%2F%2Fseats.aero%2Fi%2Fabc"}
+    card = deal_email._deal_card_html(deal)
+    assert 'href="https://c.seats.aero/CL0/https:%2F%2Fseats.aero%2Fi%2Fabc"' in card
+    assert "View on seats.aero" in card
+
+
+def test_deal_card_html_omits_link_when_absent():
+    card = deal_email._deal_card_html(ECONOMY_DEAL)
+    assert "View on seats.aero" not in card
+
+
 def test_is_configured_false_without_credentials(monkeypatch):
     monkeypatch.delenv("GMAIL_ADDRESS", raising=False)
     monkeypatch.delenv("GMAIL_APP_PASSWORD", raising=False)

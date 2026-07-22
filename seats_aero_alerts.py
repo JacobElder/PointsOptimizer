@@ -30,6 +30,7 @@ class ParsedAlert:
     points: int | None = None
     taxes_fees: float | None = None
     taxes_currency: str = "USD"
+    listing_url: str | None = None  # the email's "View on seats.aero" link (a tracked redirect)
 
     @property
     def found_anything(self) -> bool:
@@ -56,6 +57,15 @@ def parse_alert_email(raw_html_or_text: str) -> ParsedAlert:
     alert = ParsedAlert()
     if not raw_html_or_text or not raw_html_or_text.strip():
         return alert
+
+    # Must run on the raw HTML, before tag-stripping throws the href away.
+    link_match = re.search(
+        r'<a\s+href="([^"]+)"[^>]*>\s*View on seats\.aero\s*</a>',
+        raw_html_or_text,
+        re.IGNORECASE,
+    )
+    if link_match:
+        alert.listing_url = html_lib.unescape(link_match.group(1))
 
     text = _to_text(raw_html_or_text)
 

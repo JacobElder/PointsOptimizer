@@ -65,12 +65,21 @@ def _format_deal(d: dict) -> str:
         f"  Taxes/fees: {d['taxes']:.2f} {d.get('currency', 'USD')}",
         f"  Cash price (same route/date/cabin): ${d['cash_price']:,.2f}",
     ]
+    if d.get("listing_url"):
+        lines.append(f"  View listing: {d['listing_url']}")
     return "\n".join(lines)
 
 
 def _deal_card_html(d: dict) -> str:
     flight = html_lib.escape(str(d.get("flight_number") or "—"))
     program = html_lib.escape(d["program"])
+    link_html = ""
+    if d.get("listing_url"):
+        url = html_lib.escape(d["listing_url"])
+        link_html = (
+            f'<a href="{url}" style="color:#2563eb; text-decoration:none; font-size:13px;">'
+            f"View on seats.aero &rarr;</a>"
+        )
     return f"""
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
            style="border:1px solid #e2e8f0; border-radius:8px; margin-bottom:12px;">
@@ -94,6 +103,7 @@ def _deal_card_html(d: dict) -> str:
                 Travel {d['date']} &middot; Flight {flight}
               </td>
             </tr>
+            {f'<tr><td style="padding-top:6px;">{link_html}</td></tr>' if link_html else ""}
           </table>
         </td>
       </tr>

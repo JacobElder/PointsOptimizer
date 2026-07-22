@@ -10,6 +10,7 @@ should now be visible and bookable.</p>
 <td><p>JFK/MAD</p><p>Routing</p></td>
 <td><p>Business (O9), 43,000 points + $33.50 USD</p><p>Fare</p></td>
 </tr></table>
+<a href="https://c.seats.aero/CL0/https:%2F%2Fseats.aero%2Fi%2F35Jvw6Ador2oYJkyWSGsjLfzhBC/1/abc/def" target="_blank">View on seats.aero</a>
 """
 
 SAMPLE_MULTI_SEGMENT = """
@@ -36,6 +37,7 @@ def test_parses_single_segment_alert():
     assert alert.points == 43000
     assert alert.taxes_fees == 33.50
     assert alert.found_anything
+    assert alert.listing_url == "https://c.seats.aero/CL0/https:%2F%2Fseats.aero%2Fi%2F35Jvw6Ador2oYJkyWSGsjLfzhBC/1/abc/def"
 
 
 def test_parses_multi_segment_routing():
@@ -45,6 +47,7 @@ def test_parses_multi_segment_routing():
     assert alert.points == 40000
     assert alert.taxes_fees == 102.70
     assert alert.flight_number == "CM815, CM304"
+    assert alert.listing_url is None  # this fixture has no "View on seats.aero" link
 
 
 def test_empty_input_returns_blank_alert():

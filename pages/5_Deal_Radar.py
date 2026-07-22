@@ -48,6 +48,8 @@ if great:
             )
             if d.get("flight_number"):
                 st.caption(f"Flight {d['flight_number']}")
+            if d.get("listing_url"):
+                st.markdown(f"[View on seats.aero]({d['listing_url']})")
     st.divider()
 
 st.header("All evaluated deals")
