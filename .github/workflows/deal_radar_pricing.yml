@@ -1,0 +1,39 @@
+name: Deal Radar pricing
+
+# Runs price_pending_deals.py on a schedule that doesn't depend on any local
+# machine being on -- the Gmail-fetch half of the pipeline still runs as a
+# separate claude.ai scheduled routine (cloud egress there can't reach
+# serpapi.com, see TODO.md item 4); this workflow does the pricing/email half
+# instead, since GitHub-hosted runners have normal outbound internet access.
+on:
+  schedule:
+    - cron: "17 * * * *" # hourly, offset off the hour to avoid the top-of-hour pile-up
+  workflow_dispatch: {} # allows manual "Run workflow" for testing
+
+permissions:
+  contents: write # needs to commit/push deal_log.json updates
+
+jobs:
+  price:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Configure git identity for commits made by this workflow
+        run: |
+          git config user.name "Deal Radar bot"
+          git config user.email "deal-radar-bot@users.noreply.github.com"
+
+      - name: Price pending deals
+        env:
+          SERPAPI_KEY: ${{ secrets.SERPAPI_KEY }}
+          GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+        run: python3 price_pending_deals.py
