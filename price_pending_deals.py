@@ -15,6 +15,7 @@ import sys
 from datetime import datetime, timezone
 
 import check_alerts
+import deal_email
 import deal_log
 import flight_search
 
@@ -79,6 +80,15 @@ def main() -> None:
             f"{best['program']} {best['cabin'].title()} {best['cpp']:.2f}c/pt"
         )
         _notify_mac(msg)
+
+        if deal_email.is_configured():
+            try:
+                deal_email.send_deal_alert_email(great)
+                print(f"Sent email with {len(great)} great deal(s).")
+            except Exception as e:
+                print(f"Email send failed: {e}")
+        else:
+            print("Gmail not configured (GMAIL_ADDRESS/GMAIL_APP_PASSWORD) -- skipped email.")
 
 
 if __name__ == "__main__":

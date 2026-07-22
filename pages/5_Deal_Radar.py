@@ -48,6 +48,8 @@ if great:
                 f"{d['points']:,} pts + ${d['taxes']:.2f} {d.get('currency', 'USD')} taxes "
                 f"vs. ${d['cash_price']:,.0f} cash · travel {d['date']}"
             )
+            if d.get("flight_number"):
+                st.caption(f"Flight {d['flight_number']}")
     st.divider()
 
 st.header("All evaluated deals")
@@ -62,7 +64,8 @@ for d in deals_sorted:
         cpp_s = f"{d['cpp']:.2f}¢" if d.get("cpp") is not None else "N/A"
         cols[1].markdown(f"### {cpp_s}")
         cash_s = f"${d['cash_price']:,.0f}" if d.get("cash_price") is not None else "no cash price"
+        flight_s = f" · Flight {d['flight_number']}" if d.get("flight_number") else ""
         st.caption(
             f"{d['points']:,} pts + ${d['taxes']:.2f} {d.get('currency', 'USD')} taxes · "
-            f"{cash_s} · checked {d.get('checked_at', '?')}"
+            f"{cash_s} · checked {d.get('checked_at', '?')}{flight_s}"
         )
