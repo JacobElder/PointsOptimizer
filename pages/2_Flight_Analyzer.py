@@ -7,8 +7,11 @@ from datetime import datetime
 
 import streamlit as st
 
+import award_charts
 import flight_search
+import going_parse
 import ledger
+import seats_aero
 from cards_data import (
     POOLS,
     all_partner_names,
@@ -47,7 +50,45 @@ st.divider()
 # ── Flight inputs ────────────────────────────────────────────────────────────
 st.header("The Flight")
 
-flight_label = st.text_input("Route / description (optional)", placeholder="e.g. SFO–NRT business, March")
+st.session_state.setdefault("flight_label_input", "")
+
+with st.popover("📋 Paste a Going deal"):
+    st.caption("Paste the text of a Going alert email and I'll pull out what I can.")
+    going_text = st.text_area("Deal text", height=150, label_visibility="collapsed")
+    if st.button("Parse deal") and going_text:
+        deal = going_parse.parse_deal(going_text)
+        if not deal.found_anything:
+            st.warning("Couldn't find a price or route in that text.")
+        else:
+            if deal.route_text:
+                st.session_state["flight_label_input"] = deal.route_text
+            if deal.origin_iata:
+                st.session_state["search_origin"] = deal.origin_iata
+            if deal.destination_iata:
+                st.session_state["search_dest"] = deal.destination_iata
+            if deal.price_usd:
+                # Going quotes roundtrip totals; award CPP math is usually one-way.
+                st.session_state["cash_price_input"] = (
+                    deal.price_usd / 2 if deal.is_roundtrip else deal.price_usd
+                )
+            parsed_bits = [
+                f"${deal.price_usd:,.0f}" + (" roundtrip → halved to one-way" if deal.is_roundtrip else "")
+                if deal.price_usd else None,
+                deal.route_text,
+                f"{deal.origin_iata}–{deal.destination_iata}" if deal.origin_iata else None,
+                f"travel {deal.raw_dates[0]}" if deal.raw_dates else None,
+            ]
+            st.success("Parsed: " + " · ".join(b for b in parsed_bits if b))
+            st.caption(
+                "Note: a cheap cash fare is usually a PAY-CASH signal — run the simulation "
+                "and expect it to say hoard your points."
+            )
+
+flight_label = st.text_input(
+    "Route / description (optional)",
+    placeholder="e.g. SFO–NRT business, March",
+    key="flight_label_input",
+)
 
 partner_options = ["Custom / not listed"] + all_partner_names()
 program_choice = st.selectbox("Loyalty program the award is booked through", partner_options)
@@ -71,9 +112,9 @@ if not flight_search.is_configured():
 else:
     lc1, lc2, lc3, lc4 = st.columns(4)
     with lc1:
-        origin = st.text_input("Origin", placeholder="SFO", max_chars=3)
+        origin = st.text_input("Origin", placeholder="SFO", max_chars=3, key="search_origin")
     with lc2:
-        destination = st.text_input("Destination", placeholder="NRT", max_chars=3)
+        destination = st.text_input("Destination", placeholder="NRT", max_chars=3, key="search_dest")
     with lc3:
         dep_date = st.date_input("Departure date")
     with lc4:
@@ -139,8 +180,101 @@ else:
                 st.session_state["cash_price_input"] = offer.price_usd
                 st.rerun()
 
+st.subheader("🎫 Search award availability")
+
+st.session_state.setdefault("points_required_input", 60000)
+
+if not seats_aero.is_configured():
+    st.info(
+        "Not configured. Subscribe at https://seats.aero for a developer API key, then set "
+        "`SEATS_AERO_API_KEY` as an environment variable or in `.streamlit/secrets.toml` and "
+        "restart the app. In the meantime, enter the points required manually below."
+    )
+else:
+    ac1, ac2, ac3, ac4 = st.columns(4)
+    with ac1:
+        award_origin = st.text_input("Origin", placeholder="SFO", max_chars=3, key="award_origin")
+    with ac2:
+        award_dest = st.text_input("Destination", placeholder="NRT", max_chars=3, key="award_dest")
+    with ac3:
+        award_date = st.date_input("Departure date", key="award_date")
+    with ac4:
+        award_cabin = st.selectbox(
+            "Cabin", ["ECONOMY", "PREMIUM_ECONOMY", "BUSINESS", "FIRST"], index=2, key="award_cabin"
+        )
+    flex_days = st.slider(
+        "Flexible +/- days", 0, 7, 0,
+        help="Widen the search window around the departure date to catch nearby saver space.",
+    )
+
+    if st.button("Search award availability", type="primary"):
+        if not award_origin or not award_dest:
+            st.error("Enter both airport codes.")
+        else:
+            st.session_state["award_offers"] = []
+            try:
+                from datetime import timedelta
+                start = award_date - timedelta(days=flex_days)
+                end = award_date + timedelta(days=flex_days)
+                with st.spinner("Searching seats.aero..."):
+                    st.session_state["award_offers"] = seats_aero.search_award_availability(
+                        award_origin, award_dest, start.isoformat(), end.isoformat(), award_cabin
+                    )
+                if not st.session_state["award_offers"]:
+                    st.warning("No award space found for that route/date(s)/cabin.")
+            except (seats_aero.NotConfigured, seats_aero.SearchFailed) as e:
+                st.error(str(e))
+
+    for i, award in enumerate(st.session_state.get("award_offers", [])[:10]):
+        with st.container(border=True):
+            aw_l, aw_r = st.columns([3, 1])
+            partner_badge = "" if award.known_partner else " · not in your wallet's pools"
+            aw_l.markdown(
+                f"**{award.program}**{partner_badge} · {award.cabin.replace('_', ' ').title()} · "
+                f"{award.origin}→{award.destination} · {award.date}"
+            )
+            aw_r.markdown(f"### {award.points:,} pts")
+            stop_label = "Nonstop" if award.direct else "Connection(s)"
+            aw_caption = (
+                f"+${award.taxes_fees:,.0f} {award.taxes_currency} taxes/fees · {stop_label} · "
+                f"{award.remaining_seats} seat(s) left"
+            )
+            if award.airlines:
+                aw_caption += f" · {award.airlines}"
+            st.caption(aw_caption)
+
+            if st.button("Use this award", key=f"use_award_{i}", use_container_width=True):
+                st.session_state["points_required_input"] = award.points
+                st.session_state["taxes_fees_input"] = award.taxes_fees
+                if award.known_partner:
+                    st.session_state["flight_label_input"] = st.session_state.get(
+                        "flight_label_input", ""
+                    ) or f"{award.origin}–{award.destination} {award.cabin.title()}"
+                st.rerun()
+
 st.divider()
 st.subheader("✏️ Or enter manually")
+
+# Sweet-spot reference for the chosen program, with one-click pre-fill
+if program_query:
+    spots = award_charts.spots_for_program(program_query)
+    if spots:
+        with st.popover(f"⭐ {len(spots)} known sweet spot(s) for {program_query}"):
+            st.caption(
+                "Curated reference points, each verified on the date shown. Award pricing "
+                "churns — re-verify before booking."
+            )
+            for j, spot in enumerate(spots):
+                sp_l, sp_r = st.columns([4, 1])
+                sp_l.markdown(
+                    f"**{spot.route}** · {spot.cabin} — **{spot.points_one_way:,} pts** one-way "
+                    f"({spot.pricing_model}, verified {spot.last_verified})"
+                )
+                if spot.notes:
+                    sp_l.caption(spot.notes)
+                if sp_r.button("Use", key=f"use_spot_{j}"):
+                    st.session_state["points_required_input"] = spot.points_one_way
+                    st.rerun()
 
 col1, col2, col3 = st.columns(3)
 with col1:
@@ -148,9 +282,14 @@ with col1:
         "Cash price of this flight ($)", min_value=0.0, step=50.0, key="cash_price_input"
     )
 with col2:
-    points_required = st.number_input("Points/miles required", min_value=1000, value=60000, step=1000)
+    points_required = st.number_input(
+        "Points/miles required", min_value=1000, step=1000, key="points_required_input"
+    )
 with col3:
-    taxes_fees = st.number_input("Taxes & fees on the award ($)", min_value=0.0, value=50.0, step=5.0)
+    st.session_state.setdefault("taxes_fees_input", 50.0)
+    taxes_fees = st.number_input(
+        "Taxes & fees on the award ($)", min_value=0.0, step=5.0, key="taxes_fees_input"
+    )
 
 net_value = max(cash_price - taxes_fees, 0.0)
 current_cpp = (net_value / points_required) * 100
