@@ -36,3 +36,21 @@
       SerpApi key at serpapi.com, update `.streamlit/secrets.toml` locally (and
       Streamlit Cloud's secrets once deployed), and update/recreate the routine with
       the new key.
+
+## 4. BLOCKING: allowlist serpapi.com for the Deal Radar routine's cloud environment
+- [ ] Confirmed 2026-07-22: the routine's cloud environment ("Default",
+      `env_019guvaADMYYQRYcGqGPpuRX`) blocks outbound HTTPS to `serpapi.com` at the
+      network/proxy level (403 on CONNECT, per the environment's own proxy status
+      endpoint) — this is a network egress policy, NOT SerpApi's 250/month quota.
+- [ ] Everything else works: the routine successfully searched Gmail, fetched and
+      parsed 101 alert emails across 32 threads, filtered out 11 non-deal
+      confirmation emails, deduped to 90 valid unpriced candidates, and correctly
+      capped to the cheapest 15 per run before hitting this wall. No further code
+      changes should be needed once this is fixed.
+- [ ] Fix: go to the environment settings for "Default" on claude.ai and allowlist
+      `serpapi.com` (or reroute `flight_search.py`'s cash-price lookups through a
+      provider that's already allowlisted there). I don't have a tool that can
+      change this myself — it's account/infra config outside the RemoteTrigger API.
+- [ ] Once fixed, either wait for the next scheduled fire (every 4 hours) or trigger
+      a manual "Run now" from the routine page — it'll pick up all 90 pending
+      candidates automatically since none were marked processed.
