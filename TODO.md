@@ -37,20 +37,31 @@
       Streamlit Cloud's secrets once deployed), and update/recreate the routine with
       the new key.
 
-## 4. BLOCKING: allowlist serpapi.com for the Deal Radar routine's cloud environment
-- [ ] Confirmed 2026-07-22: the routine's cloud environment ("Default",
-      `env_019guvaADMYYQRYcGqGPpuRX`) blocks outbound HTTPS to `serpapi.com` at the
-      network/proxy level (403 on CONNECT, per the environment's own proxy status
-      endpoint) — this is a network egress policy, NOT SerpApi's 250/month quota.
-- [ ] Everything else works: the routine successfully searched Gmail, fetched and
-      parsed 101 alert emails across 32 threads, filtered out 11 non-deal
-      confirmation emails, deduped to 90 valid unpriced candidates, and correctly
-      capped to the cheapest 15 per run before hitting this wall. No further code
-      changes should be needed once this is fixed.
-- [ ] Fix: go to the environment settings for "Default" on claude.ai and allowlist
-      `serpapi.com` (or reroute `flight_search.py`'s cash-price lookups through a
-      provider that's already allowlisted there). I don't have a tool that can
-      change this myself — it's account/infra config outside the RemoteTrigger API.
-- [ ] Once fixed, either wait for the next scheduled fire (every 4 hours) or trigger
-      a manual "Run now" from the routine page — it'll pick up all 90 pending
-      candidates automatically since none were marked processed.
+## 4. BLOCKING: serpapi.com is denied by the cloud environment's egress policy
+- [ ] Confirmed 2026-07-22 (two separate runs, same result): the routine's cloud
+      environment ("Default", `env_019guvaADMYYQRYcGqGPpuRX`) denies outbound HTTPS to
+      `serpapi.com` — `curl -x $HTTPS_PROXY https://serpapi.com/search` returns
+      "CONNECT tunnel failed, response 403". Read straight from the environment's own
+      `/root/.ccr/README.md`: this is an **organization egress policy denial**, and
+      the documented instruction is explicit — "Do not retry or route around it...
+      report it to your administrator or Anthropic support so the policy or tooling
+      can be fixed." There is no self-service allowlist toggle exposed to the user for
+      this — my earlier note here (pointing at "environment settings on claude.ai")
+      was a guess and turned out to be wrong; corrected 2026-07-22.
+- [ ] Everything else about the pipeline is proven solid across two real runs:
+      Gmail search, parsing, filtering non-deal emails, dedup, and the 15-per-run cap
+      all work correctly. Only the live cash-price call is blocked. The routine
+      correctly refuses to write placeholder/fake prices, so nothing is lost — ~90+
+      unpriced alerts sit safely unprocessed waiting for this to be resolved.
+- [ ] Two real options to actually fix this:
+      1. **Report it** — contact Anthropic support (per the README's own instruction)
+         and ask for `serpapi.com` egress to be allowed for this account's scheduled
+         routines. This is the only path if you want the pricing lookup to happen
+         *inside* the routine itself.
+      2. **Split the pipeline instead** (no support ticket needed) — have the routine
+         only do what only it can do (Gmail access: fetch/parse/dedupe new alerts into
+         a pending queue), and do the actual cash-price lookup somewhere that already
+         has normal internet access — e.g. locally in a Claude Code session (proven
+         working all session), or inside the deployed Streamlit app itself once it's
+         on Streamlit Cloud (see TODO item 1), which runs outside this sandboxed proxy
+         entirely. Ask to have this built if you'd rather not wait on a support ticket.
