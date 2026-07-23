@@ -1,14 +1,17 @@
 # TODO
 
 ## 1. Deploy to Streamlit Community Cloud
-- [ ] Go to share.streamlit.io, sign in with GitHub, authorize `JacobElder/PointsOptimizer`.
-- [ ] New app -> branch `main`, main file `app.py`.
-- [ ] Settings -> Secrets -> paste:
-  ```
-  SERPAPI_KEY = "..."
-  SEATS_AERO_API_KEY = "..."
-  ```
-- [ ] Settings -> restrict viewer access to your own email (app is public by default).
+- [x] **DONE 2026-07-23**: Deployed `JacobElder/PointsOptimizer` (branch `main`,
+      main file `app.py`) to Streamlit Community Cloud. Streamlit's OAuth app
+      only had `public_repo` scope (no user-facing way to request broader scope
+      from the consent screen), so the repo was made public rather than fighting
+      that — audited first, nothing sensitive was ever committed (`secrets.toml`,
+      `balances.json`, `history.csv` all gitignored from day one). `deal_log.json`
+      stays public/tracked on purpose (needed for the automation, and it's just
+      deal-alert data, not credentials) — user's explicit call.
+- [x] Secrets (`SERPAPI_KEY`, `SEATS_AERO_API_KEY`) pasted into Streamlit's
+      Advanced settings at deploy time.
+- [x] Viewer access restricted to own email via the app's Settings -> Sharing tab.
 - [ ] Know the tradeoff: `balances.json`/`history.csv` are local files and are NOT
       durable on Streamlit Cloud (container can reset on redeploy/sleep). Fine for
       running the analyzer remotely; don't rely on it for long-term balance storage
@@ -92,8 +95,15 @@
       local `.streamlit/secrets.toml`).
 - [ ] Test via Actions tab → "Deal Radar pricing" → **Run workflow** (manual
       `workflow_dispatch` trigger, no need to wait for the hourly schedule).
-- [ ] **Once confirmed working**: unload the Mac LaunchAgent
-      (`launchctl bootout gui/$(id -u)/com.pointsoptimizer.dealradar`) so there's
-      only one pricing scheduler running — right now both would fire hourly and
-      could send duplicate emails for the same newly-priced deals if their runs
-      overlap. Keeping just GitHub Actions is the whole point of this migration.
+- [x] **DONE 2026-07-23**: Unloaded the Mac LaunchAgent
+      (`launchctl bootout gui/$(id -u)/com.pointsoptimizer.dealradar`) *before*
+      GitHub Actions had processed any real pending batch (only a no-op empty-queue
+      run so far) -- done deliberately, so the next real batch is forced through
+      GitHub Actions instead of racing the Mac. The plist is still on disk at
+      `~/Library/LaunchAgents/com.pointsoptimizer.dealradar.plist`, so it's a
+      one-command reload (`launchctl bootstrap gui/$(id -u) <path>`) if GitHub
+      Actions turns out to fail on something the Mac didn't.
+- [ ] **Still open**: confirm GitHub Actions actually prices a real batch end to
+      end (commit + email) the next time the cloud capture routine queues
+      something new -- check for a commit authored by "Deal Radar bot" (its git
+      identity) with a real `priced N pending deal(s)` message, not `priced 0`.
