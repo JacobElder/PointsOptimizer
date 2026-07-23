@@ -38,12 +38,31 @@ def _split_datetime(dt_str: str) -> tuple[str, str]:
     except (ValueError, AttributeError):
         return dt_str, ""
 
-st.title("Flight Value Analyzer")
+st.title("✈️ Flight Value Analyzer")
 st.caption(
     "Paste in a flight you're looking at — the cash price and the points/miles it costs — "
     "and this tells you the value per point, which of your cards can actually get you there, "
     "and whether to book it now or hold your points."
 )
+
+# ── At-a-glance summary (always visible, reflects the current inputs below) ───
+st.session_state.setdefault("cash_price_input", 1500.0)
+st.session_state.setdefault("points_required_input", 60000)
+st.session_state.setdefault("taxes_fees_input", 50.0)
+
+_cp = st.session_state["cash_price_input"]
+_pts = st.session_state["points_required_input"]
+_tx = st.session_state["taxes_fees_input"]
+_cpp_now = (max(_cp - _tx, 0.0) / _pts) * 100 if _pts else 0.0
+_skip = st.session_state.get("skip_floor", 1.0)
+_book = st.session_state.get("book_floor", 1.7)
+_verdict = "⛔ Skip" if _cpp_now < _skip else ("✅ Book" if _cpp_now >= _book else "🟡 Borderline")
+
+sm1, sm2, sm3, sm4 = st.columns(4)
+sm1.metric("Cash price", f"${_cp:,.0f}")
+sm2.metric("Points", f"{_pts:,}")
+sm3.metric("Value per point", f"{_cpp_now:.2f}¢")
+sm4.metric("Quick verdict", _verdict)
 
 st.divider()
 
@@ -98,172 +117,170 @@ program_query = (
     else program_choice
 )
 
-st.session_state.setdefault("cash_price_input", 1500.0)
+st.header("① Search this flight")
+tab_price, tab_award = st.tabs(["🔍 Cash price", "🎫 Award availability"])
 
-st.subheader("🔍 Search live prices")
-
-if not flight_search.is_configured():
-    st.info(
-        "Live search isn't configured. Get a free API key at https://serpapi.com (self-serve, "
-        "250 searches/month free), then set `SERPAPI_KEY` as an environment variable or in "
-        "`.streamlit/secrets.toml` and restart the app. In the meantime, enter the cash price "
-        "manually below."
-    )
-else:
-    lc1, lc2, lc3, lc4 = st.columns(4)
-    with lc1:
-        origin = st.text_input("Origin", placeholder="SFO", max_chars=3, key="search_origin")
-    with lc2:
-        destination = st.text_input("Destination", placeholder="NRT", max_chars=3, key="search_dest")
-    with lc3:
-        dep_date = st.date_input("Departure date")
-    with lc4:
-        cabin = st.selectbox("Cabin", ["ECONOMY", "PREMIUM_ECONOMY", "BUSINESS", "FIRST"])
-
-    if st.button("Search live prices", type="primary"):
-        if not origin or not destination:
-            st.error("Enter both airport codes.")
-        else:
-            st.session_state["flight_offers"] = []
-            try:
-                with st.spinner("Searching..."):
-                    st.session_state["flight_offers"] = flight_search.search_cash_price(
-                        origin, destination, dep_date.isoformat(), cabin
-                    )
-                if not st.session_state["flight_offers"]:
-                    st.warning("No offers found for that route/date/cabin.")
-            except (flight_search.NotConfigured, flight_search.SearchFailed) as e:
-                st.error(str(e))
-
-    for i, offer in enumerate(st.session_state.get("flight_offers", [])[:5]):
-        with st.container(border=True):
-            head_l, head_r = st.columns([3, 1])
-            flight_numbers = ", ".join(s.flight_number for s in offer.segments if s.flight_number)
-            head_l.markdown(f"**{offer.airline}** · {flight_numbers} · {offer.cabin.replace('_', ' ').title()}")
-            head_r.markdown(f"### ${offer.price_usd:,.0f}")
-
-            dep_date_s, dep_time_s = _split_datetime(offer.departure_time)
-            arr_date_s, arr_time_s = _split_datetime(offer.arrival_time)
-            stop_label = "Nonstop" if offer.stops == 0 else f"{offer.stops} stop" + ("s" if offer.stops > 1 else "")
-
-            route_l, route_m, route_r = st.columns([2, 3, 2])
-            with route_l:
-                st.markdown(f"**{dep_time_s}**")
-                st.caption(f"{offer.origin} · {dep_date_s}")
-            with route_m:
-                st.markdown(f"**{_fmt_duration(offer.total_duration_minutes)}**")
-                st.caption(stop_label)
-            with route_r:
-                st.markdown(f"**{arr_time_s}**")
-                st.caption(f"{offer.destination} · {arr_date_s}")
-
-            if offer.layovers:
-                layover_desc = "; ".join(
-                    f"{lay.name or lay.airport} ({lay.airport}) — {_fmt_duration(lay.duration_minutes)} layover"
-                    for lay in offer.layovers
-                )
-                st.caption(f"Via {layover_desc}")
-
-            if len(offer.segments) > 1:
-                with st.popover("Flight details"):
-                    for seg in offer.segments:
-                        seg_dep_date, seg_dep_time = _split_datetime(seg.dep_time)
-                        seg_arr_date, seg_arr_time = _split_datetime(seg.arr_time)
-                        st.write(
-                            f"**{seg.airline} {seg.flight_number}** — "
-                            f"{seg.dep_airport} {seg_dep_time} ({seg_dep_date}) → "
-                            f"{seg.arr_airport} {seg_arr_time} ({seg_arr_date}) · "
-                            f"{_fmt_duration(seg.duration_minutes)}"
-                        )
-
-            if st.button("Use this price", key=f"use_offer_{i}", use_container_width=True):
-                st.session_state["cash_price_input"] = offer.price_usd
-                st.rerun()
-
-st.subheader("🎫 Search award availability")
-
-st.session_state.setdefault("points_required_input", 60000)
-
-if not seats_aero.is_configured():
-    st.info(
-        "Not configured. Subscribe at https://seats.aero for a developer API key, then set "
-        "`SEATS_AERO_API_KEY` as an environment variable or in `.streamlit/secrets.toml` and "
-        "restart the app. In the meantime, enter the points required manually below."
-    )
-else:
-    ac1, ac2, ac3, ac4 = st.columns(4)
-    with ac1:
-        award_origin = st.text_input("Origin", placeholder="SFO", max_chars=3, key="award_origin")
-    with ac2:
-        award_dest = st.text_input("Destination", placeholder="NRT", max_chars=3, key="award_dest")
-    with ac3:
-        award_date = st.date_input("Departure date", key="award_date")
-    with ac4:
-        award_cabin = st.selectbox(
-            "Cabin", ["ECONOMY", "PREMIUM_ECONOMY", "BUSINESS", "FIRST"], index=2, key="award_cabin"
+with tab_price:
+    if not flight_search.is_configured():
+        st.info(
+            "Live search isn't configured. Get a free API key at https://serpapi.com (self-serve, "
+            "250 searches/month free), then set `SERPAPI_KEY` as an environment variable or in "
+            "`.streamlit/secrets.toml` and restart the app. In the meantime, enter the cash price "
+            "manually below."
         )
-    flex_days = st.slider(
-        "Flexible +/- days", 0, 7, 0,
-        help="Widen the search window around the departure date to catch nearby saver space.",
-    )
+    else:
+        lc1, lc2, lc3, lc4 = st.columns(4)
+        with lc1:
+            origin = st.text_input("Origin", placeholder="SFO", max_chars=3, key="search_origin")
+        with lc2:
+            destination = st.text_input("Destination", placeholder="NRT", max_chars=3, key="search_dest")
+        with lc3:
+            dep_date = st.date_input("Departure date")
+        with lc4:
+            cabin = st.selectbox("Cabin", ["ECONOMY", "PREMIUM_ECONOMY", "BUSINESS", "FIRST"])
 
-    if st.button("Search award availability", type="primary"):
-        if not award_origin or not award_dest:
-            st.error("Enter both airport codes.")
-        else:
-            st.session_state["award_offers"] = []
-            try:
-                from datetime import timedelta
-                start = award_date - timedelta(days=flex_days)
-                end = award_date + timedelta(days=flex_days)
-                with st.spinner("Searching seats.aero..."):
-                    st.session_state["award_offers"] = seats_aero.search_award_availability(
-                        award_origin, award_dest, start.isoformat(), end.isoformat(), award_cabin
+        if st.button("Search live prices", type="primary"):
+            if not origin or not destination:
+                st.error("Enter both airport codes.")
+            else:
+                st.session_state["flight_offers"] = []
+                try:
+                    with st.spinner("Searching..."):
+                        st.session_state["flight_offers"] = flight_search.search_cash_price(
+                            origin, destination, dep_date.isoformat(), cabin
+                        )
+                    if not st.session_state["flight_offers"]:
+                        st.warning("No offers found for that route/date/cabin.")
+                except (flight_search.NotConfigured, flight_search.SearchFailed) as e:
+                    st.error(str(e))
+
+        for i, offer in enumerate(st.session_state.get("flight_offers", [])[:5]):
+            with st.container(border=True):
+                head_l, head_r = st.columns([3, 1])
+                flight_numbers = ", ".join(s.flight_number for s in offer.segments if s.flight_number)
+                head_l.markdown(f"**{offer.airline}** · {flight_numbers} · {offer.cabin.replace('_', ' ').title()}")
+                head_r.markdown(f"### ${offer.price_usd:,.0f}")
+
+                dep_date_s, dep_time_s = _split_datetime(offer.departure_time)
+                arr_date_s, arr_time_s = _split_datetime(offer.arrival_time)
+                stop_label = "Nonstop" if offer.stops == 0 else f"{offer.stops} stop" + ("s" if offer.stops > 1 else "")
+
+                route_l, route_m, route_r = st.columns([2, 3, 2])
+                with route_l:
+                    st.markdown(f"**{dep_time_s}**")
+                    st.caption(f"{offer.origin} · {dep_date_s}")
+                with route_m:
+                    st.markdown(f"**{_fmt_duration(offer.total_duration_minutes)}**")
+                    st.caption(stop_label)
+                with route_r:
+                    st.markdown(f"**{arr_time_s}**")
+                    st.caption(f"{offer.destination} · {arr_date_s}")
+
+                if offer.layovers:
+                    layover_desc = "; ".join(
+                        f"{lay.name or lay.airport} ({lay.airport}) — {_fmt_duration(lay.duration_minutes)} layover"
+                        for lay in offer.layovers
                     )
-                if not st.session_state["award_offers"]:
-                    st.warning("No award space found for that route/date(s)/cabin.")
-            except (seats_aero.NotConfigured, seats_aero.SearchFailed) as e:
-                st.error(str(e))
+                    st.caption(f"Via {layover_desc}")
 
-    for i, award in enumerate(st.session_state.get("award_offers", [])[:10]):
-        with st.container(border=True):
-            aw_l, aw_r = st.columns([3, 1])
-            partner_badge = "" if award.known_partner else " · not in your wallet's pools"
-            aw_l.markdown(
-                f"**{award.program}**{partner_badge} · {award.cabin.replace('_', ' ').title()} · "
-                f"{award.origin}→{award.destination} · {award.date}"
-            )
-            aw_r.markdown(f"### {award.points:,} pts")
-            stop_label = "Nonstop" if award.direct else "Connection(s)"
-            aw_caption = (
-                f"+${award.taxes_fees:,.0f} {award.taxes_currency} taxes/fees · {stop_label} · "
-                f"{award.remaining_seats} seat(s) left"
-            )
-            if award.airlines:
-                aw_caption += f" · {award.airlines}"
-            st.caption(aw_caption)
-
-            if st.button("Use this award", key=f"use_award_{i}", use_container_width=True):
-                st.session_state["points_required_input"] = award.points
-                st.session_state["taxes_fees_input"] = award.taxes_fees
-                if award.known_partner:
-                    st.session_state["flight_label_input"] = st.session_state.get(
-                        "flight_label_input", ""
-                    ) or f"{award.origin}–{award.destination} {award.cabin.title()}"
-                if flight_search.is_configured():
-                    try:
-                        with st.spinner("Looking up the cash price for this same flight..."):
-                            cash_offers = flight_search.search_cash_price(
-                                award.origin, award.destination, award.date, award.cabin, max_results=1
+                if len(offer.segments) > 1:
+                    with st.popover("Flight details"):
+                        for seg in offer.segments:
+                            seg_dep_date, seg_dep_time = _split_datetime(seg.dep_time)
+                            seg_arr_date, seg_arr_time = _split_datetime(seg.arr_time)
+                            st.write(
+                                f"**{seg.airline} {seg.flight_number}** — "
+                                f"{seg.dep_airport} {seg_dep_time} ({seg_dep_date}) → "
+                                f"{seg.arr_airport} {seg_arr_time} ({seg_arr_date}) · "
+                                f"{_fmt_duration(seg.duration_minutes)}"
                             )
-                        if cash_offers:
-                            st.session_state["cash_price_input"] = cash_offers[0].price_usd
-                    except (flight_search.NotConfigured, flight_search.SearchFailed):
-                        pass
-                st.rerun()
+
+                if st.button("Use this price", key=f"use_offer_{i}", use_container_width=True):
+                    st.session_state["cash_price_input"] = offer.price_usd
+                    st.rerun()
+
+with tab_award:
+    if not seats_aero.is_configured():
+        st.info(
+            "Not configured. Subscribe at https://seats.aero for a developer API key, then set "
+            "`SEATS_AERO_API_KEY` as an environment variable or in `.streamlit/secrets.toml` and "
+            "restart the app. In the meantime, enter the points required manually below."
+        )
+    else:
+        ac1, ac2, ac3, ac4 = st.columns(4)
+        with ac1:
+            award_origin = st.text_input("Origin", placeholder="SFO", max_chars=3, key="award_origin")
+        with ac2:
+            award_dest = st.text_input("Destination", placeholder="NRT", max_chars=3, key="award_dest")
+        with ac3:
+            award_date = st.date_input("Departure date", key="award_date")
+        with ac4:
+            award_cabin = st.selectbox(
+                "Cabin", ["ECONOMY", "PREMIUM_ECONOMY", "BUSINESS", "FIRST"], index=2, key="award_cabin"
+            )
+        flex_days = st.slider(
+            "Flexible +/- days", 0, 7, 0,
+            help="Widen the search window around the departure date to catch nearby saver space.",
+        )
+
+        if st.button("Search award availability", type="primary"):
+            if not award_origin or not award_dest:
+                st.error("Enter both airport codes.")
+            else:
+                st.session_state["award_offers"] = []
+                try:
+                    from datetime import timedelta
+                    start = award_date - timedelta(days=flex_days)
+                    end = award_date + timedelta(days=flex_days)
+                    with st.spinner("Searching seats.aero..."):
+                        st.session_state["award_offers"] = seats_aero.search_award_availability(
+                            award_origin, award_dest, start.isoformat(), end.isoformat(), award_cabin
+                        )
+                    if not st.session_state["award_offers"]:
+                        st.warning("No award space found for that route/date(s)/cabin.")
+                except (seats_aero.NotConfigured, seats_aero.SearchFailed) as e:
+                    st.error(str(e))
+
+        for i, award in enumerate(st.session_state.get("award_offers", [])[:10]):
+            with st.container(border=True):
+                aw_l, aw_r = st.columns([3, 1])
+                partner_badge = "" if award.known_partner else " · not in your wallet's pools"
+                aw_l.markdown(
+                    f"**{award.program}**{partner_badge} · {award.cabin.replace('_', ' ').title()} · "
+                    f"{award.origin}→{award.destination} · {award.date}"
+                )
+                aw_r.markdown(f"### {award.points:,} pts")
+                stop_label = "Nonstop" if award.direct else "Connection(s)"
+                aw_caption = (
+                    f"+${award.taxes_fees:,.0f} {award.taxes_currency} taxes/fees · {stop_label} · "
+                    f"{award.remaining_seats} seat(s) left"
+                )
+                if award.airlines:
+                    aw_caption += f" · {award.airlines}"
+                st.caption(aw_caption)
+
+                if st.button("Use this award", key=f"use_award_{i}", use_container_width=True):
+                    st.session_state["points_required_input"] = award.points
+                    st.session_state["taxes_fees_input"] = award.taxes_fees
+                    if award.known_partner:
+                        st.session_state["flight_label_input"] = st.session_state.get(
+                            "flight_label_input", ""
+                        ) or f"{award.origin}–{award.destination} {award.cabin.title()}"
+                    if flight_search.is_configured():
+                        try:
+                            with st.spinner("Looking up the cash price for this same flight..."):
+                                cash_offers = flight_search.search_cash_price(
+                                    award.origin, award.destination, award.date, award.cabin, max_results=1
+                                )
+                            if cash_offers:
+                                st.session_state["cash_price_input"] = cash_offers[0].price_usd
+                        except (flight_search.NotConfigured, flight_search.SearchFailed):
+                            pass
+                    st.rerun()
 
 st.divider()
-st.subheader("✏️ Or enter manually")
+st.header("② Value & verdict")
+st.caption("Pulled from your searches above, or enter/adjust manually.")
 
 # Sweet-spot reference for the chosen program, with one-click pre-fill
 if program_query:
@@ -326,7 +343,7 @@ else:
 st.divider()
 
 # ── Which of your cards can fund this ───────────────────────────────────────
-st.header("Funding This Redemption")
+st.header("③ Funding this redemption")
 
 balances = ledger.load_balances()
 
@@ -383,7 +400,7 @@ else:
 st.divider()
 
 # ── Redeem vs Hoard, reusing the existing simulation engine ────────────────
-st.header("Redeem Now or Hoard?")
+st.header("④ Redeem now or hoard?")
 st.caption("Evaluates this specific deal's CPP against the simulated future value of holding points.")
 
 active_matched_pools = [pool for pool, _ in matches if pool_is_active(pool.key)]
