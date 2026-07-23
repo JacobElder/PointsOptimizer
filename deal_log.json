@@ -130,7 +130,16 @@
     "19f8f58519865bab",
     "19f8f58268be2743",
     "19f8f5159ca617b3",
-    "19f8ef51d3dc609e"
+    "19f8ef51d3dc609e",
+    "19f907511f931dfb",
+    "19f907513e771684",
+    "19f907513ee3189f",
+    "19f90751528335c8",
+    "19f90751a10a3ae6",
+    "19f903dbd6aea013",
+    "19f903568a563621",
+    "19f9098848816f09",
+    "19f90a73f25ec299"
   ],
   "deals": [
     {
@@ -2205,5 +2214,123 @@
       "notified": false
     }
   ],
-  "pending": []
+  "pending": [
+    {
+      "origin": "EWR",
+      "dest": "MBJ",
+      "program": "JetBlue TrueBlue",
+      "cabin": "ECONOMY",
+      "date": "2027-01-31",
+      "points": 14200,
+      "taxes": 49.6,
+      "currency": "USD",
+      "flight_number": "B61505, B62427",
+      "message_id": "19f907511f931dfb",
+      "listing_url": "https://seats.aero/i/3Aax10hcJkv4q1QlS5ggFqwrFzC"
+    },
+    {
+      "origin": "EWR",
+      "dest": "MBJ",
+      "program": "JetBlue TrueBlue",
+      "cabin": "ECONOMY",
+      "date": "2027-02-01",
+      "points": 14200,
+      "taxes": 49.6,
+      "currency": "USD",
+      "flight_number": "B61505, B62427",
+      "message_id": "19f907513e771684",
+      "listing_url": "https://seats.aero/i/3AdrnoHVKwdGbmUy9ewT2lDH8nt"
+    },
+    {
+      "origin": "EWR",
+      "dest": "MBJ",
+      "program": "JetBlue TrueBlue",
+      "cabin": "ECONOMY",
+      "date": "2027-01-18",
+      "points": 14200,
+      "taxes": 49.6,
+      "currency": "USD",
+      "flight_number": "B6927, B6621",
+      "message_id": "19f907513ee3189f",
+      "listing_url": "https://seats.aero/i/3A0aRTfXrpSAXRBMQ89jVkbLPnJ"
+    },
+    {
+      "origin": "EWR",
+      "dest": "MBJ",
+      "program": "JetBlue TrueBlue",
+      "cabin": "ECONOMY",
+      "date": "2027-01-19",
+      "points": 14200,
+      "taxes": 49.6,
+      "currency": "USD",
+      "flight_number": "B6105, B62427",
+      "message_id": "19f90751528335c8",
+      "listing_url": "https://seats.aero/i/3A375iqzPtf5WQz5rrlBkAx37u8"
+    },
+    {
+      "origin": "EWR",
+      "dest": "MBJ",
+      "program": "JetBlue TrueBlue",
+      "cabin": "ECONOMY",
+      "date": "2027-02-07",
+      "points": 14200,
+      "taxes": 49.6,
+      "currency": "USD",
+      "flight_number": "B61505, B62427",
+      "message_id": "19f90751a10a3ae6",
+      "listing_url": "https://seats.aero/i/3AulZsAoLjqCbB9Cjrpyeudzop1"
+    },
+    {
+      "origin": "JFK",
+      "dest": "FRA",
+      "program": "Air Canada Aeroplan",
+      "cabin": "BUSINESS",
+      "date": "2026-08-21",
+      "points": 60000,
+      "taxes": 79.9,
+      "currency": "CAD",
+      "flight_number": "SQ25",
+      "message_id": "19f903dbd6aea013",
+      "listing_url": "https://seats.aero/i/3254vzp1ISgiobeOmkNBeCaWE8J"
+    },
+    {
+      "origin": "JFK",
+      "dest": "PRG",
+      "program": "Air France/KLM Flying Blue",
+      "cabin": "ECONOMY",
+      "date": "2026-07-23",
+      "points": 27000,
+      "taxes": 33.5,
+      "currency": "USD",
+      "flight_number": "DL78",
+      "message_id": "19f903568a563621",
+      "listing_url": "https://seats.aero/i/30cWyvqY9FT5TimoMlUNMObmRkj"
+    },
+    {
+      "origin": "JFK",
+      "dest": "CTG",
+      "program": "Air Canada Aeroplan",
+      "cabin": "ECONOMY",
+      "date": "2027-01-01",
+      "points": 20000,
+      "taxes": 102.8,
+      "currency": "CAD",
+      "flight_number": "CM807, CM452",
+      "message_id": "19f9098848816f09",
+      "listing_url": "https://seats.aero/i/38AeaPpSz9H3sDCNqgnUObryucQ"
+    },
+    {
+      "origin": "JFK",
+      "dest": "CTG",
+      "program": "Air Canada Aeroplan",
+      "cabin": "BUSINESS",
+      "date": "2026-12-07",
+      "points": 40000,
+      "taxes": 102.8,
+      "currency": "CAD",
+      "flight_number": "CM807, CM161",
+      "message_id": "19f90a73f25ec299",
+      "listing_url": "https://seats.aero/i/3706YUmWxLELn8P0IqqE57PQh39"
+    }
+  ]
 }
