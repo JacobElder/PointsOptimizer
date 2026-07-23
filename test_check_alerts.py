@@ -79,6 +79,7 @@ def test_evaluate_alerts_handles_search_failure(monkeypatch):
         raise flight_search.SearchFailed("boom")
 
     monkeypatch.setattr(flight_search, "search_cash_price", _raise)
+    monkeypatch.setattr(check_alerts, "_fx_rate", lambda currency: 1.0)
     alerts = [dict(origin="JFK", dest="XXX", program="Test", cabin="ECONOMY",
                    date="2026-01-01", points=10000, taxes=10.0, currency="USD")]
 
@@ -86,3 +87,47 @@ def test_evaluate_alerts_handles_search_failure(monkeypatch):
 
     assert results[0]["verdict"] == "NO CASH PRICE"
     assert results[0]["cash_price"] is None
+    # FIX 3: a raised lookup error is a TRANSIENT failure -> priced_ok False (retry).
+    assert results[0]["priced_ok"] is False
+    assert results[0]["price_error"] == "boom"
+
+
+def test_evaluate_alerts_no_offers_is_definitive_not_transient(monkeypatch):
+    # Empty offers (route simply has no cash fare) is a real answer, not a blip.
+    monkeypatch.setattr(flight_search, "search_cash_price",
+                        lambda *a, **k: [])
+    monkeypatch.setattr(check_alerts, "_fx_rate", lambda currency: 1.0)
+    alerts = [dict(origin="JFK", dest="XXX", program="Test", cabin="ECONOMY",
+                   date="2026-01-01", points=10000, taxes=10.0, currency="USD")]
+
+    results = evaluate_alerts(alerts)
+
+    assert results[0]["verdict"] == "NO CASH PRICE"
+    assert results[0]["priced_ok"] is True   # definitive -> won't be retried forever
+
+
+def test_evaluate_alerts_guards_zero_points(monkeypatch):
+    monkeypatch.setattr(flight_search, "search_cash_price",
+                        lambda *a, **k: [_FakeOffer(500.0)])
+    monkeypatch.setattr(check_alerts, "_fx_rate", lambda currency: 1.0)
+    alerts = [dict(origin="JFK", dest="MAD", program="Test", cabin="BUSINESS",
+                   date="2026-11-04", points=0, taxes=10.0, currency="USD")]
+
+    results = evaluate_alerts(alerts)  # must not raise ZeroDivisionError
+
+    assert results[0]["cpp"] is None
+    assert results[0]["priced_ok"] is True
+
+
+def test_evaluate_alerts_verdict_is_cabin_aware(monkeypatch):
+    # Economy at ~1.6c clears the 1.5 economy bar => BOOK (used to be BORDERLINE).
+    monkeypatch.setattr(flight_search, "search_cash_price",
+                        lambda *a, **k: [_FakeOffer(170.0)])
+    monkeypatch.setattr(check_alerts, "_fx_rate", lambda currency: 1.0)
+    alerts = [dict(origin="JFK", dest="XXX", program="Test", cabin="ECONOMY",
+                   date="2026-01-01", points=10000, taxes=10.0, currency="USD")]
+
+    results = evaluate_alerts(alerts)
+
+    assert results[0]["cpp"] == pytest.approx(1.6)
+    assert results[0]["verdict"] == "BOOK"

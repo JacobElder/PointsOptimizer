@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 
 _BASE = os.path.dirname(os.path.abspath(__file__))
 DEAL_LOG_PATH = os.path.join(_BASE, "deal_log.json")
@@ -54,8 +55,45 @@ def _key_of(d: dict) -> str:
 
 
 def existing_keys(data: dict) -> set[str]:
-    """Keys already captured, whether priced (deals) or still queued (pending)."""
-    return {_key_of(d) for d in data["deals"]} | {_key_of(d) for d in data["pending"]}
+    """Keys already captured, whether priced (deals) or still queued (pending).
+
+    Tolerant of malformed entries -- a bad row (missing/None field) is skipped
+    rather than crashing the whole capture run.
+    """
+    keys: set[str] = set()
+    for d in list(data.get("deals", [])) + list(data.get("pending", [])):
+        try:
+            keys.add(_key_of(d))
+        except (KeyError, TypeError, ValueError, AttributeError):
+            continue
+    return keys
+
+
+_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+_REQUIRED_PENDING_FIELDS = ("origin", "dest", "program", "cabin", "date", "points", "taxes")
+
+
+def is_valid_pending(entry: dict) -> bool:
+    """Whether a queued pending entry is well-formed enough to price.
+
+    The pending queue is produced by an out-of-repo LLM parsing Gmail, so
+    entries are not guaranteed well-formed. price_pending_deals validates each
+    entry with this before pricing so one bad row can't crash the whole run.
+    """
+    if not isinstance(entry, dict):
+        return False
+    for field in _REQUIRED_PENDING_FIELDS:
+        if entry.get(field) in (None, ""):
+            return False
+    if not isinstance(entry["date"], str) or not _DATE_RE.match(entry["date"]):
+        return False
+    try:
+        if int(entry["points"]) <= 0:
+            return False
+        float(entry["taxes"])
+    except (TypeError, ValueError):
+        return False
+    return True
 
 
 # "Great deal" bar for notifications/highlighting -- higher for Business/First since
@@ -70,9 +108,34 @@ GREAT_CPP_BY_CABIN = {
 }
 
 
+# Below this cents-per-point a deal is a clear SKIP regardless of cabin.
+SKIP_CPP = 1.0
+
+
+def great_floor(cabin: str) -> float:
+    """The cabin-aware CPP bar at/above which a deal is a standout ("great")."""
+    return GREAT_CPP_BY_CABIN.get((cabin or "").upper(), 2.0)
+
+
+def verdict_for(cpp: float | None, cabin: str) -> str:
+    """Single source of truth for a deal's verdict.
+
+    BOOK is defined as clearing the same cabin-aware bar `is_great` uses, so the
+    emailed "standout" set and the on-page BOOK badge can never contradict each
+    other (previously the emailer used cabin-aware floors while the badge used a
+    flat 1.7c, so an economy deal at 1.6c was emailed yet shown "BORDERLINE").
+    """
+    if cpp is None:
+        return "NO CASH PRICE"
+    if cpp >= great_floor(cabin):
+        return "BOOK"
+    if cpp < SKIP_CPP:
+        return "SKIP"
+    return "BORDERLINE"
+
+
 def is_great(deal: dict) -> bool:
     cpp = deal.get("cpp")
     if cpp is None:
         return False
-    floor = GREAT_CPP_BY_CABIN.get(deal.get("cabin", "").upper(), 2.0)
-    return cpp >= floor
+    return cpp >= great_floor(deal.get("cabin", ""))

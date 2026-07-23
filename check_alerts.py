@@ -27,12 +27,15 @@ import sys
 
 import requests
 
+import deal_log
 import flight_search
 
 # Used only if the live rate lookup below fails (offline, API down, etc).
 _FX_FALLBACK = {"USD": 1.0, "CAD": 0.73, "EUR": 1.08, "GBP": 1.27}
 
-SKIP_FLOOR = 1.0
+# Kept for backward-compatible imports; the authoritative verdict thresholds now
+# live in deal_log (cabin-aware) and drive verdict_for(), so BOOK == "great".
+SKIP_FLOOR = deal_log.SKIP_CPP
 BOOK_FLOOR = 1.7
 
 _fx_cache: dict[str, float] = {}
@@ -62,7 +65,7 @@ def evaluate_alerts(alerts: list[dict], skip_floor: float = SKIP_FLOOR, book_flo
     results = []
     price_cache: dict[tuple, tuple] = {}  # dedupes repeat origin/dest/date/cabin within one batch
     for a in alerts:
-        taxes_usd = a["taxes"] * _fx_rate(a.get("currency", "USD"))
+        taxes_usd = float(a["taxes"]) * _fx_rate(a.get("currency", "USD"))
 
         price_key = (a["origin"], a["dest"], a["date"], a["cabin"])
         if price_key in price_cache:
@@ -77,14 +80,30 @@ def evaluate_alerts(alerts: list[dict], skip_floor: float = SKIP_FLOOR, book_flo
             price_cache[price_key] = (cash_price, error)
 
         if cash_price is None:
+            # priced_ok distinguishes a TRANSIENT lookup failure (error set -> the
+            # caller should keep the deal queued and retry) from a legitimate
+            # "no cash price exists for this route" (error None -> a definitive
+            # answer worth recording, not retrying forever). `error` kept for
+            # backward compatibility with existing readers.
             results.append({**a, "taxes_usd": taxes_usd, "cash_price": None, "cpp": None,
-                             "verdict": "NO CASH PRICE", "error": error})
+                             "verdict": "NO CASH PRICE", "priced_ok": error is None,
+                             "error": error, "price_error": error})
+            continue
+
+        points = int(a["points"])
+        if points <= 0:
+            # Defensive: price_pending_deals validates points>0 upstream, but never
+            # divide by zero here. Definitive (won't be retried).
+            results.append({**a, "taxes_usd": taxes_usd, "cash_price": cash_price, "cpp": None,
+                             "verdict": "NO CASH PRICE", "priced_ok": True,
+                             "error": None, "price_error": None})
             continue
 
         net = max(cash_price - taxes_usd, 0.0)
-        cpp = (net / a["points"]) * 100
-        verdict = "BOOK" if cpp >= book_floor else ("SKIP" if cpp < skip_floor else "BORDERLINE")
-        results.append({**a, "taxes_usd": taxes_usd, "cash_price": cash_price, "cpp": cpp, "verdict": verdict})
+        cpp = (net / points) * 100
+        verdict = deal_log.verdict_for(cpp, a.get("cabin", ""))
+        results.append({**a, "taxes_usd": taxes_usd, "cash_price": cash_price, "cpp": cpp,
+                         "verdict": verdict, "priced_ok": True, "error": None, "price_error": None})
 
     results.sort(key=lambda r: (r["cpp"] is None, -(r["cpp"] or 0)))
     return results
