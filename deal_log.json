@@ -1973,9 +1973,7 @@
       "key": "air france/klm flying blue|JFK|BKK|ECONOMY|2026-09-23|54500",
       "checked_at": "2026-07-23T03:14:05Z",
       "notified": false
-    }
-  ],
-  "pending": [
+    },
     {
       "origin": "EWR",
       "dest": "OSL",
@@ -1987,7 +1985,14 @@
       "currency": "USD",
       "flight_number": "SK908",
       "message_id": "19f8eed63f1e62c4",
-      "listing_url": "https://seats.aero/i/33o0nmjJzvUiBKXiEKXsqoX1Jnv"
+      "listing_url": "https://seats.aero/i/33o0nmjJzvUiBKXiEKXsqoX1Jnv",
+      "taxes_usd": 5.6,
+      "cash_price": 404.0,
+      "cpp": 1.9434146341463412,
+      "verdict": "BOOK",
+      "key": "virgin atlantic|EWR|OSL|ECONOMY|2026-09-04|20500",
+      "checked_at": "2026-07-23T14:36:04Z",
+      "notified": true
     },
     {
       "origin": "JFK",
@@ -2000,7 +2005,16 @@
       "currency": "USD",
       "flight_number": "DL168",
       "message_id": "19f8edbe2b235946",
-      "listing_url": "https://seats.aero/i/36aKR3ts7fwOwOHS23nRAKyMt7m"
+      "listing_url": "https://seats.aero/i/36aKR3ts7fwOwOHS23nRAKyMt7m",
+      "taxes_usd": 33.5,
+      "cash_price": null,
+      "cpp": null,
+      "verdict": "NO CASH PRICE",
+      "error": "Network error during search: ReadTimeout. Try again.",
+      "key": "air france/klm flying blue|JFK|BCN|ECONOMY|2026-12-02|25000",
+      "checked_at": "2026-07-23T14:36:04Z",
+      "notified": false
     }
-  ]
+  ],
+  "pending": []
 }
