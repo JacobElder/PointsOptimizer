@@ -21,6 +21,25 @@ SEARCH_URL = "https://serpapi.com/search"
 
 _TRAVEL_CLASS = {"ECONOMY": 1, "PREMIUM_ECONOMY": 2, "BUSINESS": 3, "FIRST": 4}
 
+# FIX 8 — process-level memoization for quota safety.
+# The SerpApi free tier allows only 250 searches/MONTH, so redundant identical
+# lookups (double-clicked "Search live prices", several awards sharing a
+# route/date, Deal Radar's per-button return valuation) must not each burn a
+# call. We cache the FULL offer list keyed on the normalized
+# (origin, destination, departure_date, cabin) tuple — the exact inputs that
+# determine the SerpApi request. max_results is deliberately NOT part of the key:
+# it only slices already-fetched results and does not change the API call, so we
+# cache the fuller list and slice to max_results on return. Worst case, a later
+# call with a larger max_results gets fewer rows than a fresh fetch could — never
+# wrong prices, and never an extra request, which is the right trade for quota.
+_CACHE: dict[tuple[str, str, str, str], list["FlightOffer"]] = {}
+
+
+def clear_cache() -> None:
+    """Empty the in-process price cache. Safe to call repeatedly. Exposed so
+    tests stay deterministic and callers can force a fresh lookup if needed."""
+    _CACHE.clear()
+
 
 class NotConfigured(Exception):
     """Raised when a SerpApi key isn't set."""
@@ -122,7 +141,43 @@ def search_cash_price(
 
     Raises NotConfigured if no API key is set, or SearchFailed if the SerpApi
     call itself fails (network error, rate limit, bad response).
+
+    Successful, non-empty lookups are memoized (see _CACHE) so repeated identical
+    (origin, destination, departure_date, cabin) requests reuse the first result
+    instead of burning another SerpApi call.
     """
+    # Normalize exactly the way the API request builder does below, so the cache
+    # key matches regardless of caller casing/whitespace.
+    origin = origin.strip().upper()
+    destination = destination.strip().upper()
+    cabin = cabin.strip().upper()
+    key = (origin, destination, departure_date, cabin)
+
+    cached = _CACHE.get(key)
+    if cached is not None:
+        # Cached list is the full fetched result; slice to this call's max_results.
+        return cached[:max_results]
+
+    offers = _fetch_offers(origin, destination, departure_date, cabin)
+
+    # Only cache SUCCESSFUL, NON-EMPTY results. Failures (NotConfigured /
+    # SearchFailed) propagate out of _fetch_offers and are never reached here, so
+    # a transient failure stays retryable. We also skip caching empty responses so
+    # a later retry can pick up newly-available inventory instead of being pinned
+    # to "no flights" for the life of the process.
+    if offers:
+        _CACHE[key] = offers
+    return offers[:max_results]
+
+
+def _fetch_offers(
+    origin: str,
+    destination: str,
+    departure_date: str,
+    cabin: str,
+) -> list[FlightOffer]:
+    """Perform the live SerpApi lookup and parse it into the full, sorted offer
+    list (unsliced). Inputs are assumed already normalized (upper/stripped)."""
     api_key = _get_api_key()
     try:
         resp = requests.get(
@@ -178,9 +233,16 @@ def search_cash_price(
             for lay in item.get("layovers", [])
         ]
 
+        # A single malformed price (non-numeric, unexpected type) must skip only
+        # that row, not abort the whole result set.
+        try:
+            price_usd = float(item["price"])
+        except (TypeError, ValueError):
+            continue
+
         offers.append(
             FlightOffer(
-                price_usd=float(item["price"]),
+                price_usd=price_usd,
                 cabin=cabin.upper(),
                 total_duration_minutes=item.get("total_duration", sum(s.duration_minutes for s in segments)),
                 segments=segments,
@@ -188,4 +250,4 @@ def search_cash_price(
             )
         )
     offers.sort(key=lambda o: o.price_usd)
-    return offers[:max_results]
+    return offers
