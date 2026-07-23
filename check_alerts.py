@@ -25,26 +25,56 @@ from __future__ import annotations
 import json
 import sys
 
+import requests
+
 import flight_search
 
-# Not a live FX rate -- approximate, for ballpark CPP only. Refresh occasionally.
-_FX_TO_USD = {"USD": 1.0, "CAD": 0.73, "EUR": 1.08, "GBP": 1.27}
+# Used only if the live rate lookup below fails (offline, API down, etc).
+_FX_FALLBACK = {"USD": 1.0, "CAD": 0.73, "EUR": 1.08, "GBP": 1.27}
 
 SKIP_FLOOR = 1.0
 BOOK_FLOOR = 1.7
 
+_fx_cache: dict[str, float] = {}
+
+
+def _fx_rate(currency: str) -> float:
+    """USD-per-1-unit-of-currency, from a free no-key ECB-backed API, cached per process."""
+    if currency == "USD":
+        return 1.0
+    if currency in _fx_cache:
+        return _fx_cache[currency]
+    try:
+        resp = requests.get(
+            "https://api.frankfurter.app/latest",
+            params={"from": currency, "to": "USD"},
+            timeout=5,
+        )
+        resp.raise_for_status()
+        rate = resp.json()["rates"]["USD"]
+    except (requests.RequestException, KeyError, ValueError):
+        rate = _FX_FALLBACK.get(currency, 1.0)
+    _fx_cache[currency] = rate
+    return rate
+
 
 def evaluate_alerts(alerts: list[dict], skip_floor: float = SKIP_FLOOR, book_floor: float = BOOK_FLOOR) -> list[dict]:
     results = []
+    price_cache: dict[tuple, tuple] = {}  # dedupes repeat origin/dest/date/cabin within one batch
     for a in alerts:
-        taxes_usd = a["taxes"] * _FX_TO_USD.get(a.get("currency", "USD"), 1.0)
-        cash_price = None
-        error = None
-        try:
-            offers = flight_search.search_cash_price(a["origin"], a["dest"], a["date"], a["cabin"], max_results=1)
-            cash_price = offers[0].price_usd if offers else None
-        except (flight_search.NotConfigured, flight_search.SearchFailed) as e:
-            error = str(e)
+        taxes_usd = a["taxes"] * _fx_rate(a.get("currency", "USD"))
+
+        price_key = (a["origin"], a["dest"], a["date"], a["cabin"])
+        if price_key in price_cache:
+            cash_price, error = price_cache[price_key]
+        else:
+            cash_price, error = None, None
+            try:
+                offers = flight_search.search_cash_price(a["origin"], a["dest"], a["date"], a["cabin"], max_results=1)
+                cash_price = offers[0].price_usd if offers else None
+            except (flight_search.NotConfigured, flight_search.SearchFailed) as e:
+                error = str(e)
+            price_cache[price_key] = (cash_price, error)
 
         if cash_price is None:
             results.append({**a, "taxes_usd": taxes_usd, "cash_price": None, "cpp": None,

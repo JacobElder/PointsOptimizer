@@ -1,6 +1,5 @@
 import os
 import sys
-from datetime import datetime
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -10,7 +9,7 @@ import deal_log
 
 st.set_page_config(page_title="Deal Radar — PointsOptimizer", page_icon="📡", layout="centered")
 
-st.title("Deal Radar")
+st.title("📡 Deal Radar")
 st.caption(
     "A scheduled cloud routine checks your seats.aero alert emails every few hours, computes real "
     "CPP against a live cash price, and logs every deal it evaluates here. Most alerts clear "
@@ -28,38 +27,82 @@ if not deals:
     )
     st.stop()
 
-deals_sorted = sorted(deals, key=lambda d: d.get("cpp") or 0, reverse=True)
+deals_by_cpp = sorted(deals, key=lambda d: d.get("cpp") if d.get("cpp") is not None else -1, reverse=True)
+great = [d for d in deals_by_cpp if deal_log.is_great(d)]
 last_checked = max((d.get("checked_at", "") for d in deals), default="")
+best = deals_by_cpp[0] if deals_by_cpp and deals_by_cpp[0].get("cpp") is not None else None
 
-st.caption(f"{len(deals)} deals evaluated · last update {last_checked}")
+m1, m2, m3, m4 = st.columns(4)
+m1.metric("Deals evaluated", len(deals))
+m2.metric("Standout deals", len(great))
+m3.metric("Best CPP found", f"{best['cpp']:.2f}¢" if best else "—")
+m4.metric("Last checked", last_checked.split("T")[0] if last_checked else "—")
 
-great = [d for d in deals_sorted if deal_log.is_great(d)]
+st.divider()
+
 if great:
-    st.header(f"🎯 {len(great)} standout deal(s)")
-    for d in great:
+    st.header(f"🎯 Act now — {len(great)} standout deal(s)")
+    st.caption(
+        "Best value first. These clear the cabin-aware bar (1.5¢/pt Economy, 2.0¢/pt Business/First) "
+        "— book while they're still showing available."
+    )
+    for i, d in enumerate(great):
         with st.container(border=True):
-            st.markdown(
-                f"### {d['origin']}→{d['dest']} · {d['program']} · {d['cabin'].title()} — "
-                f"**{d['cpp']:.2f}¢/pt**"
-            )
-            st.write(
-                f"{d['points']:,} pts + ${d['taxes']:.2f} {d.get('currency', 'USD')} taxes "
-                f"vs. ${d['cash_price']:,.0f} cash · travel {d['date']}"
-            )
+            c1, c2 = st.columns([3, 1])
+            tag = " 🏆" if i == 0 else ""
+            c1.markdown(f"**{d['origin']} → {d['dest']}**{tag}")
+            c1.caption(f"{d['program']} · {d['cabin'].title()} · travel {d['date']}")
             if d.get("flight_number"):
-                st.caption(f"Flight {d['flight_number']}")
+                c1.caption(f"Flight {d['flight_number']}")
+            c2.metric("CPP", f"{d['cpp']:.2f}¢")
+            c2.caption(
+                f"{d['points']:,} pts + ${d['taxes']:.2f} {d.get('currency', 'USD')}\n"
+                f"vs. ${d['cash_price']:,.0f} cash"
+            )
             if d.get("listing_url"):
-                st.markdown(f"[View on seats.aero]({d['listing_url']})")
+                st.markdown(f"[View on seats.aero →]({d['listing_url']})")
     st.divider()
 
 st.header("All evaluated deals")
-for d in deals_sorted:
-    badge = {"BOOK": "🟢", "BORDERLINE": "🟡", "SKIP": "🔴"}.get(d.get("verdict"), "⚪")
+
+SORT_OPTIONS = {
+    "CPP (highest first)": (lambda d: d.get("cpp") if d.get("cpp") is not None else -1, True),
+    "Travel date (soonest first)": (lambda d: d.get("date") or "9999-99-99", False),
+    "Program / airline (A→Z)": (lambda d: (d.get("program") or "").lower(), False),
+    "Points required (fewest first)": (lambda d: d.get("points") or 0, False),
+    "Cash price (cheapest first)": (
+        lambda d: d.get("cash_price") if d.get("cash_price") is not None else float("inf"),
+        False,
+    ),
+    "Recently checked (newest first)": (lambda d: d.get("checked_at") or "", True),
+}
+
+filter_col, sort_col, reverse_col = st.columns([2, 2, 1])
+with filter_col:
+    cabins = sorted({d["cabin"] for d in deals if d.get("cabin")})
+    cabin_filter = st.multiselect("Cabin", cabins, default=cabins)
+with sort_col:
+    sort_choice = st.selectbox("Sort by", list(SORT_OPTIONS.keys()))
+with reverse_col:
+    st.write("")  # vertical align with the selectboxes above
+    reverse_extra = st.checkbox("Reverse")
+
+verdicts = sorted({d["verdict"] for d in deals if d.get("verdict")})
+verdict_filter = st.multiselect("Verdict", verdicts, default=verdicts)
+
+key_fn, default_reverse = SORT_OPTIONS[sort_choice]
+filtered = [d for d in deals if d.get("cabin") in cabin_filter and d.get("verdict") in verdict_filter]
+filtered.sort(key=key_fn, reverse=default_reverse ^ reverse_extra)
+
+st.caption(f"Showing {len(filtered)} of {len(deals)} deals")
+
+BADGE = {"BOOK": "🟢", "BORDERLINE": "🟡", "SKIP": "🔴"}
+for d in filtered:
+    badge = BADGE.get(d.get("verdict"), "⚪")
     with st.container(border=True):
         cols = st.columns([3, 1])
         cols[0].markdown(
-            f"{badge} **{d['origin']}→{d['dest']}** · {d['program']} · {d['cabin'].title()} · "
-            f"{d['date']}"
+            f"{badge} **{d['origin']}→{d['dest']}** · {d['program']} · {d['cabin'].title()} · {d['date']}"
         )
         cpp_s = f"{d['cpp']:.2f}¢" if d.get("cpp") is not None else "N/A"
         cols[1].markdown(f"### {cpp_s}")
