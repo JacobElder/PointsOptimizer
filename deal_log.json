@@ -119,7 +119,9 @@
     "19f8a25377d0e7fa",
     "19f8a4d5a684168d",
     "19f8a4d5a97f9eeb",
-    "19f8e95b135ede18"
+    "19f8e95b135ede18",
+    "19f8eed63f1e62c4",
+    "19f8edbe2b235946"
   ],
   "deals": [
     {
@@ -1973,5 +1975,32 @@
       "notified": false
     }
   ],
-  "pending": []
+  "pending": [
+    {
+      "origin": "EWR",
+      "dest": "OSL",
+      "program": "Virgin Atlantic",
+      "cabin": "ECONOMY",
+      "date": "2026-09-04",
+      "points": 20500,
+      "taxes": 5.6,
+      "currency": "USD",
+      "flight_number": "SK908",
+      "message_id": "19f8eed63f1e62c4",
+      "listing_url": "https://seats.aero/i/33o0nmjJzvUiBKXiEKXsqoX1Jnv"
+    },
+    {
+      "origin": "JFK",
+      "dest": "BCN",
+      "program": "Air France/KLM Flying Blue",
+      "cabin": "ECONOMY",
+      "date": "2026-12-02",
+      "points": 25000,
+      "taxes": 33.5,
+      "currency": "USD",
+      "flight_number": "DL168",
+      "message_id": "19f8edbe2b235946",
+      "listing_url": "https://seats.aero/i/36aKR3ts7fwOwOHS23nRAKyMt7m"
+    }
+  ]
 }
