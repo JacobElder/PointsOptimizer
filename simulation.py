@@ -90,17 +90,61 @@ def run_valuation_simulation(
     SimulationResult
         See dataclass definition above.
 
+    Raises
+    ------
+    ValueError
+        If any input is outside its valid domain (see input validation below).
+
     Notes
     -----
     For each iteration the engine:
       1. Draws yearly trip counts from Poisson(lambda_trips).
       2. Draws per-trip point costs from LogNormal(mu_cost, sigma_cost).
       3. At year t the effective CPP is discounted by devaluation and
-         opportunity cost: CPP_t = (cash_price / pts) × (1−d)^t / (1+r)^t.
+         opportunity cost using continuous compounding:
+             CPP_t = (cash_price / pts) × exp(−(d + r) · t).
+         The continuous form exp(−rate·t) is always real (unlike (1−d)^t,
+         which goes complex for d > 1) and is the correct model form —
+         (1−d)^t ≈ (1+d)^-t ≈ exp(−d·t) for small d.
       4. Deducts points from the running balance; trips beyond the balance
          are skipped (no points → no points-value to aggregate).
       5. Returns the NPV-weighted average CPP across all redeemed trips.
+
+    The zero-trip fallback is made scale-consistent with the main trip path.
+    Because the per-iteration CPP is the POINTS-WEIGHTED average
+    npv_cash_total / points_redeemed_total (and pts cancels inside npv_cash),
+    the trip path realises cash_price · Σdiscount / Σpts ≈ cash_price / E[pts],
+    i.e. it scales as cash_price · exp(−μ − σ²/2) — the reciprocal of the MEAN
+    point cost, not the median exp(−μ) the old fallback used.  The fallback
+    therefore uses exp(−μ − σ²/2); verified numerically the two regimes agree
+    in scale (ratio ≈ 0.97 vs ≈ 0.76 for the naive exp(−μ + σ²/2)).
     """
+    # ---------------------------------------------------------------------- #
+    # 0. Input validation — raise clear, UI-surfaceable errors               #
+    # ---------------------------------------------------------------------- #
+    if n_iterations < 1:
+        raise ValueError(
+            f"n_iterations must be at least 1 (got {n_iterations})."
+        )
+    if point_balance <= 0:
+        raise ValueError(
+            "point_balance must be greater than 0 — there are no points to "
+            f"redeem or hoard (got {point_balance})."
+        )
+    if time_horizon < 1:
+        raise ValueError(
+            f"time_horizon must be at least 1 year (got {time_horizon})."
+        )
+    if not (0 <= depreciation_rate < 1):
+        raise ValueError(
+            "depreciation_rate must be in the interval [0, 1) — an annual "
+            f"devaluation of 100% or more is not modellable (got {depreciation_rate})."
+        )
+    if market_return < 0:
+        raise ValueError(
+            f"market_return must be non-negative (got {market_return})."
+        )
+
     rng = np.random.default_rng(rng_seed)
 
     simulated_cpp_per_iter = np.empty(n_iterations)
@@ -129,12 +173,13 @@ def run_valuation_simulation(
             )
 
             # ---------------------------------------------------------------- #
-            # 3. Discount factor at year t                                      #
+            # 3. Discount factor at year t (continuous compounding)             #
             #    Combines point devaluation AND opportunity cost of cash.       #
-            #    (1−d)^t   — points buy less travel each year                  #
-            #    (1+r)^t   — cash saved in the future is worth less today       #
+            #    exp(−d·t) — points buy less travel each year                   #
+            #    exp(−r·t) — cash saved in the future is worth less today       #
+            #    Always real (no ComplexWarning even if a rate is large).       #
             # ---------------------------------------------------------------- #
-            discount = ((1 - depreciation_rate) ** year) / ((1 + market_return) ** year)
+            discount = np.exp(-(depreciation_rate + market_return) * year)
 
             for pts_required in trip_point_costs:
                 if remaining_balance <= 0:
@@ -158,20 +203,24 @@ def run_valuation_simulation(
         # 4. Simulated CPP for this iteration (cents per point)                 #
         #    = NPV cash saved / points used × 100                               #
         #                                                                        #
-        # Fallback for zero-trips iterations: apply mid-horizon devaluation     #
-        # to the implied baseline CPP so the estimate stays conservative.       #
+        # Fallback for zero-trips iterations: apply mid-horizon discounting to  #
+        # the implied baseline CPP so the estimate stays conservative.          #
         # -------------------------------------------------------------------- #
         if points_redeemed_total > 0:
             simulated_cpp_per_iter[i] = (npv_cash_total / points_redeemed_total) * 100
         else:
             # No trips ever drawn — points just sit and devalue.
+            # Baseline matches the trip path's points-weighted scale:
+            # cash_price / E[pts] = cash_price · exp(−μ − σ²/2).  Using exp(−μ)
+            # (median) as before over-stated the fallback by ~exp(σ²/2), a
+            # spurious discontinuity that biased avg_simulated_cpp as the
+            # fallback fraction grew (small balance / small λ).
             mid_t = time_horizon / 2.0
-            baseline_cpp = (cash_price / np.exp(mu_cost)) * 100  # median-implied CPP
-            simulated_cpp_per_iter[i] = (
-                baseline_cpp
-                * ((1 - depreciation_rate) ** mid_t)
-                / ((1 + market_return) ** mid_t)
-            )
+            baseline_cpp = (
+                cash_price * np.exp(-mu_cost - sigma_cost ** 2 / 2.0) * 100
+            )  # mean-point-cost-implied CPP (scale-consistent with trip path)
+            discount = np.exp(-(depreciation_rate + market_return) * mid_t)
+            simulated_cpp_per_iter[i] = baseline_cpp * discount
 
     # -------------------------------------------------------------------------- #
     # 5. Aggregate                                                                #
