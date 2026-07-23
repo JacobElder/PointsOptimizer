@@ -3,9 +3,12 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from datetime import datetime, timedelta
+
 import streamlit as st
 
 import deal_log
+import seats_aero
 
 st.set_page_config(page_title="Deal Radar — PointsOptimizer", page_icon="📡", layout="centered")
 
@@ -16,6 +19,66 @@ st.caption(
     "seats.aero's own points/fee threshold but aren't actually good value — this is the needle-in-"
     "the-haystack view."
 )
+
+def _render_return_finder(d: dict) -> None:
+    """Search seats.aero for award availability on the reverse route (the return leg)."""
+    dep = d["dest"]
+    arr = d["origin"]
+    with st.expander(f"🔁 Find a return flight ({dep} → {arr})"):
+        if not seats_aero.is_configured():
+            st.info("Add SEATS_AERO_API_KEY to enable live return-flight lookups.")
+            return
+
+        try:
+            outbound_date = datetime.strptime(d["date"], "%Y-%m-%d").date()
+        except (ValueError, KeyError):
+            outbound_date = datetime.utcnow().date()
+
+        c1, c2 = st.columns(2)
+        # Default to a typical 3–14 day trip length after the outbound date.
+        start = c1.date_input(
+            "Return between", value=outbound_date + timedelta(days=3), key=f"ret_start_{d['key']}"
+        )
+        end = c2.date_input(
+            "and", value=outbound_date + timedelta(days=14), key=f"ret_end_{d['key']}"
+        )
+        cabin = st.selectbox(
+            "Cabin", ["ECONOMY", "PREMIUM_ECONOMY", "BUSINESS", "FIRST"],
+            index=["ECONOMY", "PREMIUM_ECONOMY", "BUSINESS", "FIRST"].index(d["cabin"].upper())
+            if d["cabin"].upper() in ("ECONOMY", "PREMIUM_ECONOMY", "BUSINESS", "FIRST") else 2,
+            key=f"ret_cabin_{d['key']}",
+        )
+
+        if st.button("Search returns", key=f"ret_go_{d['key']}"):
+            if end < start:
+                st.warning("The end date is before the start date.")
+                return
+            with st.spinner(f"Searching {dep}→{arr} award space…"):
+                try:
+                    offers = seats_aero.search_award_availability(
+                        dep, arr, str(start), str(end), cabin=cabin, max_results=10
+                    )
+                except seats_aero.NotConfigured:
+                    st.info("seats.aero API key not configured.")
+                    return
+                except seats_aero.SearchFailed as e:
+                    st.error(str(e))
+                    return
+
+            if not offers:
+                st.warning(f"No {cabin.title()} award space found for {dep}→{arr} in that window.")
+                return
+
+            st.caption(f"{len(offers)} option(s), fewest points first:")
+            for o in offers:
+                stops = "Nonstop" if o.direct else "Connection"
+                seats_s = f"{o.remaining_seats} seat(s)" if o.remaining_seats else "seats: n/a"
+                st.markdown(
+                    f"**{o.date}** · {o.program} · {o.airlines or '—'} — "
+                    f"**{o.points:,} pts** + {o.taxes_fees:.2f} {o.taxes_currency}"
+                )
+                st.caption(f"{stops} · {seats_s}")
+
 
 data = deal_log.load()
 deals = data.get("deals", [])
@@ -61,6 +124,7 @@ if great:
             )
             if d.get("listing_url"):
                 st.markdown(f"[View on seats.aero →]({d['listing_url']})")
+            _render_return_finder(d)
     st.divider()
 
 st.header("All evaluated deals")
