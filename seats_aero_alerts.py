@@ -15,6 +15,22 @@ from __future__ import annotations
 import html as html_lib
 import re
 from dataclasses import dataclass
+from urllib.parse import unquote
+
+
+# seats.aero's email links go through a click-tracking redirect
+# (c.seats.aero/CL0/<url-encoded-destination>/<n>/<recipient-bound-token>/<sig>).
+# That tracked link is single-use/recipient-bound and returns 400/403 when
+# reused outside the original email (e.g. relayed into our own alert emails),
+# so we unwrap it down to the permanent seats.aero URL it points at.
+_TRACKED_LINK_RE = re.compile(r"^https?://c\.seats\.aero/CL0/([^/]+)/")
+
+
+def _clean_listing_url(href: str) -> str:
+    match = _TRACKED_LINK_RE.match(href)
+    if not match:
+        return href
+    return unquote(match.group(1))
 
 
 @dataclass
@@ -65,7 +81,7 @@ def parse_alert_email(raw_html_or_text: str) -> ParsedAlert:
         re.IGNORECASE,
     )
     if link_match:
-        alert.listing_url = html_lib.unescape(link_match.group(1))
+        alert.listing_url = _clean_listing_url(html_lib.unescape(link_match.group(1)))
 
     text = _to_text(raw_html_or_text)
 

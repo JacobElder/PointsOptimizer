@@ -1,4 +1,4 @@
-from seats_aero_alerts import parse_alert_email
+from seats_aero_alerts import _clean_listing_url, parse_alert_email
 
 SAMPLE_SINGLE_SEGMENT = """
 <p>Good news! We discovered availability for your alert &#34;NYC Paris Madrid
@@ -37,7 +37,19 @@ def test_parses_single_segment_alert():
     assert alert.points == 43000
     assert alert.taxes_fees == 33.50
     assert alert.found_anything
-    assert alert.listing_url == "https://c.seats.aero/CL0/https:%2F%2Fseats.aero%2Fi%2F35Jvw6Ador2oYJkyWSGsjLfzhBC/1/abc/def"
+    # tracked redirect link gets unwrapped to the permanent seats.aero URL --
+    # the tracked form is single-use/recipient-bound and 400s when reused.
+    assert alert.listing_url == "https://seats.aero/i/35Jvw6Ador2oYJkyWSGsjLfzhBC"
+
+
+def test_clean_listing_url_unwraps_tracked_redirect():
+    tracked = "https://c.seats.aero/CL0/https:%2F%2Fseats.aero%2Fi%2Fabc123/1/token/sig"
+    assert _clean_listing_url(tracked) == "https://seats.aero/i/abc123"
+
+
+def test_clean_listing_url_passes_through_plain_url():
+    plain = "https://seats.aero/i/abc123"
+    assert _clean_listing_url(plain) == plain
 
 
 def test_parses_multi_segment_routing():
