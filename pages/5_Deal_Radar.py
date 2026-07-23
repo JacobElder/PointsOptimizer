@@ -7,7 +7,9 @@ from datetime import datetime, timedelta
 
 import streamlit as st
 
+import check_alerts
 import deal_log
+import flight_search
 import seats_aero
 
 st.set_page_config(page_title="Deal Radar — PointsOptimizer", page_icon="📡", layout="centered")
@@ -19,6 +21,29 @@ st.caption(
     "seats.aero's own points/fee threshold but aren't actually good value — this is the needle-in-"
     "the-haystack view."
 )
+
+_CABINS = ["ECONOMY", "PREMIUM_ECONOMY", "BUSINESS", "FIRST"]
+
+
+def _value_return(dep: str, arr: str, o) -> dict:
+    """Pull a live cash price for one return award option and compute its CPP.
+
+    One SerpApi call per invocation -- only ever triggered by an explicit button
+    click, to keep the 250/month cash-price quota under control.
+    """
+    try:
+        offers = flight_search.search_cash_price(dep, arr, o.date, o.cabin, max_results=1)
+    except flight_search.NotConfigured:
+        return {"error": "SerpApi cash-price lookup isn't configured (SERPAPI_KEY)."}
+    except flight_search.SearchFailed as e:
+        return {"error": str(e)}
+    if not offers:
+        return {"error": "No cash price found for this return leg."}
+    cash = offers[0].price_usd
+    taxes_usd = o.taxes_fees * check_alerts._fx_rate(o.taxes_currency)
+    cpp = (max(cash - taxes_usd, 0.0) / o.points) * 100 if o.points else None
+    return {"cash": cash, "taxes_usd": taxes_usd, "cpp": cpp}
+
 
 def _render_return_finder(d: dict) -> None:
     """Search seats.aero for award availability on the reverse route (the return leg)."""
@@ -43,19 +68,19 @@ def _render_return_finder(d: dict) -> None:
             "and", value=outbound_date + timedelta(days=14), key=f"ret_end_{d['key']}"
         )
         cabin = st.selectbox(
-            "Cabin", ["ECONOMY", "PREMIUM_ECONOMY", "BUSINESS", "FIRST"],
-            index=["ECONOMY", "PREMIUM_ECONOMY", "BUSINESS", "FIRST"].index(d["cabin"].upper())
-            if d["cabin"].upper() in ("ECONOMY", "PREMIUM_ECONOMY", "BUSINESS", "FIRST") else 2,
+            "Cabin", _CABINS,
+            index=_CABINS.index(d["cabin"].upper()) if d["cabin"].upper() in _CABINS else 2,
             key=f"ret_cabin_{d['key']}",
         )
 
+        offers_key = f"ret_offers_{d['key']}"
         if st.button("Search returns", key=f"ret_go_{d['key']}"):
             if end < start:
                 st.warning("The end date is before the start date.")
                 return
             with st.spinner(f"Searching {dep}→{arr} award space…"):
                 try:
-                    offers = seats_aero.search_award_availability(
+                    st.session_state[offers_key] = seats_aero.search_award_availability(
                         dep, arr, str(start), str(end), cabin=cabin, max_results=10
                     )
                 except seats_aero.NotConfigured:
@@ -65,19 +90,57 @@ def _render_return_finder(d: dict) -> None:
                     st.error(str(e))
                     return
 
-            if not offers:
-                st.warning(f"No {cabin.title()} award space found for {dep}→{arr} in that window.")
-                return
+        offers = st.session_state.get(offers_key)
+        if offers is None:
+            return
+        if not offers:
+            st.warning(f"No {cabin.title()} award space found for {dep}→{arr} in that window.")
+            return
 
-            st.caption(f"{len(offers)} option(s), fewest points first:")
-            for o in offers:
-                stops = "Nonstop" if o.direct else "Connection"
-                seats_s = f"{o.remaining_seats} seat(s)" if o.remaining_seats else "seats: n/a"
+        st.caption(f"{len(offers)} option(s), fewest points first:")
+        for i, o in enumerate(offers):
+            stops = "Nonstop" if o.direct else "Connection"
+            seats_s = f"{o.remaining_seats} seat(s)" if o.remaining_seats else "seats: n/a"
+            st.markdown(
+                f"**{o.date}** · {o.program} · {o.airlines or '—'} — "
+                f"**{o.points:,} pts** + {o.taxes_fees:.2f} {o.taxes_currency}"
+            )
+            st.caption(f"{stops} · {seats_s}")
+
+            val_key = f"ret_val_{d['key']}_{i}"
+            if st.button("💵 Value this return (1 cash-price lookup)", key=f"ret_valbtn_{d['key']}_{i}"):
+                with st.spinner("Fetching cash price…"):
+                    st.session_state[val_key] = _value_return(dep, arr, o)
+
+            val = st.session_state.get(val_key)
+            if val is None:
+                continue
+            if val.get("error"):
+                st.error(val["error"])
+                continue
+
+            rcpp = val["cpp"]
+            st.markdown(
+                f"↳ Return value: **{rcpp:.2f}¢/pt**"
+                if rcpp is not None else "↳ Return value: n/a"
+            )
+            st.caption(f"cash ${val['cash']:,.0f} − ${val['taxes_usd']:.0f} taxes over {o.points:,} pts")
+
+            # Round-trip total: this return + the standout outbound.
+            total_points = d["points"] + o.points
+            total_taxes = d.get("taxes_usd", 0.0) + val["taxes_usd"]
+            total_cash = (d.get("cash_price") or 0.0) + val["cash"]
+            trip_cpp = (max(total_cash - total_taxes, 0.0) / total_points) * 100 if total_points else None
+            with st.container(border=True):
                 st.markdown(
-                    f"**{o.date}** · {o.program} · {o.airlines or '—'} — "
-                    f"**{o.points:,} pts** + {o.taxes_fees:.2f} {o.taxes_currency}"
+                    f"**🧳 Round trip {arr}↔{dep}: {trip_cpp:.2f}¢/pt**"
+                    if trip_cpp is not None else "**🧳 Round trip: n/a**"
                 )
-                st.caption(f"{stops} · {seats_s}")
+                st.caption(
+                    f"{total_points:,} pts + ${total_taxes:.0f} taxes vs. ${total_cash:,.0f} cash · "
+                    f"out {d['date']} ({d['cpp']:.2f}¢) / back {o.date} "
+                    f"({rcpp:.2f}¢)" if rcpp is not None else ""
+                )
 
 
 data = deal_log.load()
