@@ -1,0 +1,5 @@
+# Minimal runtime deps for the Deal Radar pricing job (price_pending_deals.py).
+# The pricing path only needs `requests` -- it never imports streamlit or numpy at
+# module level (those are lazy, app-only). Kept separate from requirements.txt so the
+# hourly CI job doesn't install the whole Streamlit stack on every run.
+requests==2.32.5

@@ -6,8 +6,16 @@ name: Deal Radar pricing
 # serpapi.com, see TODO.md item 4); this workflow does the pricing/email half
 # instead, since GitHub-hosted runners have normal outbound internet access.
 on:
+  # Primary trigger: run as soon as the cloud capture routine commits new pending
+  # deals (it pushes deal_log.json). This prices with minimal latency and no wasted
+  # no-op runs. The pricing job's own commit carries "[skip ci]" so it never loops.
+  push:
+    branches: [main]
+    paths:
+      - "deal_log.json"
+  # Safety net: drains any overflow beyond CAP_PER_RUN and covers a missed push.
   schedule:
-    - cron: "17 * * * *" # hourly, offset off the hour to avoid the top-of-hour pile-up
+    - cron: "47 */4 * * *" # every 4h, shortly after the 4-hourly capture routine
   workflow_dispatch: {} # allows manual "Run workflow" for testing
 
 permissions:
@@ -22,9 +30,12 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+          cache: pip
 
-      - name: Install dependencies
-        run: pip install -r requirements.txt
+      - name: Install pricing dependencies
+        # Only the pricing runtime deps (requests) -- not the full Streamlit/NumPy
+        # app stack, which this job never imports.
+        run: pip install -r requirements-pipeline.txt
 
       - name: Configure git identity for commits made by this workflow
         run: |

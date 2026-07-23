@@ -27,6 +27,32 @@ import flight_search
 CAP_PER_RUN = 15  # protects the shared SerpApi 250/month free quota
 MAX_PRICE_ATTEMPTS = 4  # give up re-pricing a deal after this many transient failures
 
+# The binding constraint is SerpApi's 250 cash-price lookups per MONTH (free tier),
+# not CAP_PER_RUN. Track monthly usage in deal_log.json and stop pricing before the
+# quota is blown, reserving a buffer for interactive Flight Analyzer / return-value
+# lookups (which spend the same 250 but aren't tracked here since they run in the app).
+MONTHLY_SERPAPI_BUDGET = 220
+
+# When the budget is tight, spend it on the highest-value redemptions first. We can't
+# know CPP before pricing, but a premium-cabin standout saves far more (40k-145k pts)
+# than an economy one, so price premium cabins first, then fewest points within a tier.
+_CABIN_PRIORITY = {"FIRST": 0, "BUSINESS": 1, "PREMIUM_ECONOMY": 2, "ECONOMY": 3}
+
+
+def _current_month() -> str:
+    return datetime.now(timezone.utc).strftime("%Y-%m")
+
+
+def _serpapi_used(data: dict) -> int:
+    usage = data.get("serpapi_usage") or {}
+    if usage.get("month") != _current_month():
+        return 0  # a new month resets the budget
+    return int(usage.get("count", 0))
+
+
+def _record_serpapi_usage(data: dict, calls_made: int) -> None:
+    data["serpapi_usage"] = {"month": _current_month(), "count": _serpapi_used(data) + calls_made}
+
 # Fields evaluate_alerts() adds on top of a pending entry; stripped when we put a
 # transiently-failed deal back on the queue so it retains its original shape.
 _PRICING_FIELDS = (
@@ -75,8 +101,25 @@ def main() -> None:
     if invalid:
         print(f"Skipping {len(invalid)} malformed pending entry(ies).")
 
-    valid_sorted = sorted(valid, key=lambda d: int(d["points"]))
-    to_price, overflow = valid_sorted[:CAP_PER_RUN], valid_sorted[CAP_PER_RUN:]
+    # Monthly SerpApi budget guard: never blow the 250/month free quota, and stop
+    # early (leaving deals queued for next month / a plan upgrade) when it's spent.
+    used = _serpapi_used(data)
+    remaining = MONTHLY_SERPAPI_BUDGET - used
+    if remaining <= 0:
+        print(f"Monthly SerpApi budget ({MONTHLY_SERPAPI_BUDGET}) exhausted for {_current_month()}; "
+              f"holding {len(valid)} deal(s) in pending until it resets.")
+        return
+
+    # Prioritize the scarce budget: premium cabins first, then fewest points.
+    valid_sorted = sorted(
+        valid, key=lambda d: (_CABIN_PRIORITY.get(str(d.get("cabin", "")).upper(), 4), int(d["points"]))
+    )
+    run_cap = min(CAP_PER_RUN, remaining)
+    to_price, overflow = valid_sorted[:run_cap], valid_sorted[run_cap:]
+
+    # One SerpApi call per distinct route/date/cabin (evaluate_alerts dedups within a batch).
+    calls_made = len({(d["origin"], d["dest"], d["date"], d["cabin"]) for d in to_price})
+    _record_serpapi_usage(data, calls_made)
 
     priced = check_alerts.evaluate_alerts(to_price)
     checked_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -105,8 +148,10 @@ def main() -> None:
     deal_log.save(data)
 
     subprocess.run(["git", "add", "deal_log.json"], check=True)
+    # "[skip ci]" prevents this data commit from re-triggering the push-on-deal_log.json
+    # workflow (which would otherwise loop) or the tests workflow (pointless for bot data).
     commit = subprocess.run(
-        ["git", "commit", "-m", f"Deal Radar: priced {len(newly_priced)} pending deal(s)"],
+        ["git", "commit", "-m", f"Deal Radar: priced {len(newly_priced)} pending deal(s) [skip ci]"],
     )
     pushed = False
     if commit.returncode == 0:

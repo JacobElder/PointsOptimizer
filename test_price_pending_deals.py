@@ -131,6 +131,62 @@ def test_malformed_pending_entry_is_skipped_not_crashed(monkeypatch):
     assert bad in saved["data"]["pending"]      # malformed entry retained, not lost
 
 
+def test_budget_exhausted_holds_deals_without_pricing(monkeypatch):
+    called = {"evaluate": False}
+
+    def _should_not_run(to_price):
+        called["evaluate"] = True
+        return []
+
+    data = {"processed_message_ids": [], "deals": [], "pending": [_valid()],
+            "serpapi_usage": {"month": price_pending_deals._current_month(),
+                              "count": price_pending_deals.MONTHLY_SERPAPI_BUDGET}}
+    monkeypatch.setattr(flight_search, "is_configured", lambda: True)
+    monkeypatch.setattr(price_pending_deals.subprocess, "run", _FakeRun())
+    monkeypatch.setattr(deal_log, "load", lambda: data)
+    monkeypatch.setattr(deal_log, "save", lambda d: None)
+    monkeypatch.setattr(check_alerts, "evaluate_alerts", _should_not_run)
+
+    price_pending_deals.main()
+
+    assert called["evaluate"] is False        # budget spent -> no SerpApi calls
+    assert data["pending"] == [_valid()]      # deal held for next month
+
+
+def test_usage_is_recorded_after_pricing(monkeypatch):
+    priced = _valid(cpp=1.0, verdict="SKIP", priced_ok=True, taxes_usd=30.0, cash_price=430.0)
+    data, saved, fake_run, emails, notifies = _wire(
+        monkeypatch, pending=[_valid()], priced=[priced], push_rc=0
+    )
+
+    price_pending_deals.main()
+
+    usage = saved["data"]["serpapi_usage"]
+    assert usage["month"] == price_pending_deals._current_month()
+    assert usage["count"] == 1  # one distinct route priced -> one SerpApi call
+
+
+def test_prioritizes_premium_cabin_when_budget_limited(monkeypatch):
+    seen = {}
+    monkeypatch.setattr(check_alerts, "evaluate_alerts",
+                        lambda to_price: seen.setdefault("to_price", to_price) or [])
+    econ = _valid(cabin="ECONOMY", dest="LIR", points=20000)
+    biz = _valid(cabin="BUSINESS", dest="CAI", points=80000)
+    data = {"processed_message_ids": [], "deals": [], "pending": [econ, biz],
+            "serpapi_usage": {"month": price_pending_deals._current_month(),
+                              "count": price_pending_deals.MONTHLY_SERPAPI_BUDGET - 1}}  # room for 1
+    monkeypatch.setattr(flight_search, "is_configured", lambda: True)
+    monkeypatch.setattr(price_pending_deals.subprocess, "run", _FakeRun())
+    monkeypatch.setattr(deal_log, "load", lambda: data)
+    monkeypatch.setattr(deal_log, "save", lambda d: None)
+    monkeypatch.setattr(price_pending_deals, "_notify_mac", lambda m: None)
+    monkeypatch.setattr(deal_email, "is_configured", lambda: False)
+
+    price_pending_deals.main()
+
+    assert [d["cabin"] for d in seen["to_price"]] == ["BUSINESS"]  # premium priced first
+
+
 def test_notify_mac_noop_when_osascript_missing(monkeypatch):
     monkeypatch.setattr(price_pending_deals.shutil, "which", lambda name: None)
     calls = []
