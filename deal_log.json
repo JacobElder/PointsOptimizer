@@ -152,7 +152,21 @@
     "19f91eb4204d929f",
     "19f91c97ea7348b0",
     "19f91a8055ffd616",
-    "19f918b2c7a8e428"
+    "19f918b2c7a8e428",
+    "19f93e55cd734834",
+    "19f93c71ed64c0c5",
+    "19f93b9487b211b1",
+    "19f93ad0bcb386fa",
+    "19f937969a9aa228",
+    "19f936803e977e3f",
+    "19f93682c917909c",
+    "19f93682e670ec34",
+    "19f9368858d8d358",
+    "19f936950799b306",
+    "19f934f087de5118",
+    "19f93e5895527296",
+    "19f9342fb8809d6c",
+    "19f936e7a9f74ea1"
   ],
   "deals": [
     {
@@ -2733,7 +2747,125 @@
       "notified": false
     }
   ],
-  "pending": [],
+  "pending": [
+    {
+      "origin": "EWR",
+      "dest": "ARN",
+      "program": "Virgin Atlantic",
+      "cabin": "ECONOMY",
+      "date": "2026-08-27",
+      "points": 20500,
+      "taxes": 5.6,
+      "currency": "USD",
+      "flight_number": "SK904",
+      "message_id": "19f93e55cd734834",
+      "listing_url": "https://seats.aero/i/33QEUS3eCYhMMCInPjwp0RHETKX"
+    },
+    {
+      "origin": "JFK",
+      "dest": "BCN",
+      "program": "Air France/KLM Flying Blue",
+      "cabin": "ECONOMY",
+      "date": "2027-04-25",
+      "points": 25000,
+      "taxes": 33.5,
+      "currency": "USD",
+      "flight_number": "DL128",
+      "message_id": "19f93c71ed64c0c5",
+      "listing_url": "https://seats.aero/i/3DBX2TOFTdYXmnYi8974KLBI4KV"
+    },
+    {
+      "origin": "EWR",
+      "dest": "JNB",
+      "program": "United MileagePlus",
+      "cabin": "ECONOMY",
+      "date": "2026-09-03",
+      "points": 45000,
+      "taxes": 5.6,
+      "currency": "USD",
+      "flight_number": "UA188",
+      "message_id": "19f93b9487b211b1",
+      "listing_url": "https://seats.aero/i/33a9Pk2Farnl9yEiZha62eCs0VZ"
+    },
+    {
+      "origin": "JFK",
+      "dest": "BOG",
+      "program": "Air France/KLM Flying Blue",
+      "cabin": "BUSINESS",
+      "date": "2026-09-02",
+      "points": 38000,
+      "taxes": 74.75,
+      "currency": "USD",
+      "flight_number": "CM807, CM415",
+      "message_id": "19f93ad0bcb386fa",
+      "listing_url": "https://seats.aero/i/32RQHD8Bcsgyrn4o6COVR9Psqes"
+    },
+    {
+      "origin": "JFK",
+      "dest": "LIS",
+      "program": "Air France/KLM Flying Blue",
+      "cabin": "ECONOMY",
+      "date": "2026-10-26",
+      "points": 22000,
+      "taxes": 33.5,
+      "currency": "USD",
+      "flight_number": "DL272",
+      "message_id": "19f937969a9aa228",
+      "listing_url": "https://seats.aero/i/34uameTgKZlV6IiIjPrAfbB6yHh"
+    },
+    {
+      "origin": "JFK",
+      "dest": "MAD",
+      "program": "Air France/KLM Flying Blue",
+      "cabin": "ECONOMY",
+      "date": "2026-10-05",
+      "points": 23500,
+      "taxes": 33.5,
+      "currency": "USD",
+      "flight_number": "DL126",
+      "message_id": "19f934f087de5118",
+      "listing_url": "https://seats.aero/i/33wVwG60kkGRN2FbDe6PgWImDBw"
+    },
+    {
+      "origin": "JFK",
+      "dest": "MAD",
+      "program": "Air France/KLM Flying Blue",
+      "cabin": "BUSINESS",
+      "date": "2026-08-27",
+      "points": 43000,
+      "taxes": 33.5,
+      "currency": "USD",
+      "flight_number": "UX94",
+      "message_id": "19f93e5895527296",
+      "listing_url": "https://seats.aero/i/32C8eKRUgfziPpLrk2LDXa6yzH3"
+    },
+    {
+      "origin": "JFK",
+      "dest": "DUB",
+      "program": "Air France/KLM Flying Blue",
+      "cabin": "ECONOMY",
+      "date": "2027-02-12",
+      "points": 21000,
+      "taxes": 33.5,
+      "currency": "USD",
+      "flight_number": "DL44",
+      "message_id": "19f9342fb8809d6c",
+      "listing_url": "https://seats.aero/i/39ryg84vRyAEcXhSvzpOWkaFuGv"
+    },
+    {
+      "origin": "JFK",
+      "dest": "DUB",
+      "program": "Air France/KLM Flying Blue",
+      "cabin": "ECONOMY",
+      "date": "2026-09-06",
+      "points": 21000,
+      "taxes": 33.5,
+      "currency": "USD",
+      "flight_number": "DL44",
+      "message_id": "19f936e7a9f74ea1",
+      "listing_url": "https://seats.aero/i/32clNUqMxm9gnXrxr0ajidXRDAO"
+    }
+  ],
   "serpapi_usage": {
     "month": "2026-07",
     "count": 22
