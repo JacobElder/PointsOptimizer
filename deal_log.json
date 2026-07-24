@@ -166,7 +166,14 @@
     "19f934f087de5118",
     "19f93e5895527296",
     "19f9342fb8809d6c",
-    "19f936e7a9f74ea1"
+    "19f936e7a9f74ea1",
+    "19f947936fe4e974",
+    "19f947933239b3d0",
+    "19f9469680065dae",
+    "19f946450078a8c5",
+    "19f94527a57d4e4b",
+    "19f9448b8e0b843b",
+    "19f942eb363aeffa"
   ],
   "deals": [
     {
@@ -2954,7 +2961,99 @@
       "notified": false
     }
   ],
-  "pending": [],
+  "pending": [
+    {
+      "origin": "JFK",
+      "dest": "BOG",
+      "program": "Air France/KLM Flying Blue",
+      "cabin": "BUSINESS",
+      "date": "2026-08-31",
+      "points": 38000,
+      "taxes": 74.75,
+      "currency": "USD",
+      "flight_number": "CM815, CM332",
+      "message_id": "19f947936fe4e974",
+      "listing_url": "https://seats.aero/i/32LgAJpFiLADwq0wI1TWqD8cIAA"
+    },
+    {
+      "origin": "JFK",
+      "dest": "BOG",
+      "program": "Air France/KLM Flying Blue",
+      "cabin": "BUSINESS",
+      "date": "2026-09-01",
+      "points": 38000,
+      "taxes": 74.75,
+      "currency": "USD",
+      "flight_number": "CM815, CM332",
+      "message_id": "19f947933239b3d0",
+      "listing_url": "https://seats.aero/i/32OZEL8mjOKVhV6JjlM2b7i9AvT"
+    },
+    {
+      "origin": "JFK",
+      "dest": "MAD",
+      "program": "Air France/KLM Flying Blue",
+      "cabin": "ECONOMY",
+      "date": "2026-10-03",
+      "points": 21500,
+      "taxes": 33.5,
+      "currency": "USD",
+      "flight_number": "UX92",
+      "message_id": "19f9469680065dae",
+      "listing_url": "https://seats.aero/i/33saZsWsVOAO2QmqY4tQ0u4YEvT"
+    },
+    {
+      "origin": "JFK",
+      "dest": "BOG",
+      "program": "Air France/KLM Flying Blue",
+      "cabin": "BUSINESS",
+      "date": "2026-08-23",
+      "points": 38000,
+      "taxes": 74.75,
+      "currency": "USD",
+      "flight_number": "CM807, CM415",
+      "message_id": "19f946450078a8c5",
+      "listing_url": "https://seats.aero/i/31z4xDDoUgVp3ObpbjHwy62yEys"
+    },
+    {
+      "origin": "JFK",
+      "dest": "MAD",
+      "program": "Air France/KLM Flying Blue",
+      "cabin": "ECONOMY",
+      "date": "2026-09-10",
+      "points": 21500,
+      "taxes": 33.5,
+      "currency": "USD",
+      "flight_number": "UX94",
+      "message_id": "19f94527a57d4e4b",
+      "listing_url": "https://seats.aero/i/32o6KPQnTcc4AaUN6cUQFgJAbcw"
+    },
+    {
+      "origin": "JFK",
+      "dest": "MAD",
+      "program": "Air France/KLM Flying Blue",
+      "cabin": "ECONOMY",
+      "date": "2026-08-04",
+      "points": 21500,
+      "taxes": 33.5,
+      "currency": "USD",
+      "flight_number": "UX92",
+      "message_id": "19f9448b8e0b843b",
+      "listing_url": "https://seats.aero/i/318PiKYW23w28icLjvb84GGvEBy"
+    },
+    {
+      "origin": "JFK",
+      "dest": "PRG",
+      "program": "Air France/KLM Flying Blue",
+      "cabin": "ECONOMY",
+      "date": "2026-07-24",
+      "points": 27000,
+      "taxes": 33.5,
+      "currency": "USD",
+      "flight_number": "DL78",
+      "message_id": "19f942eb363aeffa",
+      "listing_url": "https://seats.aero/i/30cWySVCl6AasXCdOleCntFmXMy"
+    }
+  ],
   "serpapi_usage": {
     "month": "2026-07",
     "count": 31
