@@ -3385,9 +3385,7 @@
       "key": "air canada aeroplan|EWR|CAI|BUSINESS|2027-07-05|75000",
       "checked_at": "2026-07-24T20:35:50Z",
       "notified": false
-    }
-  ],
-  "pending": [
+    },
     {
       "origin": "EWR",
       "dest": "CAI",
@@ -3400,11 +3398,22 @@
       "flight_number": "MS988",
       "message_id": "19f9538130ce4394",
       "listing_url": "https://seats.aero/i/3GeXKMXCaJJhFfMjDUhZuv36KJh",
-      "price_attempts": 1
+      "price_attempts": 1,
+      "taxes_usd": 58.709557000000004,
+      "cash_price": null,
+      "cpp": null,
+      "verdict": "NO CASH PRICE",
+      "priced_ok": true,
+      "error": null,
+      "price_error": null,
+      "key": "air canada aeroplan|EWR|CAI|BUSINESS|2027-07-07|75000",
+      "checked_at": "2026-07-24T21:47:52Z",
+      "notified": false
     }
   ],
+  "pending": [],
   "serpapi_usage": {
     "month": "2026-07",
-    "count": 50
+    "count": 51
   }
 }
