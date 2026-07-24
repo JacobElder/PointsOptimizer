@@ -139,7 +139,14 @@
     "19f903dbd6aea013",
     "19f903568a563621",
     "19f9098848816f09",
-    "19f90a73f25ec299"
+    "19f90a73f25ec299",
+    "19f917f69a5e94ad",
+    "19f9156d42e6c3e4",
+    "19f9156d475d71c6",
+    "19f913401bdbfaa3",
+    "19f910acbd4b8529",
+    "19f910aaf202300c",
+    "19f90f41cfb7552a"
   ],
   "deals": [
     {
@@ -2421,7 +2428,99 @@
       "notified": false
     }
   ],
-  "pending": [],
+  "pending": [
+    {
+      "origin": "EWR",
+      "dest": "OSL",
+      "program": "Virgin Atlantic",
+      "cabin": "ECONOMY",
+      "date": "2026-08-06",
+      "points": 20500,
+      "taxes": 5.6,
+      "currency": "USD",
+      "flight_number": "SK908",
+      "message_id": "19f917f69a5e94ad",
+      "listing_url": "https://seats.aero/i/32SQPnJI1j66HntujGhQzUFFHQS"
+    },
+    {
+      "origin": "EWR",
+      "dest": "OSL",
+      "program": "Virgin Atlantic",
+      "cabin": "ECONOMY",
+      "date": "2026-10-11",
+      "points": 20500,
+      "taxes": 5.6,
+      "currency": "USD",
+      "flight_number": "SK908",
+      "message_id": "19f9156d42e6c3e4",
+      "listing_url": "https://seats.aero/i/35UwwCTHwulnFvO8n7btBppZHxS"
+    },
+    {
+      "origin": "JFK",
+      "dest": "OSL",
+      "program": "Virgin Atlantic",
+      "cabin": "ECONOMY",
+      "date": "2026-10-20",
+      "points": 20500,
+      "taxes": 5.6,
+      "currency": "USD",
+      "flight_number": "SK924",
+      "message_id": "19f9156d475d71c6",
+      "listing_url": "https://seats.aero/i/35urkTstSPvHYSYUJXLE9FccgZj"
+    },
+    {
+      "origin": "JFK",
+      "dest": "DUB",
+      "program": "Air France/KLM Flying Blue",
+      "cabin": "ECONOMY",
+      "date": "2027-02-13",
+      "points": 21000,
+      "taxes": 33.5,
+      "currency": "USD",
+      "flight_number": "DL44",
+      "message_id": "19f913401bdbfaa3",
+      "listing_url": "https://seats.aero/i/39uzzAjBcuzO0blaWFCZqdiP2v6"
+    },
+    {
+      "origin": "JFK",
+      "dest": "CTG",
+      "program": "Air Canada Aeroplan",
+      "cabin": "BUSINESS",
+      "date": "2026-09-06",
+      "points": 40000,
+      "taxes": 102.8,
+      "currency": "CAD",
+      "flight_number": "CM807, CM161",
+      "message_id": "19f910acbd4b8529",
+      "listing_url": "https://seats.aero/i/32o6Tve9k5p6cycyOh0Leo4n6Y8"
+    },
+    {
+      "origin": "JFK",
+      "dest": "BOG",
+      "program": "Air France/KLM Flying Blue",
+      "cabin": "BUSINESS",
+      "date": "2026-09-06",
+      "points": 38000,
+      "taxes": 74.75,
+      "currency": "USD",
+      "flight_number": "CM807, CM243",
+      "message_id": "19f910aaf202300c",
+      "listing_url": "https://seats.aero/i/32clJ1NORSQUUJipMdF9Fg02Ujo"
+    },
+    {
+      "origin": "JFK",
+      "dest": "OSL",
+      "program": "Virgin Atlantic",
+      "cabin": "ECONOMY",
+      "date": "2026-10-19",
+      "points": 20500,
+      "taxes": 5.6,
+      "currency": "USD",
+      "flight_number": "SK924",
+      "message_id": "19f90f41cfb7552a",
+      "listing_url": "https://seats.aero/i/35tR7xJZbpFQWsDYzAGSBsy1SJN"
+    }
+  ],
   "serpapi_usage": {
     "month": "2026-07",
     "count": 9
