@@ -146,7 +146,13 @@
     "19f913401bdbfaa3",
     "19f910acbd4b8529",
     "19f910aaf202300c",
-    "19f90f41cfb7552a"
+    "19f90f41cfb7552a",
+    "19f92059ad3a66f3",
+    "19f91ec5c6457188",
+    "19f91eb4204d929f",
+    "19f91c97ea7348b0",
+    "19f91a8055ffd616",
+    "19f918b2c7a8e428"
   ],
   "deals": [
     {
@@ -2589,7 +2595,86 @@
       "notified": false
     }
   ],
-  "pending": [],
+  "pending": [
+    {
+      "origin": "JFK",
+      "dest": "CTG",
+      "program": "Air Canada Aeroplan",
+      "cabin": "BUSINESS",
+      "date": "2026-08-29",
+      "points": 40000,
+      "taxes": 102.8,
+      "currency": "CAD",
+      "flight_number": "CM807, CM161",
+      "message_id": "19f92059ad3a66f3",
+      "listing_url": "https://seats.aero/i/32RQE1OZx0bpgnytjKMdGl6UiIO"
+    },
+    {
+      "origin": "JFK",
+      "dest": "OSL",
+      "program": "Virgin Atlantic",
+      "cabin": "ECONOMY",
+      "date": "2026-08-09",
+      "points": 20500,
+      "taxes": 5.6,
+      "currency": "USD",
+      "flight_number": "SK924",
+      "message_id": "19f91ec5c6457188",
+      "listing_url": "https://seats.aero/i/32clakF82p3i9roVUeMrSt8JT3E"
+    },
+    {
+      "origin": "JFK",
+      "dest": "PTY",
+      "program": "Air Canada Aeroplan",
+      "cabin": "ECONOMY",
+      "date": "2027-05-19",
+      "points": 12500,
+      "taxes": 81.7,
+      "currency": "CAD",
+      "flight_number": "AV43, CM154",
+      "message_id": "19f91eb4204d929f",
+      "listing_url": "https://seats.aero/i/3EQD3mkRm5TrMaVIqI90Hwn0kZ9"
+    },
+    {
+      "origin": "JFK",
+      "dest": "PTY",
+      "program": "Air Canada Aeroplan",
+      "cabin": "BUSINESS",
+      "date": "2026-10-12",
+      "points": 35000,
+      "taxes": 81.7,
+      "currency": "CAD",
+      "flight_number": "AV245, AV56",
+      "message_id": "19f91c97ea7348b0",
+      "listing_url": "https://seats.aero/i/34RbimmtPGjRvDmkigOnBfbz36G"
+    },
+    {
+      "origin": "JFK",
+      "dest": "SJO",
+      "program": "JetBlue TrueBlue",
+      "cabin": "ECONOMY",
+      "date": "2026-11-14",
+      "points": 14600,
+      "taxes": 24.68,
+      "currency": "USD",
+      "flight_number": "B61793",
+      "message_id": "19f91a8055ffd616",
+      "listing_url": "https://seats.aero/i/373cjLrzSsrnpba9K436GTddBtW"
+    },
+    {
+      "origin": "JFK",
+      "dest": "OSL",
+      "program": "Virgin Atlantic",
+      "cabin": "ECONOMY",
+      "date": "2026-08-01",
+      "points": 20500,
+      "taxes": 5.6,
+      "currency": "USD",
+      "flight_number": "SK924",
+      "message_id": "19f918b2c7a8e428",
+      "listing_url": "https://seats.aero/i/32GkXJ2yawksRza2fXPs3enmH6d"
+    }
+  ],
   "serpapi_usage": {
     "month": "2026-07",
     "count": 16
