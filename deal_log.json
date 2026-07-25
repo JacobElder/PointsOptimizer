@@ -208,7 +208,11 @@
     "19f9863e3784cc10",
     "19f9851f75a166bc",
     "19f982ff10e29b7e",
-    "19f979afd7850782"
+    "19f979afd7850782",
+    "19f98c2acf6b0665",
+    "19f98c96a3fec362",
+    "19f98cf0e3f44cfe",
+    "19f98d7851e90877"
   ],
   "deals": [
     {
@@ -3923,6 +3927,58 @@
       "flight_number": "SQ25",
       "message_id": "19f979afd7850782",
       "listing_url": "https://seats.aero/i/34Sc1gmTGk2GhWb2NxTzEUGXizC"
+    },
+    {
+      "origin": "JFK",
+      "dest": "SCL",
+      "program": "Air France/KLM Flying Blue",
+      "cabin": "BUSINESS",
+      "date": "2026-09-17",
+      "points": 54500,
+      "taxes": 59.75,
+      "currency": "USD",
+      "flight_number": "CM737, CM497",
+      "message_id": "19f98c2acf6b0665",
+      "listing_url": "https://seats.aero/i/337jElqRM9y9e93sBUpi3FKZLtP"
+    },
+    {
+      "origin": "JFK",
+      "dest": "FRA",
+      "program": "Air Canada Aeroplan",
+      "cabin": "BUSINESS",
+      "date": "2026-08-23",
+      "points": 60000,
+      "taxes": 79.8,
+      "currency": "CAD",
+      "flight_number": "SQ25",
+      "message_id": "19f98c96a3fec362",
+      "listing_url": "https://seats.aero/i/3293hprx8dFZ4dqTfe97y7fZvPf"
+    },
+    {
+      "origin": "JFK",
+      "dest": "LIS",
+      "program": "Air France/KLM Flying Blue",
+      "cabin": "ECONOMY",
+      "date": "2026-11-23",
+      "points": 22000,
+      "taxes": 33.5,
+      "currency": "USD",
+      "flight_number": "DL272",
+      "message_id": "19f98cf0e3f44cfe",
+      "listing_url": "https://seats.aero/i/36Db5GcaS2vbW5uvqtiUh1RzkK1"
+    },
+    {
+      "origin": "EWR",
+      "dest": "CAI",
+      "program": "Air Canada Aeroplan",
+      "cabin": "BUSINESS",
+      "date": "2026-10-27",
+      "points": 75000,
+      "taxes": 145.4,
+      "currency": "CAD",
+      "flight_number": "LH403, MS786",
+      "message_id": "19f98d7851e90877",
+      "listing_url": "https://seats.aero/i/358HN7Ljc0GxGQcGK443vEg5SpN"
     }
   ],
   "serpapi_usage": {
