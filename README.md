@@ -49,43 +49,52 @@ Everything degrades gracefully: without keys, the app falls back to manual entry
 
 ---
 
-## Deal Radar — the automated deal pipeline
+## Deal Radar — capture alerts, price on demand
 
 seats.aero emails you whenever award space opens on a route you've set an alert for. The problem: **most of those alerts clear seats.aero's own points/fee filter but aren't actually good value** in CPP terms. Deal Radar is the needle-in-the-haystack filter.
 
-### How it works (a two-halves split pipeline)
+**Current mode (chosen 2026-07-25): on-demand.** A cloud routine still *captures* every seats.aero alert into `deal_log.json` (free — Gmail only, no pricing). But pricing is **manual**: on the Deal Radar page you click **💵 Price this deal** on any captured deal to spend one live SerpApi cash-price lookup and get its real CPP. This keeps a browsable list of every alert while spending the scarce SerpApi quota only on deals you actually care about — no schedulers, races, quota drain, or notification noise.
 
 ```
-  ┌─ CAPTURE (cloud) ──────────┐        ┌─ PRICE (GitHub Actions / local) ─┐
-  │ Scheduled claude.ai routine │        │ price_pending_deals.py            │
-  │ reads seats.aero alert       │  git   │ • live cash price (SerpApi)      │
-  │ emails via Gmail, parses     │ ─────► │ • CPP + cabin-aware verdict      │
-  │ them, queues to deal_log.json│ shared │ • emails you only the standouts  │
-  └──────────────────────────────┘  file  └──────────────────────────────────┘
+  ┌─ CAPTURE (cloud, always on) ─┐        ┌─ PRICE (on demand, in the app) ─┐
+  │ Scheduled claude.ai routine   │  git   │ Deal Radar page                  │
+  │ reads seats.aero alert emails │ ─────► │ • click "Price this deal"        │
+  │ via Gmail, parses, queues to  │ shared │ • one live cash price (SerpApi)  │
+  │ deal_log.json `pending`       │  file  │ • CPP + cabin-aware verdict      │
+  └───────────────────────────────┘        └──────────────────────────────────┘
 ```
 
-- **Capture half** runs in the cloud (a scheduled Claude routine with a Gmail connector). It only reads/parses/queues — it never prices, because its sandbox can't reach SerpApi.
-- **Pricing half** runs on GitHub Actions (hourly, no machine needed). It pulls the queue, looks up a real cash price for each deal, computes CPP, appends results to `deal_log.json`, and emails you the standouts.
-- The two coordinate through `deal_log.json` committed to git, with pull-before-read/pull-before-push discipline so they never clobber each other.
+The **automatic** pricing+email pipeline (`price_pending_deals.py` + `.github/workflows/deal_radar_pricing.yml`) is fully preserved but **turned off** — the workflow is `workflow_dispatch`-only. See [Re-enabling automatic email alerts](#re-enabling-automatic-email-alerts) below.
 
 ### What counts as a "standout" (cabin-aware thresholds)
 
-A deal is flagged and emailed only if its CPP clears the bar for its cabin — premium cabins commit far more points, so they need a higher return:
+A deal is a standout (and, when auto-alerts are on, emailed) only if its CPP clears the bar for its cabin — premium cabins commit far more points, so they need a higher return. The same cabin-aware bar drives the on-page BOOK badge, so they never contradict:
 
-| Cabin | "Standout" CPP floor |
+| Cabin | "Standout" / BOOK CPP floor |
 |-------|----------------------|
 | Economy / Premium Economy | **≥ 1.5¢/pt** |
 | Business / First | **≥ 2.0¢/pt** |
 
-(Verdict badges on the full list: 🟢 BOOK ≥1.7¢ · 🟡 BORDERLINE · 🔴 SKIP <1.0¢ — a separate, coarser one-way triage than the standout floors above.)
+(Below **1.0¢** is 🔴 SKIP; in between is 🟡 BORDERLINE.)
 
 ### Using the Deal Radar page
 
-- **Summary metrics** up top: deals evaluated, standout count, best CPP found, last check date.
-- **🎯 Act now** section lists standouts best-first, with a 🏆 on the single best.
-- **Sort/filter** the full list by CPP, travel date, program, points, cash price, or recency; filter by cabin and verdict.
-- **🔁 Find a return flight** (on each standout): searches seats.aero award space on the *reverse* route over a return-date window. Free-ish — one Cached-Search call, well within the 1,000/day quota.
-- **💵 Value this return** (per return option): pulls a live cash price for that return leg and shows its CPP **plus a full round-trip total** (combined points, taxes, cash, blended CPP). This one spends a SerpApi cash-price lookup, so it's deliberately behind an explicit click rather than automatic.
+- **Summary metrics** up top: captured (unpriced) count, priced count, standouts, best CPP.
+- **📋 Captured** section: every unpriced alert, with cabin filter and sort (date / points / program / cabin). Click **💵 Price this deal** on one → live CPP + verdict badge inline, one SerpApi lookup per click.
+- **🔁 Find a return flight** (after pricing a deal): searches seats.aero award space on the *reverse* route over a return-date window. Effectively free — one Cached-Search call, well within the 1,000/day quota.
+- **💵 Value this return** (per return option): pulls a live cash price for that return leg and shows its CPP **plus a full round-trip total** (combined points, taxes, cash, blended CPP). Another explicit-click SerpApi lookup.
+- **Previously priced deals**: history of anything priced earlier (e.g. from when auto-pricing was on), with full sort/filter and a 🎯 standout section.
+- On-demand pricing is **per session** — it shows you the CPP immediately but doesn't write back to the deal log.
+
+### Re-enabling automatic email alerts
+
+Nothing was deleted when we switched to on-demand — the whole pricing+email pipeline is intact and tested:
+
+- **`price_pending_deals.py`** — pricing loop + `_notify_mac` (macOS notification) + `send_deal_alert_email` (batched standout email). Still improved with the monthly SerpApi budget guard, transient-failure retry, and malformed-entry guards.
+- **`deal_email.py`** — the HTML email builder + Gmail SMTP sender.
+- **`.github/workflows/deal_radar_pricing.yml`** — intact, just switched to `workflow_dispatch` (manual) only.
+
+To turn automatic pricing + email alerts back on (~2 minutes): re-add the `schedule:` (and/or `push:`) triggers to `deal_radar_pricing.yml`. The exact trigger block is preserved in git history at commit `8f3daee` (verbatim: a 4-hourly `schedule` plus a `push` on `deal_log.json`, with the pricing commit carrying `[skip ci]` so it never loops). The cloud capture routine is still running, and the three repo secrets (`SERPAPI_KEY`, `GMAIL_ADDRESS`, `GMAIL_APP_PASSWORD`) are still set — so re-adding the triggers is all that's needed; it resumes pricing every capture and emailing standouts with no other setup. You can also bulk-price the current queue manually any time from **Actions → Deal Radar pricing → Run workflow**.
 
 ---
 
@@ -103,7 +112,7 @@ A deal is flagged and emailed only if its CPP clears the bar for its cabin — p
 ## FAQ
 
 **Why did I get a seats.aero alert but no Deal Radar email?**
-Almost always because it wasn't a *new* deal (a continuous re-fire of one already scored) or it didn't clear the cabin-aware standout floor. Both are working-as-intended — Deal Radar only emails genuinely new standouts, to avoid notification noise.
+Automatic emails are currently **off** (on-demand mode) — the alert is captured to the Deal Radar page for you to price on demand, not emailed. If you re-enable automatic alerts (see above), you'd still only be emailed genuinely *new* standouts (a continuous re-fire of an already-scored deal, or one below the cabin-aware floor, is intentionally skipped to avoid noise).
 
 **Why is a "View on seats.aero" link sometimes broken?**
 The raw email links are single-use, recipient-bound click-tracking redirects (`c.seats.aero/CL0/…`) that 400/403 when reused. The parser unwraps them to the permanent `seats.aero/i/<id>` form, which is stable.
@@ -112,7 +121,7 @@ The raw email links are single-use, recipient-bound click-tracking redirects (`c
 Finding returns uses seats.aero Cached Search (1,000/day — effectively unlimited for this). Only **💵 Value this return** touches the scarce SerpApi cash-price quota (250/month), and only when you click it.
 
 **Does anything run when my computer is off?**
-Yes. Capture (cloud routine) and pricing (GitHub Actions) both run in the cloud. The old Mac LaunchAgent was retired once GitHub Actions took over pricing.
+Only **capture** — a cloud routine that logs seats.aero alerts to `deal_log.json` every few hours (no machine needed). Pricing is now on-demand from the app, so no automatic pricing runs. (The old Mac LaunchAgent was retired earlier; the GitHub Actions pricing job still exists but is manual-only.)
 
 **Is my data exposed now that the repo is public?**
 No credentials or personal financial data. Secrets live only in gitignored files; `balances.json`/`history.csv` were never committed. `deal_log.json` (tracked, needed by the automation) contains only award-deal data you're already monitoring.

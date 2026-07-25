@@ -1,3 +1,7 @@
-streamlit==1.37.1
-numpy==2.0.2
-requests==2.32.5
+# Loosened from exact pins (streamlit==1.37.1 / numpy==2.0.2) because Streamlit
+# Community Cloud's runtime Python (3.13) has no prebuilt wheel for numpy 2.0.2,
+# which caused "Error installing requirements." Ranges let pip pick a wheel that
+# matches the runtime Python. All app APIs used are stable across these ranges.
+streamlit>=1.37,<2
+numpy>=2.0,<3
+requests>=2.32,<3
