@@ -8,10 +8,12 @@ from datetime import datetime
 
 import streamlit as st
 
+import airports
 import award_charts
 import flight_search
 import going_parse
 import ledger
+import return_finder
 import seats_aero
 from cards_data import (
     POOLS,
@@ -131,25 +133,30 @@ with tab_price:
             "manually below."
         )
     else:
+        _AIRPORTS = airports.options()
         lc1, lc2, lc3, lc4 = st.columns(4)
         with lc1:
-            origin = st.text_input("Origin", placeholder="SFO", max_chars=3, key="search_origin")
+            origin = st.selectbox("Origin", _AIRPORTS, index=_AIRPORTS.index(airports.DEFAULT_ORIGIN_OPTION),
+                                  key="search_origin", help="Type to filter by city or code")
         with lc2:
-            destination = st.text_input("Destination", placeholder="NRT", max_chars=3, key="search_dest")
+            destination = st.selectbox("Destination", _AIRPORTS, index=None,
+                                       placeholder="Type a city…", key="search_dest")
         with lc3:
             dep_date = st.date_input("Departure date")
         with lc4:
             cabin = st.selectbox("Cabin", ["ECONOMY", "PREMIUM_ECONOMY", "BUSINESS", "FIRST"])
 
         if st.button("Search live prices", type="primary"):
-            if not origin or not destination:
-                st.error("Enter both airport codes.")
+            o_code = airports.code_from_option(origin)
+            d_code = airports.code_from_option(destination)
+            if not o_code or not d_code:
+                st.error("Pick both an origin and a destination.")
             else:
                 st.session_state["flight_offers"] = []
                 try:
                     with st.spinner("Searching..."):
                         st.session_state["flight_offers"] = flight_search.search_cash_price(
-                            origin, destination, dep_date.isoformat(), cabin
+                            o_code, d_code, dep_date.isoformat(), cabin
                         )
                     if not st.session_state["flight_offers"]:
                         st.warning("No offers found for that route/date/cabin.")
@@ -209,11 +216,14 @@ with tab_award:
             "restart the app. In the meantime, enter the points required manually below."
         )
     else:
+        _AWPORTS = airports.options()
         ac1, ac2, ac3, ac4 = st.columns(4)
         with ac1:
-            award_origin = st.text_input("Origin", placeholder="SFO", max_chars=3, key="award_origin")
+            award_origin = st.selectbox("Origin", _AWPORTS, index=_AWPORTS.index(airports.DEFAULT_ORIGIN_OPTION),
+                                        key="award_origin", help="Type to filter by city or code")
         with ac2:
-            award_dest = st.text_input("Destination", placeholder="NRT", max_chars=3, key="award_dest")
+            award_dest = st.selectbox("Destination", _AWPORTS, index=None,
+                                      placeholder="Type a city…", key="award_dest")
         with ac3:
             award_date = st.date_input("Departure date", key="award_date")
         with ac4:
@@ -226,8 +236,10 @@ with tab_award:
         )
 
         if st.button("Search award availability", type="primary"):
-            if not award_origin or not award_dest:
-                st.error("Enter both airport codes.")
+            o_code = airports.code_from_option(award_origin)
+            d_code = airports.code_from_option(award_dest)
+            if not o_code or not d_code:
+                st.error("Pick both an origin and a destination.")
             else:
                 st.session_state["award_offers"] = []
                 try:
@@ -236,7 +248,7 @@ with tab_award:
                     end = award_date + timedelta(days=flex_days)
                     with st.spinner("Searching seats.aero..."):
                         st.session_state["award_offers"] = seats_aero.search_award_availability(
-                            award_origin, award_dest, start.isoformat(), end.isoformat(), award_cabin
+                            o_code, d_code, start.isoformat(), end.isoformat(), award_cabin
                         )
                     if not st.session_state["award_offers"]:
                         st.warning("No award space found for that route/date(s)/cabin.")
@@ -279,6 +291,13 @@ with tab_award:
                         except (flight_search.NotConfigured, flight_search.SearchFailed):
                             pass
                     st.rerun()
+
+                # Interested in this departure? Find a return leg on the reverse route.
+                return_finder.render(
+                    {"origin": award.origin, "dest": award.destination, "date": award.date,
+                     "cabin": award.cabin, "points": award.points},
+                    key=f"fa_award_{i}",
+                )
 
 st.divider()
 st.header("② Value & verdict")
