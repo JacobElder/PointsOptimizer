@@ -6,17 +6,12 @@ name: Deal Radar pricing
 # serpapi.com, see TODO.md item 4); this workflow does the pricing/email half
 # instead, since GitHub-hosted runners have normal outbound internet access.
 on:
-  # Primary trigger: run as soon as the cloud capture routine commits new pending
-  # deals (it pushes deal_log.json). This prices with minimal latency and no wasted
-  # no-op runs. The pricing job's own commit carries "[skip ci]" so it never loops.
-  push:
-    branches: [main]
-    paths:
-      - "deal_log.json"
-  # Safety net: drains any overflow beyond CAP_PER_RUN and covers a missed push.
-  schedule:
-    - cron: "47 */4 * * *" # every 4h, shortly after the 4-hourly capture routine
-  workflow_dispatch: {} # allows manual "Run workflow" for testing
+  # AUTOMATIC PRICING IS OFF (on-demand model, chosen 2026-07-25). The capture
+  # routine still logs seats.aero alerts into deal_log.json's `pending`, but they
+  # are priced on demand from the Deal Radar page (pages/5_Deal_Radar.py), one
+  # SerpApi lookup per click. This job is kept as a MANUAL escape hatch only --
+  # run it from the Actions tab to bulk-price the whole pending queue if ever wanted.
+  workflow_dispatch: {}
 
 permissions:
   contents: write # needs to commit/push deal_log.json updates

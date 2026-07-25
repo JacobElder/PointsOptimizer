@@ -78,7 +78,25 @@
       2-Step Verification → App Passwords → delete "PointsOptimizer Deal Radar"
       (or whatever you named it), then remove the two lines from secrets.toml.
 
-## 6. IN PROGRESS: GitHub Actions removes the "Mac must be on" dependency
+## 7. PIVOT (2026-07-25): on-demand pricing, automatic pricing OFF
+- [x] Chose the "middle path": keep the FREE Gmail capture (cloud routine still
+      logs seats.aero alerts into deal_log.json `pending`), but STOP auto-pricing.
+      Deals are now priced on demand from the Deal Radar page (a "💵 Price this
+      deal" button per captured deal — one SerpApi lookup per click). This kills
+      the scheduler complexity, race conditions, quota drain, and notification
+      noise, while keeping a browsable list of every alerted deal.
+- [x] `deal_radar_pricing.yml` is now `workflow_dispatch`-only (manual escape
+      hatch to bulk-price the queue if ever wanted); no schedule/push triggers.
+- [ ] Note: the capture routine still commits deal_log.json ~every 4h, which
+      still auto-redeploys the Streamlit app (brief "Oh no" window if you load it
+      mid-redeploy). Much rarer than before. If it ever annoys you, the fix is to
+      move deal_log.json off the app branch (bigger change) — left as an option.
+- [ ] Apify Flight Price Scraper (~$0.0003/search, $5 free credit) remains a
+      cheap alternative to SerpApi if on-demand volume ever grows — build it as a
+      flight_search backend behind the same interface. Not needed at on-demand
+      volume (SerpApi's 250/mo is plenty for a handful of manual checks).
+
+## 6. DONE: GitHub Actions removed the "Mac must be on" dependency (superseded by #7)
 - [x] `price_pending_deals.py` fixed to be cross-platform safe (was going to
       crash with FileNotFoundError on Linux runners via an unconditional
       `osascript` call) — pushed 2026-07-22.
