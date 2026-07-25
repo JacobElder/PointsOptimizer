@@ -204,7 +204,11 @@
     "19f974b1014f6d36",
     "19f975698c0a80e4",
     "19f97573819202f8",
-    "19f978149114aabc"
+    "19f978149114aabc",
+    "19f9863e3784cc10",
+    "19f9851f75a166bc",
+    "19f982ff10e29b7e",
+    "19f979afd7850782"
   ],
   "deals": [
     {
@@ -3867,7 +3871,60 @@
       "notified": false
     }
   ],
-  "pending": [],
+  "pending": [
+    {
+      "origin": "JFK",
+      "dest": "EDI",
+      "program": "Air France/KLM Flying Blue",
+      "cabin": "ECONOMY",
+      "date": "2027-03-08",
+      "points": 21500,
+      "taxes": 33.5,
+      "currency": "USD",
+      "flight_number": "DL208",
+      "message_id": "19f9863e3784cc10",
+      "listing_url": "https://seats.aero/i/3AxwbQV2hm5tvKIixIJCuWCJeoy"
+    },
+    {
+      "origin": "JFK",
+      "dest": "EDI",
+      "program": "Air France/KLM Flying Blue",
+      "cabin": "ECONOMY",
+      "date": "2027-03-07",
+      "points": 21500,
+      "taxes": 33.5,
+      "currency": "USD",
+      "flight_number": "DL208",
+      "message_id": "19f9851f75a166bc",
+      "listing_url": "https://seats.aero/i/3AulmUaVYuwSbXDzn2WqhBi96eF"
+    },
+    {
+      "origin": "JFK",
+      "dest": "EDI",
+      "program": "Air France/KLM Flying Blue",
+      "cabin": "ECONOMY",
+      "date": "2027-03-10",
+      "points": 21500,
+      "taxes": 33.5,
+      "currency": "USD",
+      "flight_number": "DL208",
+      "message_id": "19f982ff10e29b7e",
+      "listing_url": "https://seats.aero/i/3B37ro190FXfN9IemGuB7vSe5xM"
+    },
+    {
+      "origin": "JFK",
+      "dest": "FRA",
+      "program": "Air Canada Aeroplan",
+      "cabin": "BUSINESS",
+      "date": "2026-10-13",
+      "points": 60000,
+      "taxes": 79.9,
+      "currency": "CAD",
+      "flight_number": "SQ25",
+      "message_id": "19f979afd7850782",
+      "listing_url": "https://seats.aero/i/34Sc1gmTGk2GhWb2NxTzEUGXizC"
+    }
+  ],
   "serpapi_usage": {
     "month": "2026-07",
     "count": 70
