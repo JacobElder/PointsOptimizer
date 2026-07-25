@@ -193,7 +193,18 @@
     "19f963696f5a5074",
     "19f9636ab1ee60d0",
     "19f9636cdea3ca06",
-    "19f96939d0eeda7f"
+    "19f96939d0eeda7f",
+    "19f96b9df49b4dfb",
+    "19f96e6fc28384ee",
+    "19f96eac345434b5",
+    "19f97123485a5e4a",
+    "19f97148a6eef2a1",
+    "19f971b54d165ba9",
+    "19f9749438fa834d",
+    "19f974b1014f6d36",
+    "19f975698c0a80e4",
+    "19f97573819202f8",
+    "19f978149114aabc"
   ],
   "deals": [
     {
@@ -3603,7 +3614,151 @@
       "notified": false
     }
   ],
-  "pending": [],
+  "pending": [
+    {
+      "origin": "JFK",
+      "dest": "EDI",
+      "program": "Air France/KLM Flying Blue",
+      "cabin": "ECONOMY",
+      "date": "2027-03-15",
+      "points": 21500,
+      "taxes": 33.5,
+      "currency": "USD",
+      "flight_number": "DL208",
+      "message_id": "19f978149114aabc",
+      "listing_url": "https://seats.aero/i/3BHNWA8uO6inaunkz9nULuIuUix"
+    },
+    {
+      "origin": "JFK",
+      "dest": "CAI",
+      "program": "Air Canada Aeroplan",
+      "cabin": "BUSINESS",
+      "date": "2026-08-23",
+      "points": 75000,
+      "taxes": 120.3,
+      "currency": "CAD",
+      "flight_number": "SN502, MS726",
+      "message_id": "19f97573819202f8",
+      "listing_url": "https://seats.aero/i/32C9Njk53b9tV63jV1rhYXgeGaL"
+    },
+    {
+      "origin": "JFK",
+      "dest": "CTG",
+      "program": "Air Canada Aeroplan",
+      "cabin": "ECONOMY",
+      "date": "2027-01-16",
+      "points": 20000,
+      "taxes": 102.8,
+      "currency": "CAD",
+      "flight_number": "CM807, CM161",
+      "message_id": "19f975698c0a80e4",
+      "listing_url": "https://seats.aero/i/38ojANNhDF7PrtzvQRgKq4eD11O"
+    },
+    {
+      "origin": "EWR",
+      "dest": "FRA",
+      "program": "Air Canada Aeroplan",
+      "cabin": "BUSINESS",
+      "date": "2026-10-27",
+      "points": 60000,
+      "taxes": 79.9,
+      "currency": "CAD",
+      "flight_number": "LH403",
+      "message_id": "19f974b1014f6d36",
+      "listing_url": "https://seats.aero/i/358HD0zt2nf85izqxQflFHTKjg7"
+    },
+    {
+      "origin": "JFK",
+      "dest": "CTG",
+      "program": "Air Canada Aeroplan",
+      "cabin": "BUSINESS",
+      "date": "2027-01-16",
+      "points": 40000,
+      "taxes": 101.0,
+      "currency": "CAD",
+      "flight_number": "AV65",
+      "message_id": "19f9749438fa834d",
+      "listing_url": "https://seats.aero/i/38ojANNhDF7PrtzvQRgKq4eD11O"
+    },
+    {
+      "origin": "JFK",
+      "dest": "CAI",
+      "program": "Air Canada Aeroplan",
+      "cabin": "BUSINESS",
+      "date": "2027-07-13",
+      "points": 75000,
+      "taxes": 82.7,
+      "currency": "CAD",
+      "flight_number": "MS986",
+      "message_id": "19f971b54d165ba9",
+      "listing_url": "https://seats.aero/i/3GvooOeHqtPUGg7iHa3hYoakLB9"
+    },
+    {
+      "origin": "EWR",
+      "dest": "OSL",
+      "program": "Virgin Atlantic",
+      "cabin": "ECONOMY",
+      "date": "2026-10-21",
+      "points": 20500,
+      "taxes": 5.6,
+      "currency": "USD",
+      "flight_number": "SK908",
+      "message_id": "19f97148a6eef2a1",
+      "listing_url": "https://seats.aero/i/35x3AllbzzUKcusxExVEBeiKEzz"
+    },
+    {
+      "origin": "JFK",
+      "dest": "FRA",
+      "program": "Air Canada Aeroplan",
+      "cabin": "BUSINESS",
+      "date": "2027-02-04",
+      "points": 60000,
+      "taxes": 79.9,
+      "currency": "CAD",
+      "flight_number": "LH401",
+      "message_id": "19f97123485a5e4a",
+      "listing_url": "https://seats.aero/i/39gs6zztIFLnQuzU0tsx5twsHFT"
+    },
+    {
+      "origin": "EWR",
+      "dest": "OSL",
+      "program": "Virgin Atlantic",
+      "cabin": "ECONOMY",
+      "date": "2026-07-27",
+      "points": 20500,
+      "taxes": 5.6,
+      "currency": "USD",
+      "flight_number": "SK908",
+      "message_id": "19f96eac345434b5",
+      "listing_url": "https://seats.aero/i/3229MM9OsLBixzGTHsf1qacQfxC"
+    },
+    {
+      "origin": "JFK",
+      "dest": "FRA",
+      "program": "Air Canada Aeroplan",
+      "cabin": "BUSINESS",
+      "date": "2026-10-12",
+      "points": 60000,
+      "taxes": 79.9,
+      "currency": "CAD",
+      "flight_number": "SQ25",
+      "message_id": "19f96e6fc28384ee",
+      "listing_url": "https://seats.aero/i/34Rbkw5eNAAYfSPLDU6e93WLXk0"
+    },
+    {
+      "origin": "EWR",
+      "dest": "JNB",
+      "program": "United MileagePlus",
+      "cabin": "ECONOMY",
+      "date": "2026-11-22",
+      "points": 45000,
+      "taxes": 5.6,
+      "currency": "USD",
+      "flight_number": "UA188",
+      "message_id": "19f96b9df49b4dfb",
+      "listing_url": "https://seats.aero/i/37GKzHaNZsqfdpKM8CXhDflPns0"
+    }
+  ],
   "serpapi_usage": {
     "month": "2026-07",
     "count": 59
