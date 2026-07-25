@@ -1,0 +1,108 @@
+import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+import streamlit as st
+
+from simulation import run_valuation_simulation
+
+st.set_page_config(page_title="Redeem or Hoard — PointsOptimizer", page_icon="⚖️", layout="centered")
+
+st.title("Redeem or Hoard")
+st.subheader("Should you redeem your points today or hoard them?")
+
+st.divider()
+
+# ── Inputs ──────────────────────────────────────────────────────────────────
+st.header("Your Redemption")
+
+col1, col2 = st.columns(2)
+with col1:
+    cash_price = st.number_input("Cash price of trip ($)", min_value=50.0, value=1500.0, step=50.0)
+    points_required = st.number_input("Points required for this trip", min_value=1000, value=60000, step=1000)
+with col2:
+    point_balance = st.number_input("Your current points balance", min_value=1000, value=100000, step=1000)
+    taxes_fees = st.number_input("Taxes & fees on the award ($)", min_value=0.0, value=0.0, step=5.0)
+
+net_value = max(cash_price - taxes_fees, 0.0)
+current_cpp = (net_value / points_required) * 100
+st.metric(
+    "Current CPP of this redemption", f"{current_cpp:.2f}¢",
+    help="(cash price − award taxes/fees) / points × 100",
+)
+
+st.divider()
+st.header("Simulation Settings")
+
+representative_trip_price = st.number_input(
+    "Typical cash value of your future high-value trips ($)",
+    min_value=100.0,
+    value=1500.0,
+    step=100.0,
+    help="What a typical trip you'd redeem points for costs in cash — NOT necessarily this "
+    "redemption's price. The simulation values hoarded points against future trips like this.",
+)
+
+col3, col4 = st.columns(2)
+with col3:
+    lambda_trips = st.slider("Expected high-value trips per year (λ)", 0.5, 10.0, 2.0, 0.5)
+    time_horizon = st.selectbox("Time horizon (years)", [3, 5], index=0)
+    depreciation_pct = st.slider("Annual point devaluation rate (%)", 1, 20, 5,
+                                  help="How much purchasing power points lose each year.")
+with col4:
+    mu_cost = st.slider("Avg log-cost of future trips (μ)", 9.0, 13.0, 11.0, 0.5,
+                         help="Log-scale mean of the point cost distribution. e^11 ≈ 60k pts.")
+    sigma_cost = st.slider("Variability of future trip costs (σ)", 0.1, 1.5, 0.5, 0.1)
+    market_return_pct = st.slider("Annual opportunity cost of cash (%)", 1, 15, 5,
+                                   help="Expected annual return if cash were invested instead.")
+
+depreciation_rate = depreciation_pct / 100
+market_return = market_return_pct / 100
+
+st.divider()
+
+# ── Run ──────────────────────────────────────────────────────────────────────
+if st.button("Run Simulation", type="primary", use_container_width=True):
+    with st.spinner("Running 10,000 iterations..."):
+        result = run_valuation_simulation(
+            current_cpp=current_cpp,
+            point_balance=point_balance,
+            cash_price=representative_trip_price,
+            time_horizon=time_horizon,
+            lambda_trips=lambda_trips,
+            mu_cost=mu_cost,
+            sigma_cost=sigma_cost,
+            depreciation_rate=depreciation_rate,
+            market_return=market_return,
+        )
+
+    # ── Verdict ──────────────────────────────────────────────────────────────
+    if result.recommend_redeem:
+        st.success("## Recommendation: REDEEM NOW")
+        st.write(
+            f"Today's deal (**{result.current_cpp:.2f}¢/pt**) beats the simulated "
+            f"future average of **{result.avg_simulated_cpp:.2f}¢/pt**. Lock it in."
+        )
+    else:
+        st.warning("## Recommendation: HOARD")
+        st.write(
+            f"Today's deal (**{result.current_cpp:.2f}¢/pt**) is below the simulated "
+            f"future average of **{result.avg_simulated_cpp:.2f}¢/pt**. Wait for a better redemption."
+        )
+
+    st.divider()
+
+    # ── Stats ─────────────────────────────────────────────────────────────────
+    st.header("Simulation Results")
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Today's CPP", f"{result.current_cpp:.2f}¢")
+    c2.metric("Avg Simulated CPP", f"{result.avg_simulated_cpp:.2f}¢")
+    c3.metric("5th Percentile", f"{result.percentile_5:.2f}¢")
+    c4.metric("95th Percentile", f"{result.percentile_95:.2f}¢")
+
+    st.caption(
+        f"Based on {result.iterations:,} Monte Carlo iterations · "
+        f"Avg {result.avg_trips_per_year:.1f} trips/year drawn · "
+        f"{time_horizon}-year horizon"
+    )
