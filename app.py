@@ -84,10 +84,12 @@ with st.popover("📋 Paste a Going deal"):
         else:
             if deal.route_text:
                 st.session_state["flight_label_input"] = deal.route_text
-            if deal.origin_iata:
-                st.session_state["search_origin"] = deal.origin_iata
-            if deal.destination_iata:
-                st.session_state["search_dest"] = deal.destination_iata
+            # search_origin/search_dest are now dropdowns -- only set them to a valid
+            # "City (CODE)" option, skipping airports not in the list (avoids a crash).
+            if deal.origin_iata and (_opt := airports.option_from_code(deal.origin_iata)):
+                st.session_state["search_origin"] = _opt
+            if deal.destination_iata and (_opt := airports.option_from_code(deal.destination_iata)):
+                st.session_state["search_dest"] = _opt
             if deal.price_usd:
                 # Going quotes roundtrip totals; award CPP math is usually one-way.
                 st.session_state["cash_price_input"] = (
@@ -105,6 +107,13 @@ with st.popover("📋 Paste a Going deal"):
                 "Note: a cheap cash fare is usually a PAY-CASH signal — run the simulation "
                 "and expect it to say hoard your points."
             )
+
+# Apply a deferred label prefill from a prior "Use this award" click. Must happen
+# BEFORE the widget is instantiated -- writing a widget-keyed session_state value
+# after its widget exists raises StreamlitAPIException.
+_label_prefill = st.session_state.pop("_label_prefill", None)
+if _label_prefill and not st.session_state.get("flight_label_input"):
+    st.session_state["flight_label_input"] = _label_prefill
 
 flight_label = st.text_input(
     "Route / description (optional)",
@@ -277,9 +286,11 @@ with tab_award:
                     st.session_state["points_required_input"] = award.points
                     st.session_state["taxes_fees_input"] = award.taxes_fees
                     if award.known_partner:
-                        st.session_state["flight_label_input"] = st.session_state.get(
-                            "flight_label_input", ""
-                        ) or f"{award.origin}–{award.destination} {award.cabin.title()}"
+                        # Can't write flight_label_input here -- its widget is above, already
+                        # instantiated this run. Defer via a flag applied before the widget next run.
+                        st.session_state["_label_prefill"] = (
+                            f"{award.origin}–{award.destination} {award.cabin.title()}"
+                        )
                     if flight_search.is_configured():
                         try:
                             with st.spinner("Looking up the cash price for this same flight..."):

@@ -94,5 +94,16 @@ def code_from_option(option: str | None) -> str | None:
     return option.strip().upper() or None
 
 
+def option_from_code(code: str | None) -> str | None:
+    """"SFO" -> "San Francisco (SFO)" if it's in the dropdown, else None."""
+    if not code:
+        return None
+    code = code.strip().upper()
+    for opt in options():
+        if code_from_option(opt) == code:
+            return opt
+    return None
+
+
 # The canonical dropdown label for New York, used as the default origin.
 DEFAULT_ORIGIN_OPTION = "New York (NYC)"
