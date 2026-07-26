@@ -249,7 +249,14 @@
     "19f998e2a1e9b5bb",
     "19f99851be88ea32",
     "19f99851566f4f2d",
-    "19f9978c036dd4fb"
+    "19f9978c036dd4fb",
+    "19f9c28309588b2d",
+    "19f9c3c20b8ad0bf",
+    "19f9c49cbdade6db",
+    "19f9c70236653ca1",
+    "19f9c718a077fc78",
+    "19f9c720472b1d15",
+    "19f9c7dd23edf1ed"
   ],
   "deals": [
     {
@@ -4289,6 +4296,84 @@
       "flight_number": "DL208",
       "message_id": "19f99930753a5857",
       "listing_url": "https://seats.aero/i/3A3tn5U2vocz12Ae4FWvCedEltd"
+    },
+    {
+      "origin": "JFK",
+      "dest": "MDE",
+      "program": "Air Canada Aeroplan",
+      "cabin": "ECONOMY",
+      "date": "2027-07-05",
+      "points": 20000,
+      "taxes": 100.9,
+      "currency": "CAD",
+      "flight_number": "AV153",
+      "message_id": "19f9c28309588b2d",
+      "listing_url": "https://seats.aero/i/3GZAaOVSbLRjsg5DAgZ6WRFjHgx"
+    },
+    {
+      "origin": "EWR",
+      "dest": "JNB",
+      "program": "United MileagePlus",
+      "cabin": "ECONOMY",
+      "date": "2027-06-20",
+      "points": 45000,
+      "taxes": 5.6,
+      "currency": "USD",
+      "flight_number": "UA188",
+      "message_id": "19f9c3c20b8ad0bf",
+      "listing_url": "https://seats.aero/i/3GhQXPhauBIr0GpneibgqP1abeq"
+    },
+    {
+      "origin": "EWR",
+      "dest": "MBJ",
+      "program": "United MileagePlus",
+      "cabin": "ECONOMY",
+      "date": "2026-09-16",
+      "points": 14500,
+      "taxes": 49.6,
+      "currency": "USD",
+      "flight_number": "UA1462",
+      "message_id": "19f9c70236653ca1",
+      "listing_url": "https://seats.aero/i/34AqawEnjWlya5Ketw6T0WBBx4N"
+    },
+    {
+      "origin": "EWR",
+      "dest": "MBJ",
+      "program": "United MileagePlus",
+      "cabin": "ECONOMY",
+      "date": "2026-09-20",
+      "points": 14500,
+      "taxes": 49.6,
+      "currency": "USD",
+      "flight_number": "UA1462",
+      "message_id": "19f9c718a077fc78",
+      "listing_url": "https://seats.aero/i/34LxfWs9FZdW2ME8o8yAxlrgDRo"
+    },
+    {
+      "origin": "EWR",
+      "dest": "MBJ",
+      "program": "United MileagePlus",
+      "cabin": "ECONOMY",
+      "date": "2026-09-13",
+      "points": 14500,
+      "taxes": 49.6,
+      "currency": "USD",
+      "flight_number": "UA1462",
+      "message_id": "19f9c720472b1d15",
+      "listing_url": "https://seats.aero/i/343rvqZKunpnNTpPuA90WVnYV50"
+    },
+    {
+      "origin": "EWR",
+      "dest": "ARN",
+      "program": "Virgin Atlantic",
+      "cabin": "ECONOMY",
+      "date": "2026-10-21",
+      "points": 20500,
+      "taxes": 5.6,
+      "currency": "USD",
+      "flight_number": "SK904",
+      "message_id": "19f9c7dd23edf1ed",
+      "listing_url": "https://seats.aero/i/35x2qEWzR9IDKm8ZU8RjqqmF40d"
     }
   ],
   "serpapi_usage": {
