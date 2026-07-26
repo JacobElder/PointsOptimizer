@@ -5074,11 +5074,11 @@
       "flight_number": "UA188",
       "message_id": "19f9a6e051ad92ac",
       "listing_url": "https://seats.aero/i/3CSgeVoX0H2Xy52uZB9tvfKinoi",
-      "price_attempts": 1
+      "price_attempts": 2
     }
   ],
   "serpapi_usage": {
     "month": "2026-07",
-    "count": 120
+    "count": 121
   }
 }
