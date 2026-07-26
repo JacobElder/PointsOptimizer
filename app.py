@@ -10,6 +10,8 @@ import streamlit as st
 
 import airports
 import award_charts
+import check_alerts
+import deal_log
 import flight_search
 import going_parse
 import ledger
@@ -282,15 +284,19 @@ with tab_award:
                     aw_caption += f" · {award.airlines}"
                 st.caption(aw_caption)
 
-                if st.button("Use this award", key=f"use_award_{i}", use_container_width=True):
+                akey = "|".join([str(award.source), award.origin, award.destination,
+                                 str(award.date), str(award.points), award.cabin])
+                if st.button("Use this award — get CPP", key=f"use_award_{i}", use_container_width=True):
+                    taxes_usd = award.taxes_fees * check_alerts._fx_rate(award.taxes_currency)
                     st.session_state["points_required_input"] = award.points
-                    st.session_state["taxes_fees_input"] = award.taxes_fees
+                    st.session_state["taxes_fees_input"] = round(taxes_usd, 2)
                     if award.known_partner:
                         # Can't write flight_label_input here -- its widget is above, already
                         # instantiated this run. Defer via a flag applied before the widget next run.
                         st.session_state["_label_prefill"] = (
                             f"{award.origin}–{award.destination} {award.cabin.title()}"
                         )
+                    result = {"taxes_usd": taxes_usd, "cash": None, "cpp": None, "verdict": None, "note": None}
                     if flight_search.is_configured():
                         try:
                             with st.spinner("Looking up the cash price for this same flight..."):
@@ -298,10 +304,33 @@ with tab_award:
                                     award.origin, award.destination, award.date, award.cabin, max_results=1
                                 )
                             if cash_offers:
-                                st.session_state["cash_price_input"] = cash_offers[0].price_usd
-                        except (flight_search.NotConfigured, flight_search.SearchFailed):
-                            pass
+                                cash = cash_offers[0].price_usd
+                                st.session_state["cash_price_input"] = cash
+                                cpp = (max(cash - taxes_usd, 0.0) / award.points * 100) if award.points else None
+                                result.update(cash=cash, cpp=cpp, verdict=deal_log.verdict_for(cpp, award.cabin))
+                            else:
+                                result["note"] = ("No live cash price found for this route/date — "
+                                                  "enter it in ✏️ manual below to get CPP.")
+                        except (flight_search.NotConfigured, flight_search.SearchFailed) as e:
+                            result["note"] = f"Cash-price lookup failed ({e}). Enter it in ✏️ manual below."
+                    else:
+                        result["note"] = "SerpApi not configured — enter the cash price in ✏️ manual below."
+                    st.session_state[f"award_result_{akey}"] = result
                     st.rerun()
+
+                # Inline CPP result populated by "Use this award — get CPP".
+                res = st.session_state.get(f"award_result_{akey}")
+                if res and res.get("cpp") is not None:
+                    badge = {"BOOK": "🟢", "BORDERLINE": "🟡", "SKIP": "🔴"}.get(res["verdict"], "⚪")
+                    rc1, rc2 = st.columns([3, 1])
+                    rc1.markdown(f"{badge} **{res['verdict']}** — this flight")
+                    rc1.caption(
+                        f"cash ${res['cash']:,.0f} − ${res['taxes_usd']:.0f} taxes over {award.points:,} pts "
+                        "· full funding + hoard-vs-redeem below"
+                    )
+                    rc2.metric("CPP", f"{res['cpp']:.2f}¢")
+                elif res and res.get("note"):
+                    st.info(res["note"])
 
                 # Interested in this departure? Find a return leg on the reverse route.
                 return_finder.render(
