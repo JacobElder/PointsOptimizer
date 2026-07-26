@@ -5059,9 +5059,7 @@
       "key": "united mileageplus|EWR|JNB|ECONOMY|2027-03-06|45000",
       "checked_at": "2026-07-26T17:06:36Z",
       "notified": true
-    }
-  ],
-  "pending": [
+    },
     {
       "origin": "EWR",
       "dest": "JNB",
@@ -5074,11 +5072,22 @@
       "flight_number": "UA188",
       "message_id": "19f9a6e051ad92ac",
       "listing_url": "https://seats.aero/i/3CSgeVoX0H2Xy52uZB9tvfKinoi",
-      "price_attempts": 3
+      "price_attempts": 3,
+      "taxes_usd": 5.6,
+      "cash_price": null,
+      "cpp": null,
+      "verdict": "NO CASH PRICE",
+      "priced_ok": false,
+      "error": "SerpApi returned HTTP 429. Check your key/quota at serpapi.com.",
+      "price_error": "SerpApi returned HTTP 429. Check your key/quota at serpapi.com.",
+      "key": "united mileageplus|EWR|JNB|ECONOMY|2027-03-19|45000",
+      "checked_at": "2026-07-26T20:06:54Z",
+      "notified": false
     }
   ],
+  "pending": [],
   "serpapi_usage": {
     "month": "2026-07",
-    "count": 122
+    "count": 123
   }
 }
