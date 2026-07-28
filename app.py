@@ -86,12 +86,12 @@ with st.popover("📋 Paste a Going deal"):
         else:
             if deal.route_text:
                 st.session_state["flight_label_input"] = deal.route_text
-            # search_origin/search_dest are now dropdowns -- only set them to a valid
-            # "City (CODE)" option, skipping airports not in the list (avoids a crash).
-            if deal.origin_iata and (_opt := airports.option_from_code(deal.origin_iata)):
-                st.session_state["search_origin"] = _opt
-            if deal.destination_iata and (_opt := airports.option_from_code(deal.destination_iata)):
-                st.session_state["search_dest"] = _opt
+            # search_origin/search_dest accept free text now, so fall back to the
+            # raw code for airports not in the curated dropdown list.
+            if deal.origin_iata:
+                st.session_state["search_origin"] = airports.option_from_code(deal.origin_iata) or deal.origin_iata.upper()
+            if deal.destination_iata:
+                st.session_state["search_dest"] = airports.option_from_code(deal.destination_iata) or deal.destination_iata.upper()
             if deal.price_usd:
                 # Going quotes roundtrip totals; award CPP math is usually one-way.
                 st.session_state["cash_price_input"] = (
@@ -148,20 +148,25 @@ with tab_price:
         lc1, lc2, lc3, lc4 = st.columns(4)
         with lc1:
             origin = st.selectbox("Origin", _AIRPORTS, index=_AIRPORTS.index(airports.DEFAULT_ORIGIN_OPTION),
-                                  key="search_origin", help="Type to filter by city or code")
+                                  key="search_origin", accept_new_options=True,
+                                  help="Pick from the list, or type any city or 3-letter airport code")
         with lc2:
             destination = st.selectbox("Destination", _AIRPORTS, index=None,
-                                       placeholder="Type a city…", key="search_dest")
+                                       placeholder="Type a city or airport code…", key="search_dest",
+                                       accept_new_options=True)
         with lc3:
             dep_date = st.date_input("Departure date")
         with lc4:
             cabin = st.selectbox("Cabin", ["ECONOMY", "PREMIUM_ECONOMY", "BUSINESS", "FIRST"])
 
         if st.button("Search live prices", type="primary"):
-            o_code = airports.code_from_option(origin)
-            d_code = airports.code_from_option(destination)
-            if not o_code or not d_code:
+            o_code, _ = airports.resolve_input(origin)
+            d_code, _ = airports.resolve_input(destination)
+            if not origin or not destination:
                 st.error("Pick both an origin and a destination.")
+            elif not o_code or not d_code:
+                bad = origin if not o_code else destination
+                st.error(f"Couldn't recognize \"{bad}\" — try the 3-letter airport code instead (e.g. JFK).")
             else:
                 st.session_state["flight_offers"] = []
                 try:
@@ -231,10 +236,12 @@ with tab_award:
         ac1, ac2, ac3, ac4 = st.columns(4)
         with ac1:
             award_origin = st.selectbox("Origin", _AWPORTS, index=_AWPORTS.index(airports.DEFAULT_ORIGIN_OPTION),
-                                        key="award_origin", help="Type to filter by city or code")
+                                        key="award_origin", accept_new_options=True,
+                                        help="Pick from the list, or type any city or 3-letter airport code")
         with ac2:
             award_dest = st.selectbox("Destination", _AWPORTS, index=None,
-                                      placeholder="Type a city…", key="award_dest")
+                                      placeholder="Type a city or airport code…", key="award_dest",
+                                      accept_new_options=True)
         with ac3:
             award_date = st.date_input("Departure date", key="award_date")
         with ac4:
@@ -247,10 +254,13 @@ with tab_award:
         )
 
         if st.button("Search award availability", type="primary"):
-            o_code = airports.code_from_option(award_origin)
-            d_code = airports.code_from_option(award_dest)
-            if not o_code or not d_code:
+            o_code, _ = airports.resolve_input(award_origin)
+            d_code, _ = airports.resolve_input(award_dest)
+            if not award_origin or not award_dest:
                 st.error("Pick both an origin and a destination.")
+            elif not o_code or not d_code:
+                bad = award_origin if not o_code else award_dest
+                st.error(f"Couldn't recognize \"{bad}\" — try the 3-letter airport code instead (e.g. JFK).")
             else:
                 st.session_state["award_offers"] = []
                 try:

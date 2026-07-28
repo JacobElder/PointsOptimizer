@@ -78,6 +78,67 @@
       2-Step Verification → App Passwords → delete "PointsOptimizer Deal Radar"
       (or whatever you named it), then remove the two lines from secrets.toml.
 
+## 8. INCIDENT (2026-07-28): LaunchAgent kept auto-pricing after the item-7 pivot; SerpApi quota exhausted
+- [x] The item-7 pivot (2026-07-25) turned off the GitHub Actions schedule, but
+      the Mac **LaunchAgent** (`com.pointsoptimizer.dealradar`, hourly,
+      `RunAtLoad`) was only ever `bootout`'d for a single login session back on
+      2026-07-23 -- macOS reloads LaunchAgents from `~/Library/LaunchAgents` on
+      every new login/reboot, so it silently came back and kept running hourly,
+      auto-pricing the queue and emailing "great deal" alerts the whole time.
+      This is why deal-pricing emails kept arriving after the on-demand pivot.
+- [x] Confirmed via SerpApi's `/account.json`: `this_month_usage: 250/250`,
+      `plan_searches_left: 0` -- **quota is fully exhausted**, renews
+      **2026-08-12**. The internal `deal_log.json` tracker only counted 153 of
+      those 250 calls; the rest came from untracked interactive app usage
+      (Flight Analyzer / Award search "search live prices" clicks) stacked on
+      top of the LaunchAgent's hourly runs. Until 2026-08-12, ALL live cash-price
+      lookups (Flight Analyzer, Award search, Deal Radar's per-deal pricing
+      button) will fail/return nothing -- this is very likely the real cause
+      behind "Stockholm returns no flights", not a Stockholm-specific bug.
+- [x] Fixed 2026-07-28: `launchctl bootout`'d the agent AND `launchctl disable`'d
+      it (persists across reboots/logins this time, unlike the 2026-07-23 fix).
+      Plist left on disk at
+      `~/Library/LaunchAgents/com.pointsoptimizer.dealradar.plist` in case it's
+      ever wanted back, but launchd will refuse to load it while disabled.
+- [ ] After 2026-08-12 when quota resets: verify no automatic pricing resumes
+      (check for new "Deal Radar: priced N pending deal(s)" commits without you
+      clicking anything) -- if any appear, something else re-enabled it.
+
+## 9. Airport dropdown fixes (2026-07-28)
+- [x] `airports.py`'s `_CITY_TO_CODE` is a ~120-entry hand-curated dict shared by
+      both the cash-price search and the rewards/award search in `app.py` (no
+      separate airport list in `seats_aero.py`). Added missing Caribbean entries
+      (Aruba/AUA, Punta Cana/PUJ, Nassau/NAS, San Juan/SJU, St Thomas/STT, St
+      Maarten/SXM) -- previously typing these into the selectbox did nothing
+      because Streamlit's selectbox only matches existing options, it doesn't
+      accept free text.
+- [x] Stockholm was mapped to metro code "STO" (never live-verified for
+      SerpApi/Google Flights, unlike NYC/LON which are). Switched to "ARN"
+      (Stockholm Arlanda, the actual single airport) to remove the ambiguity.
+      Couldn't live-verify against SerpApi (quota exhausted, see item 8) --
+      re-test once quota resets 2026-08-12.
+- [x] **Structural fix, 2026-07-28**: two changes together close the gap instead
+      of playing whack-a-mole forever:
+      1. Deep-audited expansion: a research agent cross-checked every candidate
+         city against OpenFlights' real airport dataset (not memory) and added
+         **418 new verified entries** (534 total, up from ~130) covering US/Canada/
+         Mexico secondary cities, the wider Caribbean & Central America, South
+         America, European secondary cities, Middle East/Africa, and Asia/Pacific.
+         Caught real disambiguation traps along the way (e.g. Medellín's real
+         gateway MDE is filed under city "Rio Negro" in the data, not "Medellin";
+         Providenciales/PLS vs Grand Turk/GDT in Turks & Caicos). See
+         `test_airports.py` for coverage.
+      2. Upgraded Streamlit 1.37.1 -> 1.60.0 (floor raised to >=1.45 in
+         requirements.txt) to use `st.selectbox(..., accept_new_options=True)` --
+         both search tabs in app.py now let you pick from the dropdown OR type
+         any city/IATA code freely, so a city missing from the curated list is
+         no longer a dead end (falls through to `airports.resolve_input()`,
+         which accepts a raw 3-letter code for literally any airport worldwide).
+      Some very-low-relevance-for-a-US-traveler capital-city codes (several
+      West/Central African capitals) were deliberately left out by the audit
+      agent as noise, not oversight -- easy to add on request, codes already
+      confirmed against OpenFlights if wanted later.
+
 ## 7. PIVOT (2026-07-25): on-demand pricing, automatic pricing OFF
 - [x] Chose the "middle path": keep the FREE Gmail capture (cloud routine still
       logs seats.aero alerts into deal_log.json `pending`), but STOP auto-pricing.
@@ -91,10 +152,25 @@
       still auto-redeploys the Streamlit app (brief "Oh no" window if you load it
       mid-redeploy). Much rarer than before. If it ever annoys you, the fix is to
       move deal_log.json off the app branch (bigger change) — left as an option.
-- [ ] Apify Flight Price Scraper (~$0.0003/search, $5 free credit) remains a
-      cheap alternative to SerpApi if on-demand volume ever grows — build it as a
-      flight_search backend behind the same interface. Not needed at on-demand
-      volume (SerpApi's 250/mo is plenty for a handful of manual checks).
+- [x] **Verified 2026-07-28** (see item 8's quota exhaustion incident): Apify
+      Flight Price Scraper (`apify.com/makework36/flight-price-scraper`) is a real,
+      current, self-serve option -- returns actual merged cash prices (Google
+      Flights + Kiwi + Travelpayouts + budget carriers), one-way/round-trip,
+      specific date, cabin class -- matches flight_search's contract. ~$0.0003/merged
+      search, $5 free credit (~16k searches), instant signup via Apify account +
+      API token, no approval/sales call. Confirmed the best fallback for when
+      SerpApi's monthly quota runs out.
+      Secondary backup if Apify ever has an outage: **Duffel**
+      (`duffel.com`) -- also instant self-serve, real live cash fares, but its
+      free quota is tied to a booking ratio (1,500 searches per booking); with
+      zero bookings that's effectively $0.005/search instead of a free tier.
+      Ruled out: Kiwi.com Tequila API is now invitation-only for new partners
+      (no self-serve path); Travelpayouts/Aviasales data is a 7-day cache of other
+      users' searches, too stale for exact-date CPP comparisons; Amadeus
+      self-service stays decommissioned (item 4 note).
+- [ ] Not yet built: a `flight_search`-compatible Apify backend as an automatic
+      or manual fallback when SerpApi returns 429/quota-exhausted. Worth building
+      before the *next* time SerpApi runs dry, given item 8 just happened.
 
 ## 6. DONE: GitHub Actions removed the "Mac must be on" dependency (superseded by #7)
 - [x] `price_pending_deals.py` fixed to be cross-platform safe (was going to

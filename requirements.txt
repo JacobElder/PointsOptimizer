@@ -2,6 +2,9 @@
 # Community Cloud's runtime Python (3.13) has no prebuilt wheel for numpy 2.0.2,
 # which caused "Error installing requirements." Ranges let pip pick a wheel that
 # matches the runtime Python. All app APIs used are stable across these ranges.
-streamlit>=1.37,<2
+# Floor raised to 1.45 (2026-07-28): app.py's airport selectboxes now use
+# accept_new_options, added in streamlit 1.45.0 -- older versions would raise
+# TypeError on that kwarg.
+streamlit>=1.45,<2
 numpy>=2.0,<3
 requests>=2.32,<3
