@@ -507,7 +507,13 @@
     "19fa798db98348e9",
     "19fa798ba7863ac7",
     "19fa798b3f03dbc7",
-    "19fa6e986bfcef53"
+    "19fa6e986bfcef53",
+    "19fa89a8041445a5",
+    "19fa892855f39707",
+    "19fa86cb87441f9b",
+    "19fa86bdcdbcec71",
+    "19fa7ea16b2adb41",
+    "19fa84b61cc77ebd"
   ],
   "deals": [
     {
@@ -6896,6 +6902,58 @@
       "flight_number": "LO27, LO147",
       "message_id": "19fa6e986bfcef53",
       "listing_url": "https://seats.aero/i/32Jp60ICSBwIx92AmlR8zEl9HV1"
+    },
+    {
+      "message_id": "19fa89a8041445a5",
+      "origin": "JFK",
+      "dest": "PRG",
+      "program": "Air France/KLM Flying Blue",
+      "cabin": "ECONOMY",
+      "date": "2026-10-20",
+      "points": 27000,
+      "taxes": 33.5,
+      "currency": "USD",
+      "flight_number": "DL78",
+      "listing_url": "https://seats.aero/i/34dbuJ5ZoXLoqrDbE3OKKWs2qhr"
+    },
+    {
+      "message_id": "19fa892855f39707",
+      "origin": "JFK",
+      "dest": "FRA",
+      "program": "Air Canada Aeroplan",
+      "cabin": "BUSINESS",
+      "date": "2027-01-12",
+      "points": 60000,
+      "taxes": 79.9,
+      "currency": "CAD",
+      "flight_number": "LH401",
+      "listing_url": "https://seats.aero/i/38cac127ImwZV1sgNNHU0FgpVZt"
+    },
+    {
+      "message_id": "19fa86cb87441f9b",
+      "origin": "JFK",
+      "dest": "FRA",
+      "program": "Air Canada Aeroplan",
+      "cabin": "BUSINESS",
+      "date": "2027-01-11",
+      "points": 60000,
+      "taxes": 79.9,
+      "currency": "CAD",
+      "flight_number": "LH401",
+      "listing_url": "https://seats.aero/i/38b1IciZHsgeiJSPs0kkgjL4eqH"
+    },
+    {
+      "message_id": "19fa7ea16b2adb41",
+      "origin": "JFK",
+      "dest": "BCN",
+      "program": "Air France/KLM Flying Blue",
+      "cabin": "ECONOMY",
+      "date": "2027-04-11",
+      "points": 25000,
+      "taxes": 33.5,
+      "currency": "USD",
+      "flight_number": "DL128",
+      "listing_url": "https://seats.aero/i/3CVVUKugIPXGp8rCHXiU1qiUvyE"
     }
   ],
   "serpapi_usage": {
