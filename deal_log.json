@@ -538,7 +538,13 @@
     "19fa8e175c69be9c",
     "19fa8da51d967a9a",
     "19fa8d628998fcdc",
-    "19fa8ca70ef9aca1"
+    "19fa8ca70ef9aca1",
+    "19faaecae8adc9b5",
+    "19faaeb7112b9700",
+    "19faacf28514c87f",
+    "19faaa0b4c43fa17",
+    "19faaa0b8a0a27b7",
+    "19faa7e109e4a2f1"
   ],
   "deals": [
     {
@@ -7245,6 +7251,71 @@
       "flight_number": "SK904",
       "message_id": "19fa8da51d967a9a",
       "listing_url": "https://seats.aero/i/33d4tYNtmzaGJB8XZlVZaD3h16J"
+    },
+    {
+      "origin": "JFK",
+      "dest": "MDE",
+      "program": "Air Canada Aeroplan",
+      "cabin": "ECONOMY",
+      "date": "2027-01-18",
+      "points": 20000,
+      "taxes": 101.0,
+      "currency": "CAD",
+      "flight_number": "AV145",
+      "message_id": "19faaecae8adc9b5",
+      "listing_url": "https://seats.aero/i/38ud3r93dlffcsTYH9d5MYWs4qJ"
+    },
+    {
+      "origin": "JFK",
+      "dest": "MDE",
+      "program": "Air Canada Aeroplan",
+      "cabin": "ECONOMY",
+      "date": "2027-01-19",
+      "points": 20000,
+      "taxes": 101.0,
+      "currency": "CAD",
+      "flight_number": "AV145",
+      "message_id": "19faaeb7112b9700",
+      "listing_url": "https://seats.aero/i/38xNzXXhbiWev7joKMLknPaGQJG"
+    },
+    {
+      "origin": "EWR",
+      "dest": "ZRH",
+      "program": "Air Canada Aeroplan",
+      "cabin": "BUSINESS",
+      "date": "2027-02-02",
+      "points": 60000,
+      "taxes": 79.9,
+      "currency": "CAD",
+      "flight_number": "LX19",
+      "message_id": "19faacf28514c87f",
+      "listing_url": "https://seats.aero/i/39b6oV8rp8nup7DVsfhx77aiKgu"
+    },
+    {
+      "origin": "JFK",
+      "dest": "SCL",
+      "program": "Air France/KLM Flying Blue",
+      "cabin": "BUSINESS",
+      "date": "2026-09-02",
+      "points": 55000,
+      "taxes": 59.75,
+      "currency": "USD",
+      "flight_number": "CM807, CM474",
+      "message_id": "19faaa0b8a0a27b7",
+      "listing_url": "https://seats.aero/i/32RQALbbdGP8J723Um14MmY3Zzf"
+    },
+    {
+      "origin": "JFK",
+      "dest": "DUB",
+      "program": "Air France/KLM Flying Blue",
+      "cabin": "ECONOMY",
+      "date": "2026-09-03",
+      "points": 21000,
+      "taxes": 33.5,
+      "currency": "USD",
+      "flight_number": "DL44",
+      "message_id": "19faa7e109e4a2f1",
+      "listing_url": "https://seats.aero/i/32U7k4mMEoVAuSSvKJqp90ZUrVm"
     }
   ],
   "serpapi_usage": {
