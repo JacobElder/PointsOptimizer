@@ -31,8 +31,9 @@ def test_parse_converts_taxes_from_cents_and_skips_unavailable_cabins():
 def test_transferable_sources_only_cover_active_pools():
     sources = award_scanner.transferable_sources()
     assert "aeroplan" in sources and "united" in sources      # Chase UR (held)
-    assert "qatar" not in sources and "turkish" not in sources  # only via planned cards
-    assert "qatar" in award_scanner.transferable_sources(include_planned=True)
+    assert "qatar" in sources and "alaska" in sources            # Bilt (points kept, no card needed)
+    assert "finnair" not in sources and "qantas" not in sources  # only via planned cards (Venture X)
+    assert "finnair" in award_scanner.transferable_sources(include_planned=True)
 
 
 def _rows():
@@ -107,3 +108,48 @@ def test_first_class_is_priced_against_business_fare(monkeypatch):
     s.p_great = 0.9
     deal_finder.price_promising([s], max_lookups=5, log=lambda m: None)
     assert seen == ["BUSINESS"] and s.cash == 5000.0
+
+
+def test_watch_entry_matching_and_bar():
+    w = deal_finder.WatchEntry.from_config({"label": "Japan", "dests": ["nrt", "HND"], "cabins": ["business"],
+                                            "start": "2027-03-20", "end": "2027-04-10", "bar": 1.8})
+    c = _scored("NRT", "BUSINESS", "aeroplan", "JFK", 75000, 3000, date="2027-03-25").c
+    assert w.matches(c) and w.bar_for("BUSINESS") == 1.8
+    assert not w.matches(_scored("NRT", "BUSINESS", "aeroplan", "JFK", 75000, 3000, date="2027-05-01").c)
+    assert not w.matches(_scored("NRT", "ECONOMY", "aeroplan", "JFK", 35000, 900, date="2027-03-25").c)
+    assert deal_finder.WatchEntry.from_config({"dests": ["LIS"]}).bar_for("ECONOMY") == 1.5
+
+
+def test_watch_report_uses_entry_bar_even_below_the_usual_bar():
+    w = deal_finder.WatchEntry.from_config({"label": "Lisbon", "dests": ["LIS"], "bar": 1.2})
+    s = _scored("LIS", "ECONOMY", "flyingblue", "JFK", 30000, 450)  # 1.33c: below 1.5, above 1.2
+    s.watch = [w]
+    assert deal_finder.group_leaders([s]) == []
+    (group,) = deal_finder.watch_report([s], [w], rt_cache={}, round_trip=False)
+    assert len(group["deals"]) == 1 and group["deals"][0][1]["watch_bar"] == 1.2
+
+
+class _RT:
+    def __init__(self, price, stops):
+        self.price_usd, self.stops = price, stops
+
+
+def test_round_trip_half_replaces_higher_one_way_fare(monkeypatch):
+    s = _scored("CPT", "BUSINESS", "united", "EWR", 88000, 5084, date="2027-02-09")
+    s.one_way_cash = 5084.0
+    monkeypatch.setattr(deal_finder.flight_search, "search_round_trip_offers",
+                        lambda *a, **k: [_RT(5038.0, 1), _RT(3000.0, 3)])
+    s.c.direct = True
+    from datetime import date
+    assert deal_finder.apply_round_trip(s, {}, today=date(2026, 9, 16))
+    assert s.cash == 2519.0 and s.round_trip_half == 2519.0  # 3-stop RT ignored for a nonstop award
+    assert "round trip" in s.cash_basis and s.cpp == pytest.approx((2519 - 50) / 88000 * 100)
+
+
+def test_round_trip_does_not_raise_a_cheaper_one_way(monkeypatch):
+    s = _scored("LIS", "ECONOMY", "flyingblue", "JFK", 20000, 292, date="2026-11-12")
+    s.one_way_cash = 292.0
+    monkeypatch.setattr(deal_finder.flight_search, "search_round_trip_offers", lambda *a, **k: [_RT(700.0, 1)])
+    from datetime import date
+    deal_finder.apply_round_trip(s, {}, today=date(2026, 9, 16))
+    assert s.cash == 292.0 and s.round_trip_half == 350.0

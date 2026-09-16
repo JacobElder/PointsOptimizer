@@ -322,6 +322,34 @@ def _parse_google_flights_html(html: str, cabin: str) -> list[FlightOffer]:
     return offers
 
 
+def search_round_trip_offers(origin: str, destination: str, depart_date: str, return_date: str,
+                             cabin: str = "ECONOMY") -> list[FlightOffer]:
+    """Round-trip fares (free Google Flights only; never spends SerpApi quota).
+
+    Each offer's price_usd is the ROUND-TRIP TOTAL; segments/stops describe the
+    outbound leg. Raises SearchFailed if fast-flights is unavailable or fails.
+    """
+    if not fast_flights_available():
+        raise SearchFailed("Round-trip check needs fast-flights.")
+    from fast_flights import FlightQuery, create_query, fetch_flights_html
+
+    origin, destination, cabin = origin.strip().upper(), destination.strip().upper(), cabin.strip().upper()
+    query = create_query(
+        flights=[FlightQuery(date=depart_date, from_airport=origin, to_airport=destination),
+                 FlightQuery(date=return_date, from_airport=destination, to_airport=origin)],
+        seat=_FF_SEAT.get(cabin, "economy"),
+        trip="round-trip",
+        currency="USD",
+        language="en",
+    )
+    try:
+        return _parse_google_flights_html(fetch_flights_html(query), cabin)
+    except SearchFailed:
+        raise
+    except Exception as e:
+        raise SearchFailed(f"Round-trip lookup failed ({type(e).__name__}).")
+
+
 def serpapi_account_remaining() -> int | None:
     """Searches left this month per SerpApi's own account endpoint (free; does
     not consume quota). None if unknown. Authoritative, unlike any local counter."""

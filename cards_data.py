@@ -19,7 +19,7 @@ class Card:
     name: str
     issuer: str
     pool_key: str  # which POOL this card's spend accrues to ("" if none)
-    status: str  # "held" or "planned"
+    status: str  # "held", "planned", or "closed" (account closed; points may remain)
     unlocks_transfer: bool = False  # True if holding this card unlocks transfer-out for its pool
     notes: str = ""
 
@@ -39,6 +39,8 @@ class Pool:
     partners: list = field(default_factory=list)
     portal_rate_cents: float | None = None  # fixed cent value if redeemed via issuer travel portal
     fixed_value_note: str = ""
+    # True when the loyalty membership itself allows transfers, with no card required.
+    transfers_without_card: bool = False
 
 
 # ── Pools ──────────────────────────────────────────────────────────────────
@@ -137,6 +139,41 @@ POOLS: dict[str, Pool] = {
             Partner("Wyndham Rewards", "hotel", "1:2"),
         ],
     ),
+    "bilt": Pool(
+        key="bilt",
+        currency_name="Bilt Points",
+        transferable=True,
+        portal_rate_cents=1.0,
+        # Your Bilt Mastercard is closed but the points were kept. Confirm in the Bilt app
+        # that transfers still work for your account; if not, set this to False.
+        transfers_without_card=True,
+        # Verified 2026-09-16 against point.me and awardtravelfinder.com; only partners
+        # both list are included. Contested (one source only): American AAdvantage,
+        # Spirit, Virgin Red, Accor (3:2), Wyndham, Preferred Hotels (1:2).
+        partners=[
+            Partner("Aer Lingus AerClub", "airline", "1:1"),
+            Partner("Air Canada Aeroplan", "airline", "1:1"),
+            Partner("Air France-KLM Flying Blue", "airline", "1:1"),
+            Partner("Alaska Atmos Rewards", "airline", "1:1"),
+            Partner("Avianca LifeMiles", "airline", "1:1"),
+            Partner("British Airways Executive Club", "airline", "1:1"),
+            Partner("Cathay Pacific Asia Miles", "airline", "1:1"),
+            Partner("Emirates Skywards", "airline", "1:1"),
+            Partner("Etihad Guest", "airline", "1:1"),
+            Partner("Iberia Plus", "airline", "1:1"),
+            Partner("JAL Mileage Bank", "airline", "1:1"),
+            Partner("Qatar Airways Privilege Club", "airline", "1:1"),
+            Partner("Southwest Rapid Rewards", "airline", "1:1"),
+            Partner("TAP Air Portugal Miles&Go", "airline", "1:1"),
+            Partner("Turkish Airlines Miles&Smiles", "airline", "1:1"),
+            Partner("United MileagePlus", "airline", "1:1"),
+            Partner("Virgin Atlantic Flying Club", "airline", "1:1"),
+            Partner("Hilton Honors", "hotel", "1:1"),
+            Partner("IHG One Rewards", "hotel", "1:1"),
+            Partner("Marriott Bonvoy", "hotel", "1:1"),
+            Partner("World of Hyatt", "hotel", "1:1"),
+        ],
+    ),
     "usbank_points": Pool(
         key="usbank_points",
         currency_name="U.S. Bank Points",
@@ -172,6 +209,8 @@ CARDS: list[Card] = [
     Card("Chase Sapphire Preferred", "Chase", "chase_ur", "held", unlocks_transfer=True),
     Card("Citi Custom Cash", "Citi", "citi_ty", "held"),
     Card("Citi Double Cash", "Citi", "citi_ty", "held"),
+    Card("Bilt Mastercard", "Wells Fargo/Bilt", "bilt", "closed",
+         notes="Closed; points kept in your Bilt account"),
     # Roadmap
     Card("Capital One Venture X", "Capital One", "cap1_miles", "planned", unlocks_transfer=True,
          notes="Repeatedly declined — reapply once inquiries/velocity cool down"),
@@ -186,6 +225,8 @@ def pool_is_active(pool_key: str) -> bool:
     pool = POOLS[pool_key]
     if not pool.transferable:
         return False
+    if pool.transfers_without_card:
+        return True
     return any(c.pool_key == pool_key and c.status == "held" and c.unlocks_transfer for c in CARDS)
 
 

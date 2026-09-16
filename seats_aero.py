@@ -40,6 +40,9 @@ _CABIN_PREFIX = {"ECONOMY": "Y", "PREMIUM_ECONOMY": "W", "BUSINESS": "J", "FIRST
 SOURCE_TO_PARTNER = {
     "aeroplan": "Air Canada Aeroplan",
     "aeromexico": "Aeromexico Rewards",
+    "alaska": "Alaska Atmos Rewards",  # added 2026-09-16 (live-verified)
+    "american": "American Airlines AAdvantage",  # added 2026-09-16 (live-verified)
+    "emirates": "Emirates Skywards",  # added 2026-09-16 (live-verified)
     "british": "British Airways Executive Club",
     "etihad": "Etihad Guest",
     "finnair": "Finnair Plus",

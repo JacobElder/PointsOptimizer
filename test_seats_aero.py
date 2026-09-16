@@ -56,7 +56,7 @@ def test_total_taxes_raw_is_converted_from_cents_to_dollars(monkeypatch):
     assert o.points == 57500
     assert o.taxes_fees == 733.50  # NOT 73350.0
     assert o.taxes_currency == "USD"
-    assert o.program == "American"  # unmapped source -> title-cased slug
+    assert o.program == "American Airlines AAdvantage"  # mapped since 2026-09-16
     assert o.direct is True
 
 

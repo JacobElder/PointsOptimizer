@@ -37,7 +37,8 @@ st.header("Point Balances")
 st.caption("Saved locally to balances.json (gitignored) and used by the Flight Analyzer.")
 
 balances = ledger.load_balances()
-points_pools = [p for p in POOLS.values() if p.key != "cashback" and cards_in_pool(p.key, status="held")]
+points_pools = [p for p in POOLS.values() if p.key != "cashback"
+                and (cards_in_pool(p.key, status="held") or p.transfers_without_card)]
 
 bal_cols = st.columns(len(points_pools))
 new_balances = {}
@@ -61,7 +62,7 @@ st.header("Point Pools & Transfer Partners")
 for pool_key, pool in POOLS.items():
     cards_held = cards_in_pool(pool_key, status="held")
     cards_planned = cards_in_pool(pool_key, status="planned")
-    if not cards_held and not cards_planned:
+    if not cards_held and not cards_planned and not pool.transfers_without_card:
         continue
 
     active = pool_is_active(pool_key)
@@ -69,6 +70,8 @@ for pool_key, pool in POOLS.items():
     with st.expander(f"{icon} {pool.currency_name}", expanded=active and pool.transferable):
         holder_names = ", ".join(c.name for c in cards_held) or "none"
         st.write(f"**Earned by:** {holder_names}")
+        if pool.transfers_without_card and not cards_held:
+            st.caption("No open card needed: your membership balance can still be transferred.")
 
         if not pool.transferable:
             st.info(pool.fixed_value_note)

@@ -75,6 +75,13 @@ def _render_digest() -> None:
         return
     top = digest.get("top", [])
     scan = digest.get("scan", {})
+    for group in digest.get("watchlist", []):
+        st.header(f"⭐ Watchlist: {group['label']}")
+        if not group["deals"]:
+            st.caption(f"No deal clears this entry's bar yet ({group['matched_awards']:,} matching awards, "
+                       f"{group['priced']} priced).")
+        for d in group["deals"]:
+            _deal_card(d, bar=d.get("watch_bar"), surplus=d.get("watch_surplus_usd"))
     st.header(f"🏆 Deal Finder: top {len(top)} of {scan.get('candidates', 0):,} awards")
     st.caption(
         f"Scanned {digest.get('generated_at', '?')} across {', '.join(scan.get('sources', []))}. "
@@ -83,16 +90,24 @@ def _render_digest() -> None:
         "origins and programs are listed under it. Award space moves fast: re-check on seats.aero."
     )
     for i, d in enumerate(top):
-        with st.container(border=True):
+        _deal_card(d, rank=i + 1)
+    st.divider()
+
+
+def _deal_card(d: dict, rank: int | None = None, bar: float | None = None, surplus: float | None = None) -> None:
+    bar = bar if bar is not None else d["great_floor"]
+    surplus = surplus if surplus is not None else d["surplus_usd"]
+    with st.container(border=True):
             c1, c2 = st.columns([3, 1])
             new = " 🆕" if d.get("new") else ""
-            c1.markdown(f"**{i + 1}. {d['origin']} → {d['dest']}** · {d['cabin'].title()}{new}")
+            prefix = f"{rank}. " if rank else ""
+            c1.markdown(f"**{prefix}{d['origin']} → {d['dest']}** · {d['cabin'].title()}{new}")
             c1.caption(
                 f"{d['program']} · {d['date']} · {d['points']:,} pts + ${d['taxes_usd']:.0f} taxes · "
                 f"{d['seats']} seat(s){' · nonstop' if d.get('direct') else ''}"
                 f"{' · ' + d['airlines'] if d.get('airlines') else ''}"
             )
-            approx = " (fare from a date within 7 days)" if d.get("cash_is_approx") else ""
+            approx = " (one-way fare from a date within 7 days)" if d.get("cash_is_approx") else ""
             vs_biz = " · first class valued against the business fare" if d["cabin"] == "FIRST" else ""
             basis = f" ({d['cash_basis']})" if d.get("cash_basis") else ""
             own = f" · award airline's own fare ${d['same_carrier_cash']:,.0f}" if d.get("same_carrier_cash") else ""
@@ -102,9 +117,11 @@ def _render_digest() -> None:
                            + (" …" if len(d["other_dates"]) > 8 else ""))
             if d.get("alternatives"):
                 c1.caption("Alternatives: " + "; ".join(d["alternatives"]))
+            if d.get("round_trip_half") is not None and d.get("one_way_cash"):
+                c1.caption(f"One-way ${d['one_way_cash']:,.0f} · half of a 7-night round trip "
+                           f"${d['round_trip_half']:,.0f}")
             c2.metric("CPP", f"{d['cpp']:.2f}¢")
-            c2.caption(f"+${d['surplus_usd']:,.0f} above the bar")
-    st.divider()
+            c2.caption(f"+${surplus:,.0f} above the {bar:.1f}¢ bar")
 
 
 _render_digest()

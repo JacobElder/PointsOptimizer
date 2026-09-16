@@ -56,8 +56,10 @@ For the scheduled Deal Finder, add the same keys as GitHub repo secrets (Setting
 1. **Scan** (`award_scanner.py`) — seats.aero Cached Search across `scan_config.json` routes, only in programs your **active** point pools can transfer to. ~16,000 awards for ~21 API calls.
 2. **Estimate** (`fare_model.py`) — predicted cash fare with uncertainty for every award (regression on distance, cabin, region; per-route corrections as real fares accumulate), giving the probability it clears the cabin's great-deal bar.
 3. **Price** (`cash_quotes.py`) — real Google Flights fares for the most promising candidates, highest expected value first. Quotes are saved in `cash_quotes.json` and reused for dates within ±7 days on the same route and cabin.
-4. **Rank** — confirmed deals by dollars saved above the bar: `(cash − taxes) − points × bar`. One entry per destination + cabin; other dates, origins and programs listed under it; 5 slots reserved for economy.
-5. **Report** — `deal_digest.json` (shown on Deal Radar) and an email of deals not reported in the last 14 days.
+4. **Round-trip check** — for deals near the top, also price a 7-night round trip. The award is valued against the **lower** of the one-way fare and half the round trip (one-way fares are often far above half a round trip: EWR–CPT business $5,084 one-way vs $2,519 per direction).
+5. **Rank** — confirmed deals by dollars saved above the bar: `(cash − taxes) − points × bar`. One entry per destination + cabin; other dates, origins and programs listed under it; 5 slots reserved for economy.
+6. **Watchlist** — destinations you care about are always reported when they clear their bar, even outside the top 20 (see below).
+7. **Report** — `deal_digest.json` (shown on Deal Radar) and an email of deals not reported in the last 14 days, watchlist hits first.
 
 ### Which cash fare an award is compared against
 
@@ -78,7 +80,18 @@ Defined once in `deal_log.py` (`verdict_for`) and used everywhere: Flight Analyz
 ### Changing what gets scanned
 
 - **Routes, cabins, date window:** edit `scan_config.json`.
-- **Programs:** follow your cards automatically. Getting a new card (e.g. Capital One Venture X): change its `status` from `"planned"` to `"held"` in `cards_data.py`; its pool becomes active and its airline partners that seats.aero covers are scanned from the next run. `python deal_finder.py --include-planned` previews that without changing anything.
+- **Watchlist:** add entries to `watchlist` in `scan_config.json`. Only `dests` is required:
+
+  ```json
+  "watchlist": [
+    {"label": "Japan cherry blossoms", "dests": ["NRT", "HND"], "cabins": ["BUSINESS"],
+     "start": "2027-03-20", "end": "2027-04-10", "bar": 1.8},
+    {"label": "Lisbon, any time", "dests": ["LIS"]}
+  ]
+  ```
+
+  `origins` and `cabins` narrow the match, `start`/`end` bound travel dates, and `bar` sets the CPP to report at (omit it for the usual 1.5¢/2.0¢). Watchlist destinations are added to the scan automatically and get priority for price lookups.
+- **Programs:** follow your point pools automatically (Chase UR, Wells Fargo, and Bilt, whose balance can be transferred without an open card). Getting a new card (e.g. Capital One Venture X): change its `status` from `"planned"` to `"held"` in `cards_data.py`; its pool becomes active and its airline partners that seats.aero covers are scanned from the next run. `python deal_finder.py --include-planned` previews that without changing anything.
 
 ---
 
