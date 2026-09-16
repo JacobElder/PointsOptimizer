@@ -51,12 +51,14 @@ MIN_P_GREAT_TO_PRICE = 0.2
 MIN_P_WATCH_TO_PRICE = 0.05
 WATCH_PRIORITY_BOOST = 5.0
 DEFAULT_MAX_LOOKUPS = 150
+DEFAULT_MAX_WATCH_LOOKUPS = 80  # separate budget so a long watchlist can't starve the general scan
 DEFAULT_TOP = 20
 REPORT_COOLDOWN_DAYS = 14
 SERPAPI_CAP = 5
 ROUND_TRIP_STAY_DAYS = 7
 ROUND_TRIP_CHECK_EXTRA = 15  # also round-trip-check this many runners-up, since leaders can drop out
-WATCH_DEALS_PER_ENTRY = 3
+WATCH_DEALS_PER_ENTRY = 2
+WATCH_EMAIL_MAX = 10  # most valuable new watchlist hits per email; the rest are on Deal Radar
 
 
 def price_cabin(cabin: str) -> str:
@@ -200,43 +202,84 @@ def _pricing_priority(s: Scored) -> float:
     return upside
 
 
-def price_promising(scored: list[Scored], max_lookups: int, log=print) -> dict:
-    """Attach real fares, spending live lookups on the highest expected value first."""
-    stats = {"cached": 0, "live": 0, "no_fare": 0, "failed": 0, "skipped_low_p": 0}
-    quotes = cash_quotes.load()
-    for s in sorted(scored, key=lambda s: -_pricing_priority(s)):
-        q = cash_quotes.find_cached(quotes, s.c.origin, s.c.dest, s.c.date, price_cabin(s.c.cabin))
-        if q is not None:
-            if q.price_usd is not None:
-                _apply_quote(s, q)
-                stats["cached"] += 1
+def price_promising(scored: list[Scored], max_lookups: int, log=print, max_watch_lookups: int = 0,
+                    watchlist: list[WatchEntry] | None = None) -> dict:
+    """Attach real fares, spending live lookups on the highest expected value first.
+
+    Watchlist matches get a first pass with their own budget, shared ROUND-ROBIN
+    across entries (otherwise one entry with thousands of matches, like the
+    Caribbean, takes it all). Then everything competes for max_lookups.
+    """
+    stats = {"cached": 0, "live": 0, "watch_live": 0, "no_fare": 0, "failed": 0, "skipped_low_p": 0}
+    state = {"quotes": cash_quotes.load(), "stop": False}
+    if max_watch_lookups and watchlist:
+        queues = []
+        for w in watchlist:
+            mine = [s for s in scored if any(x is w for x in s.watch)]
+            if mine:
+                queues.append(sorted(mine, key=lambda s: -_pricing_priority(s)))
+        spent = 0
+        while queues and spent < max_watch_lookups and not state["stop"]:
+            for q in list(queues):
+                while q:  # advance this entry until it spends one live lookup (cached/skipped are free)
+                    if _price_one(q.pop(0), state, stats, log) == "live":
+                        spent += 1
+                        break
+                if not q:
+                    queues.remove(q)
+                if spent >= max_watch_lookups or state["stop"]:
+                    break
+        stats["watch_live"], stats["live"] = stats["live"], 0
+    live = 0
+    for s in sorted((s for s in scored if s.cash is None), key=lambda s: -_pricing_priority(s)):
+        if state["stop"]:
+            break
+        if live >= max_lookups:
+            _price_one(s, state, stats, log, allow_live=False)
             continue
-        if s.p_great < MIN_P_GREAT_TO_PRICE and not (s.watch and s.p_watch >= MIN_P_WATCH_TO_PRICE):
-            stats["skipped_low_p"] += 1
-            continue
-        if stats["live"] >= max_lookups:
-            continue
-        try:
-            q = cash_quotes.get_quote(s.c.origin, s.c.dest, s.c.date, price_cabin(s.c.cabin))
-            stats["live"] += 1
-            quotes = cash_quotes.load()
-        except cash_quotes.OutOfWindow:
-            continue
-        except flight_search.QuotaExhausted as e:
-            log(f"Stopping live lookups: {e}")
-            max_lookups = stats["live"]
-            continue
-        except (flight_search.NotConfigured, flight_search.SearchFailed) as e:
-            stats["failed"] += 1
-            if stats["failed"] >= 5 and stats["live"] == 0:
-                log(f"Cash lookups failing ({e}); stopping.")
-                break
-            continue
-        if q is None or q.price_usd is None:
-            stats["no_fare"] += 1
-            continue
-        _apply_quote(s, q)
+        if _price_one(s, state, stats, log) == "live":
+            live += 1
+    stats["live"] = live
     return stats
+
+
+def _price_one(s: Scored, state: dict, stats: dict, log, allow_live: bool = True) -> str:
+    """Price one candidate from cache or live. Returns "cached", "live", or "skipped"."""
+    if s.cash is not None:
+        return "skipped"
+    q = cash_quotes.find_cached(state["quotes"], s.c.origin, s.c.dest, s.c.date, price_cabin(s.c.cabin))
+    if q is not None:
+        if q.price_usd is not None:
+            _apply_quote(s, q)
+            stats["cached"] += 1
+        return "cached"
+    if not allow_live:
+        return "skipped"
+    if s.p_great < MIN_P_GREAT_TO_PRICE and not (s.watch and s.p_watch >= MIN_P_WATCH_TO_PRICE):
+        stats["skipped_low_p"] += 1
+        return "skipped"
+    try:
+        q = cash_quotes.get_quote(s.c.origin, s.c.dest, s.c.date, price_cabin(s.c.cabin))
+        state["quotes"] = cash_quotes.load()
+    except cash_quotes.OutOfWindow:
+        return "skipped"
+    except flight_search.QuotaExhausted as e:
+        log(f"Stopping live lookups: {e}")
+        state["stop"] = True
+        return "skipped"
+    except (flight_search.NotConfigured, flight_search.SearchFailed) as e:
+        stats["live"] += 1
+        stats["failed"] += 1
+        if stats["failed"] >= 5 and stats["live"] == 0 and stats["watch_live"] == 0:
+            log(f"Cash lookups failing ({e}); stopping.")
+            state["stop"] = True
+        return "live"
+    stats["live"] += 1
+    if q is None or q.price_usd is None:
+        stats["no_fare"] += 1
+    else:
+        _apply_quote(s, q)
+    return "live"
 
 
 # ── round trip ───────────────────────────────────────────────────────────────
@@ -375,7 +418,7 @@ def _email_dict(d: dict) -> dict:
 
 
 def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = False,
-        round_trip: bool = True, log=print) -> dict:
+        round_trip: bool = True, log=print, max_watch_lookups: int = DEFAULT_MAX_WATCH_LOOKUPS) -> dict:
     flight_search.SERPAPI_MAX_CALLS = SERPAPI_CAP
     started = datetime.now(timezone.utc)
     config = award_scanner.load_config()
@@ -395,7 +438,8 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
     log(f"Estimates: {promising:,} candidates >= {MIN_P_GREAT_TO_PRICE:.0%} chance of clearing the bar; "
         f"{sum(1 for s in scored if s.watch):,} match the watchlist")
 
-    price_stats = price_promising(scored, max_lookups, log=log)
+    price_stats = price_promising(scored, max_lookups, log=log, max_watch_lookups=max_watch_lookups,
+                                  watchlist=watchlist)
     log(f"Pricing: {price_stats}")
 
     digest = _load_digest()
@@ -422,7 +466,8 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
         watch_out.append({"label": g["label"], "matched_awards": g["matched_awards"],
                           "priced": g["priced"], "deals": [d for _, d in g["deals"]]})
 
-    fresh = [(k, d) for k, d in watch_pairs + top_pairs if d["new"]]
+    fresh_watch = sorted([(k, d) for k, d in watch_pairs if d["new"]], key=lambda kd: -kd[1]["watch_surplus_usd"])
+    fresh = fresh_watch[:WATCH_EMAIL_MAX] + [(k, d) for k, d in top_pairs if d["new"]]
     emailed = 0
     if send_email and fresh and deal_email.is_configured():
         deals = [_email_dict(d) for _, d in fresh]
@@ -472,12 +517,14 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--max-lookups", type=int, default=DEFAULT_MAX_LOOKUPS)
     ap.add_argument("--top", type=int, default=DEFAULT_TOP)
+    ap.add_argument("--max-watch-lookups", type=int, default=DEFAULT_MAX_WATCH_LOOKUPS)
     ap.add_argument("--no-email", action="store_true")
     ap.add_argument("--no-round-trip", action="store_true", help="skip the round-trip fare check")
     ap.add_argument("--include-planned", action="store_true",
                     help="also scan programs reachable only from cards you plan to get")
     args = ap.parse_args(argv)
-    out = run(args.max_lookups, args.top, not args.no_email, args.include_planned, not args.no_round_trip)
+    out = run(args.max_lookups, args.top, not args.no_email, args.include_planned, not args.no_round_trip,
+              max_watch_lookups=args.max_watch_lookups)
     for g in out["watchlist"]:
         print(f"\n⭐ {g['label']}: {len(g['deals'])} deal(s) from {g['matched_awards']:,} matching awards "
               f"({g['priced']} priced)")

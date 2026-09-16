@@ -27,27 +27,29 @@ class SweetSpot:
 
 
 SWEET_SPOTS: list[SweetSpot] = [
-    # ── Virgin Atlantic Flying Club (Chase UR 1:1, WF 1:1) ─────────────────
+    # ── Virgin Atlantic Flying Club (Chase UR 1:1, WF 1:1, Bilt 1:1) ───────
     SweetSpot(
         "Virgin Atlantic Flying Club", "US West Coast → Japan (ANA)", "First (The Suite)",
-        60000, "chart", "2026-07-14",
-        "One of the best redemptions anywhere: ~$10k+ cash seats. 55k from some cities. "
-        "Book via Virgin as ANA partner award; minimal surcharges.",
+        72500, "chart", "2026-09-16",
+        "Up from 60k. East/Central US 85,000; Hawaii 57,500. Still one of the best uses "
+        "of points (~$10k+ cash seats). Phone booking only; ANA carrier surcharges apply.",
     ),
     SweetSpot(
         "Virgin Atlantic Flying Club", "US West Coast → Japan (ANA)", "Business",
-        45000, "chart", "2026-07-14",
-        "East Coast 47,500; Hawaii → Tokyo just 35,000.",
+        52500, "chart", "2026-09-16",
+        "East/Central US 60,000; Hawaii 37,500.",
     ),
     SweetSpot(
         "Virgin Atlantic Flying Club", "US → Europe (Delta One)", "Business",
-        50000, "chart", "2026-07-14",
-        "Often far cheaper than Delta SkyMiles for the same seat.",
+        57500, "dynamic", "2026-09-16",
+        "No longer a sweet spot: dynamic 57.5k-77.5k from the US plus ~$1,000+ in carrier "
+        "fees each way (e.g. NYC-Prague 57,500 + $1,054). Europe-to-US is 50k but also "
+        "$1,000+ in fees. Compare Flying Blue or Aeroplan first.",
     ),
     SweetSpot(
         "Virgin Atlantic Flying Club", "Delta short-haul (<500 mi)", "Economy",
-        7500, "chart", "2026-07-14",
-        "Under-1,000-mi nonstops 8,500 (e.g. ATL→Nassau).",
+        7500, "chart", "2026-09-16",
+        "Under 1,000 mi now 11,000 (was 8,500).",
     ),
     # ── Air France-KLM Flying Blue (Chase UR 1:1, WF 1:1, Citi 1:1) ────────
     SweetSpot(

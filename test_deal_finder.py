@@ -153,3 +153,29 @@ def test_round_trip_does_not_raise_a_cheaper_one_way(monkeypatch):
     from datetime import date
     deal_finder.apply_round_trip(s, {}, today=date(2026, 9, 16))
     assert s.cash == 292.0 and s.round_trip_half == 350.0
+
+
+def test_watch_budget_is_shared_round_robin(monkeypatch):
+    big = deal_finder.WatchEntry.from_config({"label": "Caribbean", "dests": ["SJU"]})
+    small = deal_finder.WatchEntry.from_config({"label": "Peru", "dests": ["LIM"]})
+    cands = []
+    for i in range(20):
+        s = _scored("SJU", "ECONOMY", "jetblue", "JFK", 10000, 1.0, date=f"2027-01-{i + 1:02d}")
+        s.cash = s.cpp = s.surplus = None
+        s.watch, s.p_watch, s.p_great = [big], 0.9, 0.9
+        cands.append(s)
+    peru = _scored("LIM", "ECONOMY", "united", "JFK", 20000, 1.0)
+    peru.cash = peru.cpp = peru.surplus = None
+    peru.watch, peru.p_watch, peru.p_great = [small], 0.3, 0.3
+    cands.append(peru)
+    looked_up = []
+
+    def _quote(origin, dest, date, cabin, **k):
+        looked_up.append(dest)
+        return cash_quotes.Quote(origin, dest, cabin, date, 500.0, None, "test", "2026-09-16T00:00:00Z")
+
+    monkeypatch.setattr(cash_quotes, "get_quote", _quote)
+    monkeypatch.setattr(cash_quotes, "load", lambda: [])
+    stats = deal_finder.price_promising(cands, max_lookups=0, log=lambda m: None,
+                                        max_watch_lookups=2, watchlist=[big, small])
+    assert sorted(looked_up) == ["LIM", "SJU"] and stats["watch_live"] == 2 and stats["live"] == 0

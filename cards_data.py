@@ -5,10 +5,11 @@ and each pool's transfer partners.
 Transfer ratios and partner rosters change without notice — treat these as a
 starting point and confirm current terms on the issuer's site before booking.
 
-Last verified 2026-09-16 (Chase/Capital One/Citi changes cross-checked against
-at least two current sources; Wells Fargo verified 2026-07). Known conflicts
-between sources were left unchanged rather than guessed: Capital One TAP (1:1
-vs 2:1.5) and JetBlue (5:3, absent here), Citi Emirates (1:0.8) and Wyndham.
+Last verified 2026-09-16: Chase and Citi against at least two current sources,
+Capital One against capitalone.com, Bilt against point.me + awardtravelfinder
+(only partners both list), Wells Fargo 2026-07. Still unconfirmed: whether
+Capital One transfers to Virgin Atlantic directly (only Virgin Red is on
+capitalone.com's list).
 """
 
 from dataclasses import dataclass, field
@@ -91,9 +92,11 @@ POOLS: dict[str, Pool] = {
             Partner("EVA Air Infinity MileageLands", "airline", "2:1.5"),
             Partner("Finnair Plus", "airline", "1:1"),
             Partner("JAL Mileage Bank", "airline", "2:1.5"),
+            Partner("JetBlue TrueBlue", "airline", "5:3"),
             Partner("Qantas Frequent Flyer", "airline", "1:1"),
+            Partner("Qatar Airways Privilege Club", "airline", "1:1"),
             Partner("Singapore KrisFlyer", "airline", "1:1"),
-            Partner("TAP Air Portugal Miles&Go", "airline", "2:1.5"),
+            Partner("TAP Air Portugal Miles&Go", "airline", "1:1"),
             Partner("Turkish Airlines Miles&Smiles", "airline", "1:1"),
             Partner("Virgin Red", "airline", "1:1"),
             Partner("Wyndham Rewards", "hotel", "1:1"),
@@ -105,8 +108,11 @@ POOLS: dict[str, Pool] = {
         transferable=True,
         portal_rate_cents=1.0,
         partners=[
+            Partner("Aer Lingus AerClub", "airline", "1:1"),
             Partner("Air France-KLM Flying Blue", "airline", "1:1"),
             Partner("American Airlines AAdvantage", "airline", "1:1"),  # Strata Premier/Elite only
+            Partner("Emirates Skywards", "airline", "1:0.8"),
+            Partner("Etihad Guest", "airline", "1:1"),
             Partner("Avianca LifeMiles", "airline", "1:1"),
             Partner("Cathay Pacific Asia Miles", "airline", "1:1"),
             Partner("Choice Privileges", "hotel", "1:1.5"),  # cut from 1:2 on Apr 19, 2026
@@ -116,6 +122,7 @@ POOLS: dict[str, Pool] = {
             Partner("Qantas Frequent Flyer", "airline", "1:1"),
             Partner("Qatar Airways Privilege Club", "airline", "1:1"),
             Partner("Singapore KrisFlyer", "airline", "1:1"),
+            Partner("Thai Airways Royal Orchid Plus", "airline", "1:1"),
             Partner("Turkish Airlines Miles&Smiles", "airline", "1:1"),
             Partner("Virgin Atlantic Flying Club", "airline", "1:1"),
             Partner("Wyndham Rewards", "hotel", "1:1"),
@@ -144,8 +151,8 @@ POOLS: dict[str, Pool] = {
         currency_name="Bilt Points",
         transferable=True,
         portal_rate_cents=1.0,
-        # Your Bilt Mastercard is closed but the points were kept. Confirm in the Bilt app
-        # that transfers still work for your account; if not, set this to False.
+        # Bilt Mastercard is closed but the points were kept; user confirmed 2026-09-16
+        # that transfers still work without the card.
         transfers_without_card=True,
         # Verified 2026-09-16 against point.me and awardtravelfinder.com; only partners
         # both list are included. Contested (one source only): American AAdvantage,

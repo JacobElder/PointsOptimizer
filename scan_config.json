@@ -81,5 +81,270 @@
   "max_days_out": 330,
   "max_data_age_days": 10,
   "_watchlist_help": "Watchlist entries are always reported when they clear their bar, even outside the top list. Fields: label, dests (required), origins, cabins (ECONOMY/PREMIUM_ECONOMY/BUSINESS/FIRST), start/end (YYYY-MM-DD), bar (CPP; omit for the cabin's usual 1.5/2.0). Example: {\"label\": \"Japan cherry blossoms\", \"dests\": [\"NRT\", \"HND\"], \"cabins\": [\"BUSINESS\"], \"start\": \"2027-03-20\", \"end\": \"2027-04-10\", \"bar\": 1.8}",
-  "watchlist": []
+  "watchlist": [
+    {
+      "label": "Thailand (cool dry season)",
+      "dests": [
+        "BKK",
+        "HKT",
+        "CNX"
+      ],
+      "start": "2026-11-01",
+      "end": "2027-02-28"
+    },
+    {
+      "label": "Vietnam (dry season)",
+      "dests": [
+        "SGN",
+        "HAN",
+        "DAD"
+      ],
+      "start": "2026-12-01",
+      "end": "2027-04-15"
+    },
+    {
+      "label": "Kenya (migration season) 2026",
+      "dests": [
+        "NBO"
+      ],
+      "start": "2026-09-19",
+      "end": "2026-10-31"
+    },
+    {
+      "label": "Kenya (Jan–Feb dry season)",
+      "dests": [
+        "NBO"
+      ],
+      "start": "2027-01-01",
+      "end": "2027-02-28"
+    },
+    {
+      "label": "Kenya (migration season) 2027",
+      "dests": [
+        "NBO"
+      ],
+      "start": "2027-07-01",
+      "end": "2027-08-31"
+    },
+    {
+      "label": "Ghana (dry season, December peak)",
+      "dests": [
+        "ACC"
+      ],
+      "start": "2026-11-15",
+      "end": "2027-02-28"
+    },
+    {
+      "label": "Shanghai (autumn)",
+      "dests": [
+        "PVG",
+        "SHA"
+      ],
+      "start": "2026-09-19",
+      "end": "2026-11-30"
+    },
+    {
+      "label": "Shanghai (spring)",
+      "dests": [
+        "PVG",
+        "SHA"
+      ],
+      "start": "2027-04-01",
+      "end": "2027-05-31"
+    },
+    {
+      "label": "Hong Kong (autumn–winter)",
+      "dests": [
+        "HKG"
+      ],
+      "start": "2026-10-01",
+      "end": "2026-12-31"
+    },
+    {
+      "label": "Oaxaca (Day of the Dead through dry season)",
+      "dests": [
+        "OAX"
+      ],
+      "start": "2026-10-20",
+      "end": "2027-03-31"
+    },
+    {
+      "label": "Oaxaca (Guelaguetza)",
+      "dests": [
+        "OAX"
+      ],
+      "start": "2027-07-10",
+      "end": "2027-08-02"
+    },
+    {
+      "label": "Peru (dry season)",
+      "dests": [
+        "LIM",
+        "CUZ"
+      ],
+      "start": "2027-05-01",
+      "end": "2027-08-31"
+    },
+    {
+      "label": "Colombia (dry season)",
+      "dests": [
+        "BOG",
+        "MDE",
+        "CTG"
+      ],
+      "start": "2026-12-01",
+      "end": "2027-03-31"
+    },
+    {
+      "label": "Caribbean (high season)",
+      "dests": [
+        "SJU",
+        "MBJ",
+        "KIN",
+        "NAS",
+        "AUA",
+        "PUJ",
+        "SDQ",
+        "STT",
+        "SXM",
+        "BGI",
+        "CUR",
+        "GCM",
+        "PLS",
+        "ANU",
+        "UVF",
+        "POS",
+        "GND"
+      ],
+      "start": "2026-12-01",
+      "end": "2027-04-30"
+    },
+    {
+      "label": "Cancún (high season)",
+      "dests": [
+        "CUN"
+      ],
+      "start": "2026-12-01",
+      "end": "2027-04-30"
+    },
+    {
+      "label": "Denmark (summer)",
+      "dests": [
+        "CPH"
+      ],
+      "start": "2027-06-01",
+      "end": "2027-08-31"
+    },
+    {
+      "label": "Norway (summer)",
+      "dests": [
+        "OSL",
+        "BGO"
+      ],
+      "start": "2027-06-01",
+      "end": "2027-08-31"
+    },
+    {
+      "label": "Sicily (autumn)",
+      "dests": [
+        "PMO",
+        "CTA"
+      ],
+      "start": "2026-09-19",
+      "end": "2026-10-31"
+    },
+    {
+      "label": "Sicily (late spring)",
+      "dests": [
+        "PMO",
+        "CTA"
+      ],
+      "start": "2027-05-01",
+      "end": "2027-06-30"
+    },
+    {
+      "label": "Morocco (autumn)",
+      "dests": [
+        "RAK",
+        "CMN",
+        "FEZ"
+      ],
+      "start": "2026-09-19",
+      "end": "2026-11-30"
+    },
+    {
+      "label": "Morocco (spring)",
+      "dests": [
+        "RAK",
+        "CMN",
+        "FEZ"
+      ],
+      "start": "2027-03-01",
+      "end": "2027-05-31"
+    },
+    {
+      "label": "Istanbul/Turkey (autumn)",
+      "dests": [
+        "IST",
+        "SAW"
+      ],
+      "start": "2026-09-19",
+      "end": "2026-10-31"
+    },
+    {
+      "label": "Istanbul/Turkey (spring)",
+      "dests": [
+        "IST",
+        "SAW"
+      ],
+      "start": "2027-04-01",
+      "end": "2027-06-15"
+    },
+    {
+      "label": "Japan (autumn leaves)",
+      "dests": [
+        "NRT",
+        "HND",
+        "KIX"
+      ],
+      "start": "2026-10-25",
+      "end": "2026-11-30"
+    },
+    {
+      "label": "Japan (cherry blossoms)",
+      "dests": [
+        "NRT",
+        "HND",
+        "KIX"
+      ],
+      "start": "2027-03-20",
+      "end": "2027-04-15"
+    },
+    {
+      "label": "Georgia (autumn wine season)",
+      "dests": [
+        "TBS",
+        "KUT"
+      ],
+      "start": "2026-09-19",
+      "end": "2026-10-31"
+    },
+    {
+      "label": "Georgia (late spring–summer)",
+      "dests": [
+        "TBS",
+        "KUT"
+      ],
+      "start": "2027-05-01",
+      "end": "2027-08-31"
+    },
+    {
+      "label": "Panama (dry season)",
+      "dests": [
+        "PTY"
+      ],
+      "start": "2026-12-15",
+      "end": "2027-04-15"
+    }
+  ]
 }

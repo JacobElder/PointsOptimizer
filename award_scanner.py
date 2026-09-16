@@ -29,7 +29,7 @@ CONFIG_PATH = os.path.join(_BASE, "scan_config.json")
 _CABIN_PREFIX = {"ECONOMY": "Y", "PREMIUM_ECONOMY": "W", "BUSINESS": "J", "FIRST": "F"}
 _CABIN_PARAM = {"ECONOMY": "economy", "PREMIUM_ECONOMY": "premium", "BUSINESS": "business", "FIRST": "first"}
 _PARTNER_TO_SOURCE = {v: k for k, v in seats_aero.SOURCE_TO_PARTNER.items()}
-MAX_PAGES_PER_CABIN = 10
+MAX_PAGES_PER_CABIN = 25  # ~100 destinations x 11 months can exceed 10k rows per cabin
 
 
 @dataclass
