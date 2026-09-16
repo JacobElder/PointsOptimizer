@@ -104,7 +104,7 @@ Before the Deal Finder, a claude.ai routine captured seats.aero alert **emails**
 ## Accuracy notes
 
 - **CPP** = `(cash fare − award taxes in USD) / points × 100`. Taxes are converted with a live ECB rate (frankfurter.app), static fallback offline. seats.aero API taxes are in cents.
-- **Cash fares** are one-way, one adult, and not necessarily on the award's airline (see matching rules above). One-way fares can be high compared with half a round trip, so treat CPP as an upper-bound signal and check the round trip before transferring points.
+- **Cash fares** are for one adult and not necessarily on the award's airline (see matching rules above). Deals near the top are valued at the lower of the one-way fare and half a 7-night round trip; deals further down and "other dates" use the one-way fare, so their CPP can read high.
 - **Award data** is seats.aero Cached Search (updated every few days, not live). Results older than 10 days are dropped. Always confirm on the airline's site before transferring points — transfers are irreversible.
 - **Coverage:** seats.aero covers Aeroplan, Flying Blue, BA, Iberia, JetBlue, Singapore, United, Virgin Atlantic, Qatar, Turkish, Etihad, Qantas, Finnair, Aeromexico and more, but not LifeMiles, Asia Miles, TAP, EVA, Aer Lingus or hotel programs.
 - **Transfer partners** in `cards_data.py` were last verified 2026-09-16; known source conflicts are listed in its header.

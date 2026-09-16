@@ -13,6 +13,11 @@ history before 2026-09-16.
 - [ ] **Decide on the Gmail capture routine** ("seats.aero Deal Radar" on
       claude.ai, every 4 hours). seats.aero alerts are off, so it finds nothing,
       but each run still uses your Claude plan's usage. Pausing it costs nothing.
+- [ ] **Fill in the watchlist** in `scan_config.json` (destinations, dates, cabins).
+- [ ] **Confirm Bilt transfers work without an open card** in the Bilt app. If
+      not, set `transfers_without_card=False` for the `bilt` pool in
+      `cards_data.py` (the scan then drops Alaska, Emirates, Etihad, Qatar, Turkish).
+- [ ] **Enter your Bilt balance** on the Wallet page.
 - [ ] **Re-verify Virgin Atlantic sweet spots** in `award_charts.py` on
       virginatlantic.com: ANA First may now be 72.5k (not 60k), and Delta One to
       Europe is tiered with ~$1,000 surcharges.
@@ -25,11 +30,6 @@ history before 2026-09-16.
 
 ## Possible improvements
 
-- [ ] Watchlist in `scan_config.json`: destinations/date windows that always get
-      reported when they clear the bar (optionally a lower bar), on top of the
-      general top-N ranking.
-- [ ] Round-trip check for top deals (one-way fares can exceed half a round trip).
-- [ ] Bilt Rewards isn't modelled in `cards_data.py` at all.
 - [ ] Durable storage for balances/history on Streamlit Cloud (currently reset on
       container restart).
 - [ ] Flight-number quick check (needs a schedule API such as AeroDataBox).
