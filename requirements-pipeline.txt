@@ -4,3 +4,5 @@
 # install the whole Streamlit stack.
 requests>=2.32,<3
 fast-flights==3.1.0
+# fast-flights 3.1.0 imports typing_extensions but doesn't declare it.
+typing_extensions>=4.12
