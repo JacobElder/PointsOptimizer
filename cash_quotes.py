@@ -60,6 +60,7 @@ class Comparable:
     price: float
     basis: str  # human-readable: what the cash fare is
     same_carrier_price: float | None  # cheapest fare on the award's own airline(s), for reference
+    nonstop_price: float | None = None  # cheapest nonstop fare, for reference
 
 
 def _codes(carriers: str | None) -> set[str]:
@@ -67,29 +68,32 @@ def _codes(carriers: str | None) -> set[str]:
 
 
 def comparable_fare(quote: "Quote", direct: bool | None = None, carriers: str | None = None) -> Comparable | None:
-    """The cash fare an award should be valued against.
+    """The cash fare an award should be valued against: what you'd realistically pay instead.
 
-    A nonstop award is compared with the cheapest NONSTOP fare (an award that
-    saves you a connection is worth more than the cheapest 2-stop fare); any
-    other award with the cheapest fare overall. The award airline's own fare is
-    reported alongside but never used for CPP: a legacy carrier's price when a
-    cheaper equivalent exists would overstate what the points actually save.
+    - Nonstop award: cheapest fare with AT MOST ONE stop. Not the cheapest
+      nonstop: one-way nonstop fares on legacy carriers are often absurd
+      (JFK-ZRH Swiss J $8,919 vs $1,468 with one stop, 2026-09-16), and using
+      them produced 8-15c "deals" nobody would pay cash for. But a 2-3 stop
+      fare isn't an equivalent trip either.
+    - Any other award: cheapest fare, any stops.
+    The nonstop fare and the award airline's own fare are reported for context
+    only, never used for CPP.
     """
     if quote.price_usd is None:
         return None
     wanted = _codes(carriers)
     offers = quote.offers or []
-    if direct and offers:
-        nonstop = [o for o in offers if o[1] == 0]
-        pool, basis = (nonstop, "cheapest nonstop fare") if nonstop else (offers, "cheapest fare (no nonstop fare listed)")
-    elif direct and quote.nonstop_price_usd is not None:
-        return Comparable(quote.nonstop_price_usd, "cheapest nonstop fare", None)
+    if not offers:  # legacy record: only the two headline prices were stored
+        return Comparable(quote.price_usd, "cheapest fare, any stops", None, quote.nonstop_price_usd)
+    if direct:
+        pool = [o for o in offers if o[1] <= 1] or offers
+        basis = "cheapest fare with at most 1 stop"
     else:
         pool, basis = offers, "cheapest fare, any stops"
-    if not pool:
-        return Comparable(quote.price_usd, "cheapest fare, any stops", None)
-    same = [o[0] for o in pool if wanted & _codes(o[2])] if wanted else []
-    return Comparable(min(o[0] for o in pool), basis, min(same) if same else None)
+    same = [o[0] for o in offers if wanted & _codes(o[2])] if wanted else []
+    nonstop = [o[0] for o in offers if o[1] == 0]
+    return Comparable(min(o[0] for o in pool), basis, min(same) if same else None,
+                      min(nonstop) if nonstop else None)
 
 
 class OutOfWindow(Exception):

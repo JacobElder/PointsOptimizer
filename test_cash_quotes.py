@@ -13,25 +13,26 @@ def _q(offers, price=None, nonstop=None):
 OFFERS = [[1468.0, 1, "FI,FI"], [1792.0, 1, "JU,JU"], [4169.0, 0, "LX"], [6069.0, 0, "DL"], [4188.0, 1, "AF,AF"]]
 
 
-def test_nonstop_award_compares_against_cheapest_nonstop():
-    c = comparable_fare(_q(OFFERS), direct=True, carriers="LX")
-    assert (c.price, c.basis, c.same_carrier_price) == (4169.0, "cheapest nonstop fare", 4169.0)
+def test_nonstop_award_compares_against_cheapest_fare_with_at_most_one_stop():
+    offers = OFFERS + [[900.0, 2, "UA,LH,OS"]]
+    c = comparable_fare(_q(offers), direct=True, carriers="LX")
+    assert (c.price, c.same_carrier_price, c.nonstop_price) == (1468.0, 4169.0, 4169.0)
+    assert "at most 1 stop" in c.basis
 
 
 def test_connecting_award_compares_against_cheapest_overall_and_reports_own_airline():
-    c = comparable_fare(_q(OFFERS), direct=False, carriers="AF, KL")
-    assert (c.price, c.same_carrier_price) == (1468.0, 4188.0)
+    c = comparable_fare(_q(OFFERS + [[900.0, 2, "UA,LH"]]), direct=False, carriers="AF, KL")
+    assert (c.price, c.same_carrier_price) == (900.0, 4188.0)
 
 
-def test_nonstop_award_without_nonstop_fares_falls_back():
-    c = comparable_fare(_q([[900.0, 1, "UA"]]), direct=True)
-    assert c.price == 900.0 and "no nonstop" in c.basis
+def test_nonstop_award_with_only_multi_stop_fares_falls_back_to_cheapest():
+    assert comparable_fare(_q([[900.0, 2, "UA"]]), direct=True).price == 900.0
 
 
-def test_legacy_quote_without_offers_uses_stored_prices():
+def test_legacy_quote_without_offers_uses_cheapest_price():
     legacy = Quote("JFK", "ZRH", "BUSINESS", "2026-11-12", 1468.0, 4169.0, "fast-flights", "2026-09-16T00:00:00Z")
-    assert comparable_fare(legacy, direct=True).price == 4169.0
-    assert comparable_fare(legacy, direct=False).price == 1468.0
+    c = comparable_fare(legacy, direct=True)
+    assert (c.price, c.nonstop_price) == (1468.0, 4169.0)
 
 
 def _payload_html(best, other):
