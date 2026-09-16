@@ -1,0 +1,59 @@
+name: Deal Finder
+
+# Daily: scan seats.aero on scan_config.json's routes, price the most promising
+# awards with free Google Flights fares, email NEW standouts, and commit the
+# digest (shown on the Deal Radar page) plus the saved cash quotes.
+#
+# Needs repo secrets: SEATS_AERO_API_KEY, GMAIL_ADDRESS, GMAIL_APP_PASSWORD
+# (SERPAPI_KEY optional: capped fallback if free lookups fail).
+on:
+  schedule:
+    - cron: "0 11 * * *" # 7am US Eastern (EDT)
+  workflow_dispatch: {}
+
+concurrency:
+  group: deal-radar
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  find:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Check secrets
+        env:
+          SEATS_AERO_API_KEY: ${{ secrets.SEATS_AERO_API_KEY }}
+        run: |
+          if [ -z "$SEATS_AERO_API_KEY" ]; then
+            echo "::error::Add the SEATS_AERO_API_KEY repo secret (Settings > Secrets and variables > Actions)."
+            exit 1
+          fi
+      - name: Find deals
+        env:
+          SEATS_AERO_API_KEY: ${{ secrets.SEATS_AERO_API_KEY }}
+          SERPAPI_KEY: ${{ secrets.SERPAPI_KEY }}
+          GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+        run: python deal_finder.py
+      - name: Commit digest and quotes
+        run: |
+          git config user.name "Deal Radar bot"
+          git config user.email "deal-radar-bot@users.noreply.github.com"
+          git add deal_digest.json cash_quotes.json
+          git diff --cached --quiet && exit 0
+          git commit -m "Deal Finder: daily digest [skip ci]"
+          for i in 1 2 3; do
+            git push origin HEAD:main && exit 0
+            git pull --rebase origin main || { git rebase --abort; exit 1; }
+          done
+          exit 1

@@ -231,7 +231,7 @@ def _fetch_offers_fast_flights(origin: str, destination: str, departure_date: st
     returns [] when Google genuinely has no itineraries (e.g. date too far out)."""
     from datetime import datetime
 
-    from fast_flights import FlightQuery, FlightsNotFound, create_query, get_flights
+    from fast_flights import FlightQuery, FlightsNotFound, create_query, fetch_flights_html
 
     query = create_query(
         flights=[FlightQuery(date=departure_date, from_airport=origin, to_airport=destination)],
@@ -240,8 +240,9 @@ def _fetch_offers_fast_flights(origin: str, destination: str, departure_date: st
         currency="USD",
         language="en",
     )
+    html = fetch_flights_html(query)
     try:
-        results = get_flights(query)
+        results = _parse_fast_flights_html(html)
     except FlightsNotFound:
         return []
 
@@ -279,6 +280,55 @@ def _fetch_offers_fast_flights(origin: str, destination: str, departure_date: st
         ))
     offers.sort(key=lambda o: o.price_usd)
     return offers
+
+
+def _parse_fast_flights_html(html: str) -> list:
+    """fast-flights' own parser, made tolerant of itineraries with no price.
+
+    fast_flights.parser.parse_js indexes k[1][0][1] unguarded and raises
+    IndexError for the whole result set when any single row lacks a price
+    (common on first-class searches). Same logic, but bad rows are skipped.
+    """
+    from fast_flights import parser as ffp
+
+    try:
+        return ffp.parse(html)
+    except (IndexError, TypeError):
+        pass
+    import json as _json
+
+    from selectolax.lexbor import LexborHTMLParser
+
+    script = LexborHTMLParser(html).css_first(r"script.ds\:1")
+    if script is None:
+        raise SearchFailed("Google Flights page had no results payload (possibly blocked).")
+    js = script.text()
+    data = js.split("data:", 1)[1].rsplit(",", 1)[0]
+    if data.endswith("errorHasStatus: true"):
+        return []
+    payload = _json.loads(data)
+    rows = (payload[3] or [None])[0] if len(payload) > 3 else None
+    flights = []
+    for k in rows or []:
+        try:
+            price = k[1][0][1]
+            f = k[0]
+            segs = [
+                ffp.SingleFlight(
+                    from_airport=ffp.Airport(code=sf[3], name=sf[4]),
+                    to_airport=ffp.Airport(code=sf[6], name=sf[5]),
+                    departure=ffp.SimpleDatetime(date=tuple(sf[20]), time=ffp._parse_time(sf[8])),
+                    arrival=ffp.SimpleDatetime(date=tuple(sf[21]), time=ffp._parse_time(sf[10])),
+                    duration=sf[11],
+                    plane_type=sf[17],
+                )
+                for sf in f[2]
+            ]
+            flights.append(ffp.Flights(type=f[0], price=price, airlines=f[1], flights=segs,
+                                       carbon=ffp.CarbonEmission(typical_on_route=0, emission=0)))
+        except (IndexError, TypeError, KeyError):
+            continue
+    return flights
 
 
 def serpapi_account_remaining() -> int | None:

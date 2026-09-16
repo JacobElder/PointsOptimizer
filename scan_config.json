@@ -1,0 +1,16 @@
+{
+  "_comment": "Routes deal_finder.py scans on seats.aero. Destinations seeded from every route your old seats.aero alerts fired on, plus major long-haul gateways. Edit freely.",
+  "origins": ["JFK", "EWR", "LGA"],
+  "destinations": [
+    "CAI", "PTY", "OSL", "CTG", "FRA", "MBJ", "LIR", "SCL", "DUB", "EDI", "PRG", "KIN", "ARN", "CDG",
+    "BOG", "JNB", "LIS", "ICN", "BCN", "MAD", "SJO", "EZE", "BKK", "MDE", "ATH", "ZRH", "GLA", "KEF", "HEL",
+    "LHR", "AMS", "FCO", "MXP", "MUC", "CPH", "VIE", "IST", "DOH", "DXB", "TLV", "NRT", "HND", "KIX",
+    "TPE", "HKG", "SIN", "MNL", "DEL", "GRU", "GIG", "LIM", "UIO", "CUN", "SJU", "PUJ", "NAS", "AUA",
+    "SYD", "AKL", "CPT", "NBO", "RAK", "ACC", "LOS"
+  ],
+  "cabins": ["ECONOMY", "BUSINESS", "FIRST"],
+  "sources": [],
+  "min_days_out": 3,
+  "max_days_out": 330,
+  "max_data_age_days": 10
+}

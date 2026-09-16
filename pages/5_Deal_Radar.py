@@ -1,3 +1,4 @@
+import json
 import os
 import sys
 from datetime import datetime, timezone
@@ -7,6 +8,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import streamlit as st
 
 import check_alerts
+import deal_finder
 import deal_log
 import return_finder
 
@@ -63,6 +65,47 @@ def _pending_id(p: dict, idx: int) -> str:
     except (KeyError, TypeError, ValueError, AttributeError):
         return f"idx{idx}"
 
+
+def _render_digest() -> None:
+    try:
+        with open(deal_finder.DIGEST_PATH) as f:
+            digest = json.load(f)
+    except (OSError, json.JSONDecodeError):
+        st.info("No Deal Finder digest yet. Run `make find` (or the Deal Finder workflow) to generate one.")
+        return
+    top = digest.get("top", [])
+    scan = digest.get("scan", {})
+    st.header(f"🏆 Deal Finder: top {len(top)} of {scan.get('candidates', 0):,} awards")
+    st.caption(
+        f"Scanned {digest.get('generated_at', '?')} across {', '.join(scan.get('sources', []))}. "
+        "Ranked by dollars saved above your cabin's great-deal bar (1.5¢ Economy, 2.0¢ Business/First), "
+        "using live Google Flights cash fares. One entry per destination + cabin; other dates, "
+        "origins and programs are listed under it. Award space moves fast: re-check on seats.aero."
+    )
+    for i, d in enumerate(top):
+        with st.container(border=True):
+            c1, c2 = st.columns([3, 1])
+            new = " 🆕" if d.get("new") else ""
+            c1.markdown(f"**{i + 1}. {d['origin']} → {d['dest']}** · {d['cabin'].title()}{new}")
+            c1.caption(
+                f"{d['program']} · {d['date']} · {d['points']:,} pts + ${d['taxes_usd']:.0f} taxes · "
+                f"{d['seats']} seat(s){' · nonstop' if d.get('direct') else ''}"
+                f"{' · ' + d['airlines'] if d.get('airlines') else ''}"
+            )
+            approx = " (fare from a date within 7 days)" if d.get("cash_is_approx") else ""
+            vs_biz = " · first class valued against the business fare" if d["cabin"] == "FIRST" else ""
+            c1.caption(f"Cash fare ${d['cash_price']:,.0f}{approx}{vs_biz}")
+            if d.get("other_dates"):
+                c1.caption(f"Also {len(d['other_dates'])} other date(s): {', '.join(d['other_dates'][:8])}"
+                           + (" …" if len(d["other_dates"]) > 8 else ""))
+            if d.get("alternatives"):
+                c1.caption("Alternatives: " + "; ".join(d["alternatives"]))
+            c2.metric("CPP", f"{d['cpp']:.2f}¢")
+            c2.caption(f"+${d['surplus_usd']:,.0f} above the bar")
+    st.divider()
+
+
+_render_digest()
 
 data = deal_log.load()
 deals = data.get("deals", [])

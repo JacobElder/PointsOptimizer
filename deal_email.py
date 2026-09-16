@@ -65,6 +65,8 @@ def _format_deal(d: dict) -> str:
         f"  Taxes/fees: {d['taxes']:.2f} {d.get('currency', 'USD')}",
         f"  Cash price (same route/date/cabin): ${d['cash_price']:,.2f}",
     ]
+    if d.get("note"):
+        lines.append(f"  {d['note']}")
     if d.get("listing_url"):
         lines.append(f"  View listing: {d['listing_url']}")
     return "\n".join(lines)
@@ -101,6 +103,7 @@ def _deal_card_html(d: dict) -> str:
                 {d['points']:,} pts + ${d['taxes']:.2f} {d.get('currency', 'USD')} taxes
                 &nbsp;vs.&nbsp; ${d['cash_price']:,.2f} cash<br>
                 Travel {d['date']} &middot; Flight {flight}
+                {f"<br>{html_lib.escape(d['note'])}" if d.get("note") else ""}
               </td>
             </tr>
             {f'<tr><td style="padding-top:6px;">{link_html}</td></tr>' if link_html else ""}
@@ -129,7 +132,7 @@ def _section_html(title: str, deals: list[dict]) -> str:
     """
 
 
-def _build_html(deals: list[dict], best: dict) -> str:
+def _build_html(deals: list[dict], best: dict, intro: str | None = None) -> str:
     economy = [d for d in deals if d["cabin"].upper() not in _PREMIUM_CABINS]
     premium = [d for d in deals if d["cabin"].upper() in _PREMIUM_CABINS]
 
@@ -137,8 +140,9 @@ def _build_html(deals: list[dict], best: dict) -> str:
     <div style="font-family: -apple-system, Helvetica, Arial, sans-serif; max-width:600px; margin:0 auto;">
       <h2 style="color:#1a202c; margin-bottom:4px;">seats.aero Deal Radar</h2>
       <p style="color:#4a5568; margin-top:0;">
-        {len(deals)} deal(s) cleared the "great" bar. Best: <strong>{best['cpp']:.2f}&cent;/pt</strong>
-        on {best['origin']} &rarr; {best['dest']} ({best['program']}).
+        {html_lib.escape(intro) if intro else f'{len(deals)} deal(s) cleared the "great" bar.'}
+        Best: <strong>{best['cpp']:.2f}&cent;/pt</strong>
+        on {best['origin']} &rarr; {best['dest']} ({html_lib.escape(best['program'])}).
       </p>
       {_section_html("✈️ Economy / Premium Economy", economy)}
       {_section_html("\U0001F6CB️ Business / First", premium)}
@@ -146,19 +150,19 @@ def _build_html(deals: list[dict], best: dict) -> str:
     """
 
 
-def send_deal_alert_email(deals: list[dict]) -> None:
+def send_deal_alert_email(deals: list[dict], subject: str | None = None, intro: str | None = None) -> None:
     """Sends one email covering all the given (already-priced, "great") deals."""
     if not deals:
         return
     address, app_password = _get_credentials()
 
     best = max(deals, key=lambda d: d["cpp"])
-    subject = (
+    subject = subject or (
         f"seats.aero Deal Radar: {len(deals)} great deal(s), best {best['cpp']:.2f}c/pt "
         f"({best['origin']}->{best['dest']})"
     )
     plain_body = "\n\n".join(_format_deal(d) for d in sorted(deals, key=lambda d: -d["cpp"]))
-    html_body = _build_html(deals, best)
+    html_body = _build_html(deals, best, intro)
 
     msg = EmailMessage()
     msg["Subject"] = subject
