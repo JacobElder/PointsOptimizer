@@ -1,0 +1,24 @@
+name: Cash price source check
+
+# Verifies free Google Flights lookups (fast-flights) work from GitHub's runners.
+# Never spends SerpApi quota. Runs on changes to the provider code, or by hand.
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      - flight_search.py
+      - cash_price_check.py
+      - requirements-pipeline.txt
+      - .github/workflows/cash_price_check.yml
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements-pipeline.txt
+      - run: python cash_price_check.py
