@@ -337,10 +337,13 @@ with tab_award:
                     try:
                         with st.spinner("Looking up the cash fare for this route/date/cabin..."):
                             quote = cash_quotes.get_quote(award.origin, award.destination, award.date, award.cabin)
-                        if quote is not None and quote.price_usd is not None:
-                            st.session_state["cash_price_input"] = quote.price_usd
-                            cpp = check_alerts.compute_cpp(quote.price_usd, taxes_usd, award.points)
-                            result.update(cash=quote.price_usd, cpp=cpp, approx=quote.approx,
+                        comp = (cash_quotes.comparable_fare(quote, award.direct, award.airlines)
+                                if quote is not None else None)
+                        if comp is not None:
+                            st.session_state["cash_price_input"] = comp.price
+                            cpp = check_alerts.compute_cpp(comp.price, taxes_usd, award.points)
+                            result.update(cash=comp.price, cpp=cpp, approx=quote.approx, basis=comp.basis,
+                                          same_carrier=comp.same_carrier_price,
                                           verdict=deal_log.verdict_for(cpp, award.cabin))
                         else:
                             result["note"] = ("No cash fare found for this route/date — "
@@ -359,7 +362,8 @@ with tab_award:
                     rc1, rc2 = st.columns([3, 1])
                     rc1.markdown(f"{badge} **{res['verdict']}** — this flight")
                     rc1.caption(
-                        f"cheapest {award.cabin.replace('_', ' ').lower()} cash fare ${res['cash']:,.0f}"
+                        f"{award.cabin.replace('_', ' ').lower()} {res.get('basis') or 'cash fare'} ${res['cash']:,.0f}"
+                        + (f" (award airline's own fare ${res['same_carrier']:,.0f})" if res.get("same_carrier") else "")
                         + (" (from a date within 7 days)" if res.get("approx") else "")
                         + f" − ${res['taxes_usd']:.0f} taxes over {award.points:,} pts "
                         "· full funding + hoard-vs-redeem below"

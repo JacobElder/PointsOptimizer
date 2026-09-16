@@ -47,6 +47,49 @@ class Quote:
     provider: str
     fetched_at: str
     approx: bool = False  # True when borrowed from a nearby date
+    # Up to MAX_STORED_OFFERS cheapest itineraries: [price, stops, "LX,LX"].
+    # Older records lack this; comparable_fare() then falls back to the two prices above.
+    offers: list | None = None
+
+
+MAX_STORED_OFFERS = 25
+
+
+@dataclass
+class Comparable:
+    price: float
+    basis: str  # human-readable: what the cash fare is
+    same_carrier_price: float | None  # cheapest fare on the award's own airline(s), for reference
+
+
+def _codes(carriers: str | None) -> set[str]:
+    return {c.strip().upper() for c in (carriers or "").replace(";", ",").split(",") if c.strip()}
+
+
+def comparable_fare(quote: "Quote", direct: bool | None = None, carriers: str | None = None) -> Comparable | None:
+    """The cash fare an award should be valued against.
+
+    A nonstop award is compared with the cheapest NONSTOP fare (an award that
+    saves you a connection is worth more than the cheapest 2-stop fare); any
+    other award with the cheapest fare overall. The award airline's own fare is
+    reported alongside but never used for CPP: a legacy carrier's price when a
+    cheaper equivalent exists would overstate what the points actually save.
+    """
+    if quote.price_usd is None:
+        return None
+    wanted = _codes(carriers)
+    offers = quote.offers or []
+    if direct and offers:
+        nonstop = [o for o in offers if o[1] == 0]
+        pool, basis = (nonstop, "cheapest nonstop fare") if nonstop else (offers, "cheapest fare (no nonstop fare listed)")
+    elif direct and quote.nonstop_price_usd is not None:
+        return Comparable(quote.nonstop_price_usd, "cheapest nonstop fare", None)
+    else:
+        pool, basis = offers, "cheapest fare, any stops"
+    if not pool:
+        return Comparable(quote.price_usd, "cheapest fare, any stops", None)
+    same = [o[0] for o in pool if wanted & _codes(o[2])] if wanted else []
+    return Comparable(min(o[0] for o in pool), basis, min(same) if same else None)
 
 
 class OutOfWindow(Exception):
@@ -145,6 +188,7 @@ def get_quote(origin: str, dest: str, travel_date: str, cabin: str, *,
         nonstop_price_usd=min(nonstop) if nonstop else None,
         provider=offers[0].provider if offers else ("fast-flights" if flight_search.fast_flights_available() else "serpapi"),
         fetched_at=_now().strftime("%Y-%m-%dT%H:%M:%SZ"),
+        offers=[[o.price_usd, o.stops, ",".join(o.carrier_codes)] for o in offers[:MAX_STORED_OFFERS]],
     )
     record = {k: v for k, v in asdict(quote).items() if k != "approx"}
     quotes = [q for q in load() if not (q["origin"] == origin and q["dest"] == dest

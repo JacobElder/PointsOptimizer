@@ -92,6 +92,10 @@ def evaluate_alerts(alerts: list[dict], allow_live: bool = True) -> list[dict]:
                 status = "quota" if quota_hit else "not_cached"
             elif quote.price_usd is None:
                 status = "no_fare"
+            else:
+                # Alert emails give the flight number (e.g. "DL44") but not stops.
+                carrier = "".join(ch for ch in str(a.get("flight_number") or "")[:2] if ch.isalnum())
+                comp = cash_quotes.comparable_fare(quote, None, carrier)
         except cash_quotes.OutOfWindow as e:
             status, base["error"] = "out_of_window", str(e)
         except flight_search.QuotaExhausted as e:
@@ -106,9 +110,10 @@ def evaluate_alerts(alerts: list[dict], allow_live: bool = True) -> list[dict]:
                             "priced_ok": status in ("no_fare",)})
             continue
 
-        cpp = compute_cpp(quote.price_usd, taxes_usd, int(a["points"]))
-        results.append({**base, "cash_price": quote.price_usd, "cpp": cpp,
+        cpp = compute_cpp(comp.price, taxes_usd, int(a["points"]))
+        results.append({**base, "cash_price": comp.price, "cpp": cpp,
                         "nonstop_cash_price": quote.nonstop_price_usd,
+                        "same_carrier_cash_price": comp.same_carrier_price, "cash_basis": comp.basis,
                         "cash_provider": quote.provider, "cash_is_approx": quote.approx,
                         "cash_quote_date": quote.date,
                         "verdict": deal_log.verdict_for(cpp, a.get("cabin", "")),

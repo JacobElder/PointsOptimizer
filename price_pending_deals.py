@@ -42,7 +42,7 @@ _CABIN_PRIORITY = {"FIRST": 0, "BUSINESS": 1, "PREMIUM_ECONOMY": 2, "ECONOMY": 3
 _PRICING_FIELDS = (
     "taxes_usd", "cash_price", "cpp", "verdict", "priced_ok", "error", "price_error", "key",
     "checked_at", "notified", "price_status", "nonstop_cash_price", "cash_provider",
-    "cash_is_approx", "cash_quote_date",
+    "cash_is_approx", "cash_quote_date", "same_carrier_cash_price", "cash_basis",
 )
 
 

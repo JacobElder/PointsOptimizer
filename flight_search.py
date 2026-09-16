@@ -68,6 +68,7 @@ class FlightSegment:
     arr_airport_name: str
     arr_time: str
     duration_minutes: int
+    airline_code: str = ""  # IATA marketing carrier, e.g. "LX"
 
 
 @dataclass
@@ -89,6 +90,10 @@ class FlightOffer:
     @property
     def airline(self) -> str:
         return self.segments[0].airline if self.segments else "Unknown"
+
+    @property
+    def carrier_codes(self) -> list[str]:
+        return [s.airline_code for s in self.segments if s.airline_code]
 
     @property
     def stops(self) -> int:
@@ -229,9 +234,7 @@ _FF_SEAT = {"ECONOMY": "economy", "PREMIUM_ECONOMY": "premium-economy", "BUSINES
 def _fetch_offers_fast_flights(origin: str, destination: str, departure_date: str, cabin: str) -> list[FlightOffer]:
     """Free Google Flights lookup via fast-flights. Raises on any failure;
     returns [] when Google genuinely has no itineraries (e.g. date too far out)."""
-    from datetime import datetime
-
-    from fast_flights import FlightQuery, FlightsNotFound, create_query, fetch_flights_html
+    from fast_flights import FlightQuery, create_query, fetch_flights_html
 
     query = create_query(
         flights=[FlightQuery(date=departure_date, from_airport=origin, to_airport=destination)],
@@ -240,31 +243,68 @@ def _fetch_offers_fast_flights(origin: str, destination: str, departure_date: st
         currency="USD",
         language="en",
     )
-    html = fetch_flights_html(query)
-    try:
-        results = _parse_fast_flights_html(html)
-    except FlightsNotFound:
-        return []
+    return _parse_google_flights_html(fetch_flights_html(query), cabin)
 
-    def _ts(sdt) -> str:
-        (y, mo, d), (h, mi) = sdt.date, sdt.time
-        return f"{y:04d}-{mo:02d}-{d:02d} {h:02d}:{mi:02d}"
+
+def _parse_google_flights_html(html: str, cabin: str) -> list[FlightOffer]:
+    """Parse Google Flights' embedded results payload into FlightOffers.
+
+    Adapted from fast_flights.parser.parse_js, with two fixes: rows missing a
+    price are skipped (upstream raises IndexError for the whole page, common on
+    first-class searches), and each segment keeps its carrier code and flight
+    number (payload index 22: [code, number, _, name]) for award matching, and
+    both result lists are read (see below).
+    """
+    import json as _json
+    from datetime import datetime
+
+    from selectolax.lexbor import LexborHTMLParser
+
+    script = LexborHTMLParser(html).css_first(r"script.ds\:1")
+    if script is None:
+        raise SearchFailed("Google Flights page had no results payload (possibly blocked).")
+    data = script.text().split("data:", 1)[1].rsplit(",", 1)[0]
+    if data.endswith("errorHasStatus: true"):
+        return []  # Google's "no flights found"
+    payload = _json.loads(data)
+    # payload[2][0] = Google's "best flights", payload[3][0] = "other flights".
+    # fast-flights reads only [3], silently dropping the best list, which often
+    # holds the cheapest fare and the nonstops (found 2026-09-16: JFK-ZRH J
+    # cheapest $1,792 and both LX nonstops were only in [2]).
+    rows = []
+    for idx in (2, 3):
+        block = payload[idx] if len(payload) > idx else None
+        if isinstance(block, list) and block and isinstance(block[0], list):
+            rows.extend(block[0])
+
+    def _hm(v) -> tuple[int, int]:
+        padded = [*(v or []), None, None]
+        return padded[0] or 0, padded[1] or 0
+
+    def _ts(d, t) -> str:
+        (h, mi) = _hm(t)
+        return f"{d[0]:04d}-{d[1]:02d}-{d[2]:02d} {h:02d}:{mi:02d}"
 
     offers = []
-    for f in results:
-        if not f.flights or not f.price:
+    for k in rows:
+        try:
+            price = float(k[1][0][1])
+            f = k[0]
+            names = f[1] or []
+            segments = []
+            for sf in f[2]:
+                ident = sf[22] if len(sf) > 22 and sf[22] else [None, None, None, None]
+                segments.append(FlightSegment(
+                    airline=ident[3] or (names[0] if names else "Unknown"),
+                    flight_number=f"{ident[0]} {ident[1]}" if ident[0] and ident[1] else "",
+                    dep_airport=sf[3], dep_airport_name=sf[4], dep_time=_ts(sf[20], sf[8]),
+                    arr_airport=sf[6], arr_airport_name=sf[5], arr_time=_ts(sf[21], sf[10]),
+                    duration_minutes=int(sf[11] or 0), airline_code=(ident[0] or "").upper(),
+                ))
+        except (IndexError, TypeError, KeyError, ValueError):
             continue
-        airline = f.airlines[0] if f.airlines else "Unknown"
-        segments = [
-            FlightSegment(
-                airline=airline, flight_number="",
-                dep_airport=sf.from_airport.code, dep_airport_name=sf.from_airport.name,
-                dep_time=_ts(sf.departure),
-                arr_airport=sf.to_airport.code, arr_airport_name=sf.to_airport.name,
-                arr_time=_ts(sf.arrival), duration_minutes=int(sf.duration or 0),
-            )
-            for sf in f.flights
-        ]
+        if not segments or price <= 0:
+            continue
         layovers = []
         for prev, nxt in zip(segments, segments[1:]):
             try:
@@ -274,61 +314,12 @@ def _fetch_offers_fast_flights(origin: str, destination: str, departure_date: st
                 mins = 0
             layovers.append(Layover(airport=prev.arr_airport, name=prev.arr_airport_name, duration_minutes=mins))
         offers.append(FlightOffer(
-            price_usd=float(f.price), cabin=cabin,
+            price_usd=price, cabin=cabin,
             total_duration_minutes=sum(sg.duration_minutes for sg in segments) + sum(l.duration_minutes for l in layovers),
             segments=segments, layovers=layovers, provider="fast-flights",
         ))
     offers.sort(key=lambda o: o.price_usd)
     return offers
-
-
-def _parse_fast_flights_html(html: str) -> list:
-    """fast-flights' own parser, made tolerant of itineraries with no price.
-
-    fast_flights.parser.parse_js indexes k[1][0][1] unguarded and raises
-    IndexError for the whole result set when any single row lacks a price
-    (common on first-class searches). Same logic, but bad rows are skipped.
-    """
-    from fast_flights import parser as ffp
-
-    try:
-        return ffp.parse(html)
-    except (IndexError, TypeError):
-        pass
-    import json as _json
-
-    from selectolax.lexbor import LexborHTMLParser
-
-    script = LexborHTMLParser(html).css_first(r"script.ds\:1")
-    if script is None:
-        raise SearchFailed("Google Flights page had no results payload (possibly blocked).")
-    js = script.text()
-    data = js.split("data:", 1)[1].rsplit(",", 1)[0]
-    if data.endswith("errorHasStatus: true"):
-        return []
-    payload = _json.loads(data)
-    rows = (payload[3] or [None])[0] if len(payload) > 3 else None
-    flights = []
-    for k in rows or []:
-        try:
-            price = k[1][0][1]
-            f = k[0]
-            segs = [
-                ffp.SingleFlight(
-                    from_airport=ffp.Airport(code=sf[3], name=sf[4]),
-                    to_airport=ffp.Airport(code=sf[6], name=sf[5]),
-                    departure=ffp.SimpleDatetime(date=tuple(sf[20]), time=ffp._parse_time(sf[8])),
-                    arrival=ffp.SimpleDatetime(date=tuple(sf[21]), time=ffp._parse_time(sf[10])),
-                    duration=sf[11],
-                    plane_type=sf[17],
-                )
-                for sf in f[2]
-            ]
-            flights.append(ffp.Flights(type=f[0], price=price, airlines=f[1], flights=segs,
-                                       carbon=ffp.CarbonEmission(typical_on_route=0, emission=0)))
-        except (IndexError, TypeError, KeyError):
-            continue
-    return flights
 
 
 def serpapi_account_remaining() -> int | None:
@@ -395,6 +386,7 @@ def _fetch_offers(
                 arr_airport_name=seg.get("arrival_airport", {}).get("name", ""),
                 arr_time=seg.get("arrival_airport", {}).get("time", ""),
                 duration_minutes=seg.get("duration", 0),
+                airline_code=(seg.get("flight_number") or "").split(" ")[0].upper(),
             )
             for seg in raw_segments
         ]

@@ -94,7 +94,9 @@ def _render_digest() -> None:
             )
             approx = " (fare from a date within 7 days)" if d.get("cash_is_approx") else ""
             vs_biz = " · first class valued against the business fare" if d["cabin"] == "FIRST" else ""
-            c1.caption(f"Cash fare ${d['cash_price']:,.0f}{approx}{vs_biz}")
+            basis = f" ({d['cash_basis']})" if d.get("cash_basis") else ""
+            own = f" · award airline's own fare ${d['same_carrier_cash']:,.0f}" if d.get("same_carrier_cash") else ""
+            c1.caption(f"Cash fare ${d['cash_price']:,.0f}{basis}{approx}{vs_biz}{own}")
             if d.get("other_dates"):
                 c1.caption(f"Also {len(d['other_dates'])} other date(s): {', '.join(d['other_dates'][:8])}"
                            + (" …" if len(d["other_dates"]) > 8 else ""))

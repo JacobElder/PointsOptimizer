@@ -67,6 +67,8 @@ class Scored:
     p_great: float
     cash: float | None = None
     cash_approx: bool = False
+    cash_basis: str = ""
+    same_carrier_cash: float | None = None
     cpp: float | None = None
     surplus: float | None = None
     other_dates: list[str] = field(default_factory=list)
@@ -90,6 +92,7 @@ class Scored:
             "cabin": c.cabin, "date": c.date, "points": c.points,
             "taxes": round(c.taxes, 2), "currency": c.taxes_currency, "taxes_usd": round(self.taxes_usd, 2),
             "cash_price": self.cash, "cash_is_approx": self.cash_approx, "cash_cabin": price_cabin(c.cabin),
+            "cash_basis": self.cash_basis, "same_carrier_cash": self.same_carrier_cash,
             "cpp": round(self.cpp, 3) if self.cpp is not None else None,
             "great_floor": self.floor, "surplus_usd": round(self.surplus, 0) if self.surplus is not None else None,
             "est_cash": round(self.est.median_price), "est_cpp": round(self.est_cpp, 2),
@@ -116,9 +119,12 @@ def score_candidates(cands: list[award_scanner.AwardCandidate], model: fare_mode
 
 
 def _apply_quote(s: Scored, q: cash_quotes.Quote) -> None:
-    s.cash, s.cash_approx = q.price_usd, q.approx
-    s.cpp = check_alerts.compute_cpp(q.price_usd, s.taxes_usd, s.c.points)
-    s.surplus = (q.price_usd - s.taxes_usd) - s.c.points * s.floor / 100
+    comp = cash_quotes.comparable_fare(q, s.c.direct, s.c.airlines)
+    if comp is None:
+        return
+    s.cash, s.cash_approx, s.cash_basis, s.same_carrier_cash = comp.price, q.approx, comp.basis, comp.same_carrier_price
+    s.cpp = check_alerts.compute_cpp(comp.price, s.taxes_usd, s.c.points)
+    s.surplus = (comp.price - s.taxes_usd) - s.c.points * s.floor / 100
 
 
 def price_promising(scored: list[Scored], max_lookups: int, log=print) -> dict:
@@ -209,7 +215,8 @@ def _email_dict(d: dict) -> dict:
         extra.append(f"+{len(d['other_dates'])} more date(s): {', '.join(d['other_dates'][:6])}")
     if d["alternatives"]:
         extra.append("also " + "; ".join(d["alternatives"]))
-    note = (f"${d['surplus_usd']:,.0f} above the {d['great_floor']:.1f}¢ bar · {d['seats']} seat(s)"
+    note = (f"${d['surplus_usd']:,.0f} above the {d['great_floor']:.1f}¢ bar · {d['seats']} seat(s) · vs {d['cash_basis']}"
+            + (f" (award airline's own fare ${d['same_carrier_cash']:,.0f})" if d.get("same_carrier_cash") else "")
             + (" · valued against the business fare" if d["cabin"] == "FIRST" else "")
             + (" · cash fare from a date within 7 days" if d["cash_is_approx"] else ""))
     return {**d, "flight_number": " · ".join(extra) or None, "note": note}

@@ -8,10 +8,11 @@ from check_alerts import evaluate_alerts
 
 
 class _FakeOffer:
-    def __init__(self, price_usd, stops=1):
+    def __init__(self, price_usd, stops=1, carriers=("XX",)):
         self.price_usd = price_usd
         self.stops = stops
         self.provider = "test"
+        self.carrier_codes = list(carriers)
 
 
 FUTURE = (date.today() + timedelta(days=60)).isoformat()
