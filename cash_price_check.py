@@ -18,8 +18,15 @@ ROUTES = [("JFK", "LHR", "ECONOMY"), ("JFK", "CDG", "BUSINESS"), ("EWR", "LIS", 
 
 
 def main() -> int:
+    try:
+        import fast_flights  # noqa: F401
+    except Exception as e:
+        import traceback
+        tb = traceback.format_exc().strip().splitlines()
+        print(f"::error::fast-flights import failed: {type(e).__name__}: {str(e)[:300]} | {' / '.join(tb[-4:])[:600]}")
+        return 2
     if not flight_search.fast_flights_available():
-        print("::error::fast-flights is not importable here")
+        print("::error::fast-flights disabled via POINTSOPT_DISABLE_FAST_FLIGHTS")
         return 2
     flight_search.SERPAPI_MAX_CALLS = 0
     day = (date.today() + timedelta(days=45)).isoformat()
