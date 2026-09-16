@@ -16,9 +16,9 @@ st.set_page_config(page_title="Deal Radar — PointsOptimizer", page_icon="📡"
 
 st.title("📡 Deal Radar")
 st.caption(
-    "A cloud routine logs your seats.aero alert emails here. Click *Price this deal* for its real "
-    "CPP: cash fares come free from Google Flights (SerpApi only as a fallback), are saved, and "
-    "are reused for nearby dates on the same route and cabin."
+    "Top: the daily Deal Finder's ranked standouts from a direct seats.aero scan. Below: deals "
+    "captured from older seats.aero alert emails. Cash fares come free from Google Flights "
+    "(SerpApi only as a fallback) and are reused for nearby dates on the same route and cabin."
 )
 
 def _price_pending(deal: dict) -> dict:

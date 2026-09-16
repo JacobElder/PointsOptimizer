@@ -4,9 +4,8 @@ Shared UI for finding and valuing a return leg for an outbound award deal.
 Used by both the Flight Analyzer (app.py) and the Deal Radar page. Given an
 outbound deal, it searches seats.aero award space on the reverse route over a
 return-date window, and (on explicit click) values each return option with a
-live cash price -- plus a round-trip total when the outbound's own CPP/cash is
-known. Every SerpApi lookup is behind a button so the scarce quota is only spent
-on returns you choose to value.
+live cash price (free Google Flights lookup, SerpApi fallback) -- plus a
+round-trip total when the outbound's own CPP/cash is known.
 """
 
 from __future__ import annotations
@@ -23,11 +22,11 @@ _CABINS = ["ECONOMY", "PREMIUM_ECONOMY", "BUSINESS", "FIRST"]
 
 
 def value_return(dep: str, arr: str, o) -> dict:
-    """Live cash price + CPP for one return award option (one SerpApi call)."""
+    """Live cash price + CPP for one return award option."""
     try:
         offers = flight_search.search_cash_price(dep, arr, o.date, o.cabin, max_results=1)
     except flight_search.NotConfigured:
-        return {"error": "SerpApi cash-price lookup isn't configured (SERPAPI_KEY)."}
+        return {"error": "No cash-price provider available (install fast-flights or set SERPAPI_KEY)."}
     except flight_search.SearchFailed as e:
         return {"error": str(e)}
     if not offers:

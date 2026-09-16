@@ -1,9 +1,11 @@
 name: Cash price source check
 
 # Verifies free Google Flights lookups (fast-flights) work from GitHub's runners.
-# Never spends SerpApi quota. Runs on changes to the provider code, or by hand.
+# Never spends SerpApi quota. Runs weekly, on changes to the provider code, or by hand.
 on:
   workflow_dispatch: {}
+  schedule:
+    - cron: "0 9 * * 1" # weekly (Mon): catch Google page changes that break parsing
   push:
     branches: [main]
     paths:

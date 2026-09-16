@@ -1,13 +1,15 @@
 """
 Parser for seats.aero "flights found for your alert" email notifications.
 
-seats.aero's Partner API has no endpoint for "give me my saved alerts" — alerts
-are a mailbox feature, not an API resource. So the path here is: fetch the
-alert emails yourself (Gmail, mbox export, whatever), pass each raw HTML body
-to parse_alert_email(), and this pulls out exactly the fields needed to run a
-CPP check — origin, destination, date, cabin, program, points, and the award's
-taxes/fees. It deliberately leaves cash price blank: that side still comes from
-flight_search.search_cash_price(), same as everywhere else in this app.
+Legacy capture path. seats.aero's API lists alert *settings*
+(/partnerapi/alerts) but not the flights an alert matched, so this parsed the
+alert emails instead. The Deal Finder (deal_finder.py) now queries award space
+directly and doesn't need alert emails; this parser remains for the Gmail
+capture routine and older captured deals.
+
+Pass each raw HTML body to parse_alert_email() to get origin, destination,
+date, cabin, program, points and the award's taxes/fees. Cash price is left
+blank; it comes from cash_quotes, same as everywhere else.
 """
 
 from __future__ import annotations
