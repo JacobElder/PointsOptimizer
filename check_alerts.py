@@ -8,10 +8,9 @@ feed it a JSON list of parsed alerts (see seats_aero_alerts.parse_alert_email
 for how to produce one from raw alert email HTML) and it looks up each route's
 live cash price via flight_search, computes CPP, and ranks the results.
 
-There's no way to fetch the alert emails themselves from here — seats.aero's
-API has no "list my alerts" endpoint, and this script has no Gmail credentials.
-Fetching + parsing the emails happens in a Claude Code session with Gmail
-access; this script is the second half of that pipeline.
+Fetching + parsing the emails happens in a Claude Code routine with Gmail
+access; this script is the second half of that pipeline. Cash prices come from
+cash_quotes (persistent, reused across nearby dates on the same route+cabin).
 
 Usage:
     python3 check_alerts.py alerts.json
@@ -27,16 +26,15 @@ import sys
 
 import requests
 
+import cash_quotes
 import deal_log
 import flight_search
 
 # Used only if the live rate lookup below fails (offline, API down, etc).
 _FX_FALLBACK = {"USD": 1.0, "CAD": 0.73, "EUR": 1.08, "GBP": 1.27}
 
-# Kept for backward-compatible imports; the authoritative verdict thresholds now
-# live in deal_log (cabin-aware) and drive verdict_for(), so BOOK == "great".
+# Verdict thresholds live in deal_log (cabin-aware verdict_for()).
 SKIP_FLOOR = deal_log.SKIP_CPP
-BOOK_FLOOR = 1.7
 
 _fx_cache: dict[str, float] = {}
 
@@ -61,49 +59,60 @@ def _fx_rate(currency: str) -> float:
     return rate
 
 
-def evaluate_alerts(alerts: list[dict], skip_floor: float = SKIP_FLOOR, book_floor: float = BOOK_FLOOR) -> list[dict]:
+def compute_cpp(cash_price: float, taxes_usd: float, points: int) -> float | None:
+    """Cents per point: (cash fare - award taxes) / points * 100. None if points <= 0."""
+    if points <= 0:
+        return None
+    return (max(cash_price - taxes_usd, 0.0) / points) * 100
+
+
+def evaluate_alerts(alerts: list[dict], allow_live: bool = True) -> list[dict]:
+    """Price each alert and compute CPP + verdict.
+
+    Each result carries `price_status`:
+      "priced"         -- cash price found, cpp/verdict set
+      "no_fare"        -- provider answered: no itineraries (definitive for now)
+      "out_of_window"  -- date past or beyond the booking window; no lookup made
+      "quota"          -- SerpApi quota exhausted; later alerts in the batch skip live lookups
+      "failed"         -- transient lookup error, worth retrying
+      "not_cached"     -- allow_live=False and nothing usable cached
+    `priced_ok` stays for older readers: False only for transient states.
+    """
     results = []
-    price_cache: dict[tuple, tuple] = {}  # dedupes repeat origin/dest/date/cabin within one batch
+    quota_hit = False
     for a in alerts:
         taxes_usd = float(a["taxes"]) * _fx_rate(a.get("currency", "USD"))
+        base = {**a, "taxes_usd": taxes_usd, "cash_price": None, "cpp": None, "verdict": "NO CASH PRICE",
+                "error": None, "price_error": None}
+        status, quote = "priced", None
+        try:
+            quote = cash_quotes.get_quote(a["origin"], a["dest"], a["date"], a["cabin"],
+                                          allow_live=allow_live and not quota_hit)
+            if quote is None:
+                status = "quota" if quota_hit else "not_cached"
+            elif quote.price_usd is None:
+                status = "no_fare"
+        except cash_quotes.OutOfWindow as e:
+            status, base["error"] = "out_of_window", str(e)
+        except flight_search.QuotaExhausted as e:
+            quota_hit = True
+            status, base["error"] = "quota", str(e)
+        except (flight_search.NotConfigured, flight_search.SearchFailed) as e:
+            status, base["error"] = "failed", str(e)
+        base["price_error"] = base["error"]
 
-        price_key = (a["origin"], a["dest"], a["date"], a["cabin"])
-        if price_key in price_cache:
-            cash_price, error = price_cache[price_key]
-        else:
-            cash_price, error = None, None
-            try:
-                offers = flight_search.search_cash_price(a["origin"], a["dest"], a["date"], a["cabin"], max_results=1)
-                cash_price = offers[0].price_usd if offers else None
-            except (flight_search.NotConfigured, flight_search.SearchFailed) as e:
-                error = str(e)
-            price_cache[price_key] = (cash_price, error)
-
-        if cash_price is None:
-            # priced_ok distinguishes a TRANSIENT lookup failure (error set -> the
-            # caller should keep the deal queued and retry) from a legitimate
-            # "no cash price exists for this route" (error None -> a definitive
-            # answer worth recording, not retrying forever). `error` kept for
-            # backward compatibility with existing readers.
-            results.append({**a, "taxes_usd": taxes_usd, "cash_price": None, "cpp": None,
-                             "verdict": "NO CASH PRICE", "priced_ok": error is None,
-                             "error": error, "price_error": error})
+        if status != "priced":
+            results.append({**base, "price_status": status,
+                            "priced_ok": status in ("no_fare",)})
             continue
 
-        points = int(a["points"])
-        if points <= 0:
-            # Defensive: price_pending_deals validates points>0 upstream, but never
-            # divide by zero here. Definitive (won't be retried).
-            results.append({**a, "taxes_usd": taxes_usd, "cash_price": cash_price, "cpp": None,
-                             "verdict": "NO CASH PRICE", "priced_ok": True,
-                             "error": None, "price_error": None})
-            continue
-
-        net = max(cash_price - taxes_usd, 0.0)
-        cpp = (net / points) * 100
-        verdict = deal_log.verdict_for(cpp, a.get("cabin", ""))
-        results.append({**a, "taxes_usd": taxes_usd, "cash_price": cash_price, "cpp": cpp,
-                         "verdict": verdict, "priced_ok": True, "error": None, "price_error": None})
+        cpp = compute_cpp(quote.price_usd, taxes_usd, int(a["points"]))
+        results.append({**base, "cash_price": quote.price_usd, "cpp": cpp,
+                        "nonstop_cash_price": quote.nonstop_price_usd,
+                        "cash_provider": quote.provider, "cash_is_approx": quote.approx,
+                        "cash_quote_date": quote.date,
+                        "verdict": deal_log.verdict_for(cpp, a.get("cabin", "")),
+                        "price_status": "priced", "priced_ok": True})
 
     results.sort(key=lambda r: (r["cpp"] is None, -(r["cpp"] or 0)))
     return results

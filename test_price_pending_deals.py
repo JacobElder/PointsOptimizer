@@ -1,190 +1,208 @@
+from datetime import date, timedelta
+
 import check_alerts
 import deal_email
 import deal_log
 import flight_search
 import price_pending_deals
 
+FUTURE = (date.today() + timedelta(days=60)).isoformat()
 
-class _FakeRun:
-    """Simulates git subprocess calls; push returncode is configurable."""
 
-    def __init__(self, push_rc=0):
-        self.push_rc = push_rc
+class _FakeGit:
+    """Records git invocations; per-subcommand return codes are configurable."""
+
+    def __init__(self, branch="main", rc=None, dirty=""):
         self.calls = []
+        self.branch = branch
+        self.rc = rc or {}
+        self.dirty = dirty
 
-    def __call__(self, cmd, *args, **kwargs):
-        self.calls.append(cmd)
+    def __call__(self, *args):
+        self.calls.append(list(args))
 
         class R:
-            pass
+            stdout, stderr, returncode = "", "", 0
 
         r = R()
-        r.stdout = ""
-        r.stderr = ""
-        r.returncode = 0
-        if cmd[:2] == ["git", "push"]:
-            r.returncode = self.push_rc
+        if args[0] == "rev-parse":
+            r.stdout = self.branch + "\n"
+        elif args[0] == "status":
+            r.stdout = self.dirty
+        r.returncode = self.rc.get(args[0], 0)
         return r
 
 
 def _valid(**over):
     d = dict(origin="JFK", dest="MAD", program="Flying Blue", cabin="BUSINESS",
-             date="2026-11-04", points=40000, taxes=30.0, currency="USD")
+             date=FUTURE, points=40000, taxes=30.0, currency="USD")
     d.update(over)
     return d
 
 
-def _wire(monkeypatch, pending, priced, push_rc=0):
-    """Set up main() with in-memory state and stubbed git/pricing/email."""
-    data = {"processed_message_ids": [], "deals": [], "pending": list(pending)}
-    saved = {}
-    fake_run = _FakeRun(push_rc=push_rc)
-    emails, notifies = [], []
+def _priced(p, cpp=3.0, status="priced"):
+    return {**p, "cpp": cpp if status == "priced" else None, "price_status": status,
+            "verdict": deal_log.verdict_for(cpp if status == "priced" else None, p["cabin"]),
+            "cash_price": 1230.0 if status == "priced" else None, "taxes_usd": 30.0,
+            "priced_ok": status in ("priced", "no_fare")}
 
+
+def _wire(monkeypatch, data, evaluate, git=None):
+    saved, emails, notifies = {}, [], []
+    git = git or _FakeGit()
     monkeypatch.setattr(flight_search, "is_configured", lambda: True)
-    monkeypatch.setattr(price_pending_deals.subprocess, "run", fake_run)
+    monkeypatch.setattr(flight_search, "serpapi_configured", lambda: False)
+    monkeypatch.setattr(price_pending_deals, "_git", git)
     monkeypatch.setattr(deal_log, "load", lambda: data)
     monkeypatch.setattr(deal_log, "save", lambda d: saved.update({"data": d}))
-    monkeypatch.setattr(check_alerts, "evaluate_alerts", lambda to_price: priced)
+    monkeypatch.setattr(check_alerts, "evaluate_alerts", evaluate)
     monkeypatch.setattr(price_pending_deals, "_notify_mac", lambda msg: notifies.append(msg))
     monkeypatch.setattr(deal_email, "is_configured", lambda: True)
     monkeypatch.setattr(deal_email, "send_deal_alert_email", lambda great: emails.append(great))
-    return data, saved, fake_run, emails, notifies
+    return saved, git, emails, notifies
 
 
-def test_email_not_sent_when_push_fails(monkeypatch):
-    great_deal = _valid(cpp=3.0, verdict="BOOK", priced_ok=True, taxes_usd=30.0, cash_price=1230.0)
-    data, saved, fake_run, emails, notifies = _wire(
-        monkeypatch, pending=[_valid()], priced=[great_deal], push_rc=1
-    )
-
-    price_pending_deals.main()
-
-    assert emails == []      # FIX 2: no email when the push didn't land
-    assert notifies == []
-    assert ["git", "reset", "--hard", "origin/main"] in fake_run.calls  # self-heal
+def _data(pending, deals=()):
+    return {"processed_message_ids": [], "deals": list(deals), "pending": list(pending)}
 
 
-def test_email_sent_when_push_succeeds(monkeypatch):
-    great_deal = _valid(cpp=3.0, verdict="BOOK", priced_ok=True, taxes_usd=30.0, cash_price=1230.0)
-    data, saved, fake_run, emails, notifies = _wire(
-        monkeypatch, pending=[_valid()], priced=[great_deal], push_rc=0
-    )
+def test_never_hard_resets_even_when_push_fails(monkeypatch):
+    data = _data([_valid()])
+    git = _FakeGit(rc={"push": 1, "pull": 0})
+    saved, git, emails, _ = _wire(monkeypatch, data, lambda tp: [_priced(p) for p in tp], git)
 
-    price_pending_deals.main()
+    rc = price_pending_deals.main([])
 
-    assert len(emails) == 1 and len(emails[0]) == 1
-    assert len(notifies) == 1
+    assert rc == 1
+    assert not any(c[:2] == ["reset", "--hard"] for c in git.calls)
+    commit = next(c for c in git.calls if c[0] == "commit")
+    assert commit[-2:] == price_pending_deals.DATA_FILES  # only data files, never other staged work
 
 
-def test_transient_failure_keeps_deal_pending_for_retry(monkeypatch):
-    failed = _valid(cpp=None, verdict="NO CASH PRICE", priced_ok=False, price_error="boom", taxes_usd=30.0)
-    data, saved, fake_run, emails, notifies = _wire(
-        monkeypatch, pending=[_valid()], priced=[failed], push_rc=0
-    )
+def test_refuses_to_run_off_main(monkeypatch):
+    evaluated = []
+    _wire(monkeypatch, _data([_valid()]), lambda tp: evaluated.append(tp) or [], _FakeGit(branch="feature"))
 
-    price_pending_deals.main()
+    assert price_pending_deals.main([]) == 1
+    assert evaluated == []
+
+
+def test_pull_failure_aborts_without_pricing(monkeypatch):
+    evaluated = []
+    git = _FakeGit(rc={"pull": 1})
+    _wire(monkeypatch, _data([_valid()]), lambda tp: evaluated.append(tp) or [], git)
+
+    assert price_pending_deals.main([]) == 1
+    assert evaluated == []
+    assert ["rebase", "--abort"] in git.calls
+
+
+def test_email_sent_and_marked_notified(monkeypatch):
+    data = _data([_valid()])
+    saved, git, emails, notifies = _wire(monkeypatch, data, lambda tp: [_priced(p) for p in tp])
+
+    assert price_pending_deals.main([]) == 0
+    assert len(emails) == 1 and len(notifies) == 1
+    assert saved["data"]["deals"][0]["notified"] is True
+    assert saved["data"]["pending"] == []
+
+
+def test_transient_failure_stays_pending_with_attempt_counter(monkeypatch):
+    data = _data([_valid()])
+    saved, *_ = _wire(monkeypatch, data, lambda tp: [_priced(p, status="failed") for p in tp])
+
+    price_pending_deals.main(["--no-git"])
 
     out = saved["data"]
-    assert out["deals"] == []                       # FIX 3: not recorded as a final deal
-    assert len(out["pending"]) == 1                  # stays queued
-    assert out["pending"][0]["price_attempts"] == 1  # with a bounded retry counter
-    assert "cpp" not in out["pending"][0]            # pricing fields stripped back off
+    assert out["deals"] == []
+    assert out["pending"][0]["price_attempts"] == 1
+    assert "cpp" not in out["pending"][0]
 
 
-def test_transient_failure_gives_up_after_max_attempts(monkeypatch):
-    failed = _valid(cpp=None, verdict="NO CASH PRICE", priced_ok=False,
-                    price_error="boom", price_attempts=price_pending_deals.MAX_PRICE_ATTEMPTS - 1)
-    data, saved, fake_run, emails, notifies = _wire(
-        monkeypatch, pending=[_valid()], priced=[failed], push_rc=0
-    )
+def test_failures_never_filed_as_deals_even_after_max_attempts(monkeypatch):
+    stuck = _valid(price_attempts=price_pending_deals.MAX_PRICE_ATTEMPTS)
+    evaluated = []
+    _wire(monkeypatch, _data([stuck]), lambda tp: evaluated.append(tp) or [])
 
-    price_pending_deals.main()
+    price_pending_deals.main(["--no-git"])
+
+    assert evaluated == []  # capped deals are skipped, and stay queued
+
+
+def test_quota_exhaustion_leaves_attempts_untouched(monkeypatch):
+    data = _data([_valid()])
+    saved, *_ = _wire(monkeypatch, data, lambda tp: [_priced(p, status="quota") for p in tp])
+
+    price_pending_deals.main(["--no-git"])
+
+    entry = saved["data"]["pending"][0]
+    assert "price_attempts" not in entry
+    assert entry["last_price_status"] == "quota"
+
+
+def test_past_dated_pending_is_expired_not_priced(monkeypatch):
+    past = _valid(date=(date.today() - timedelta(days=3)).isoformat())
+    evaluated = []
+    saved, *_ = _wire(monkeypatch, _data([past]), lambda tp: evaluated.append(tp) or [])
+
+    price_pending_deals.main(["--no-git"])
+
+    assert evaluated == []
+    assert saved["data"]["pending"] == [] and saved["data"]["expired"] == [past]
+
+
+def test_too_far_out_is_left_queued_without_lookup(monkeypatch):
+    far = _valid(date=(date.today() + timedelta(days=345)).isoformat())
+    evaluated = []
+    _wire(monkeypatch, _data([far]), lambda tp: evaluated.append(tp) or [])
+
+    price_pending_deals.main(["--no-git"])
+
+    assert evaluated == []
+    assert deal_log.load()["pending"] == [far]
+
+
+def test_old_unpriced_deals_are_requeued(monkeypatch):
+    old = {**_valid(), "cpp": None, "verdict": "NO CASH PRICE", "priced_ok": False, "error": "HTTP 429"}
+    good = {**_valid(dest="LIS"), "cpp": 2.2, "verdict": "BOOK"}
+    data = _data([], deals=[old, good])
+    saved, *_ = _wire(monkeypatch, data, lambda tp: [_priced(p, status="failed") for p in tp])
+
+    price_pending_deals.main(["--no-git", "--no-email"])
 
     out = saved["data"]
-    assert len(out["deals"]) == 1      # recorded as definitive after the cap
-    assert out["pending"] == []
+    assert out["deals"] == [good]
+    assert out["pending"][0]["dest"] == "MAD" and "error" not in out["pending"][0]
 
 
-def test_malformed_pending_entry_is_skipped_not_crashed(monkeypatch):
+def test_prioritizes_premium_cabin_under_limit(monkeypatch):
     seen = {}
-
-    def _capture(to_price):
-        seen["to_price"] = to_price
-        return []
-
-    good = _valid()
-    bad = dict(origin="JFK", dest="CTG", program="Aeroplan")  # missing required fields
-    data = {"processed_message_ids": [], "deals": [], "pending": [good, bad]}
-    saved = {}
-    monkeypatch.setattr(flight_search, "is_configured", lambda: True)
-    monkeypatch.setattr(price_pending_deals.subprocess, "run", _FakeRun(push_rc=0))
-    monkeypatch.setattr(deal_log, "load", lambda: data)
-    monkeypatch.setattr(deal_log, "save", lambda d: saved.update({"data": d}))
-    monkeypatch.setattr(check_alerts, "evaluate_alerts", _capture)
-    monkeypatch.setattr(price_pending_deals, "_notify_mac", lambda msg: None)
-    monkeypatch.setattr(deal_email, "is_configured", lambda: False)
-
-    price_pending_deals.main()  # must not raise
-
-    assert seen["to_price"] == [good]           # only the valid entry was priced
-    assert bad in saved["data"]["pending"]      # malformed entry retained, not lost
-
-
-def test_budget_exhausted_holds_deals_without_pricing(monkeypatch):
-    called = {"evaluate": False}
-
-    def _should_not_run(to_price):
-        called["evaluate"] = True
-        return []
-
-    data = {"processed_message_ids": [], "deals": [], "pending": [_valid()],
-            "serpapi_usage": {"month": price_pending_deals._current_month(),
-                              "count": price_pending_deals.MONTHLY_SERPAPI_BUDGET}}
-    monkeypatch.setattr(flight_search, "is_configured", lambda: True)
-    monkeypatch.setattr(price_pending_deals.subprocess, "run", _FakeRun())
-    monkeypatch.setattr(deal_log, "load", lambda: data)
-    monkeypatch.setattr(deal_log, "save", lambda d: None)
-    monkeypatch.setattr(check_alerts, "evaluate_alerts", _should_not_run)
-
-    price_pending_deals.main()
-
-    assert called["evaluate"] is False        # budget spent -> no SerpApi calls
-    assert data["pending"] == [_valid()]      # deal held for next month
-
-
-def test_usage_is_recorded_after_pricing(monkeypatch):
-    priced = _valid(cpp=1.0, verdict="SKIP", priced_ok=True, taxes_usd=30.0, cash_price=430.0)
-    data, saved, fake_run, emails, notifies = _wire(
-        monkeypatch, pending=[_valid()], priced=[priced], push_rc=0
-    )
-
-    price_pending_deals.main()
-
-    usage = saved["data"]["serpapi_usage"]
-    assert usage["month"] == price_pending_deals._current_month()
-    assert usage["count"] == 1  # one distinct route priced -> one SerpApi call
-
-
-def test_prioritizes_premium_cabin_when_budget_limited(monkeypatch):
-    seen = {}
-    monkeypatch.setattr(check_alerts, "evaluate_alerts",
-                        lambda to_price: seen.setdefault("to_price", to_price) or [])
     econ = _valid(cabin="ECONOMY", dest="LIR", points=20000)
     biz = _valid(cabin="BUSINESS", dest="CAI", points=80000)
-    data = {"processed_message_ids": [], "deals": [], "pending": [econ, biz],
-            "serpapi_usage": {"month": price_pending_deals._current_month(),
-                              "count": price_pending_deals.MONTHLY_SERPAPI_BUDGET - 1}}  # room for 1
-    monkeypatch.setattr(flight_search, "is_configured", lambda: True)
-    monkeypatch.setattr(price_pending_deals.subprocess, "run", _FakeRun())
-    monkeypatch.setattr(deal_log, "load", lambda: data)
-    monkeypatch.setattr(deal_log, "save", lambda d: None)
-    monkeypatch.setattr(price_pending_deals, "_notify_mac", lambda m: None)
-    monkeypatch.setattr(deal_email, "is_configured", lambda: False)
+    _wire(monkeypatch, _data([econ, biz]), lambda tp: seen.setdefault("tp", tp) and [])
 
-    price_pending_deals.main()
+    price_pending_deals.main(["--no-git", "--limit", "1", "--no-email"])
 
-    assert [d["cabin"] for d in seen["to_price"]] == ["BUSINESS"]  # premium priced first
+    assert [d["cabin"] for d in seen["tp"]] == ["BUSINESS"]
+
+
+def test_queue_order_preserved(monkeypatch):
+    a, b, c = _valid(dest="AAA"), _valid(dest="BBB", cabin="ECONOMY"), _valid(dest="CCC")
+    saved, *_ = _wire(monkeypatch, _data([a, b, c]),
+                      lambda tp: [_priced(p, status="no_fare") for p in tp])
+
+    price_pending_deals.main(["--no-git"])
+
+    assert [p["dest"] for p in saved["data"]["pending"]] == ["AAA", "BBB", "CCC"]
+
+
+def test_no_changes_means_no_commit(monkeypatch):
+    git = _FakeGit()
+    far = _valid(date=(date.today() + timedelta(days=345)).isoformat())
+    _wire(monkeypatch, _data([far]), lambda tp: [], git)
+
+    assert price_pending_deals.main([]) == 0
+    assert not any(c[0] == "commit" for c in git.calls)
 
 
 def test_notify_mac_noop_when_osascript_missing(monkeypatch):
@@ -194,7 +212,7 @@ def test_notify_mac_noop_when_osascript_missing(monkeypatch):
 
     price_pending_deals._notify_mac("test message")
 
-    assert calls == []  # never even attempted to invoke osascript
+    assert calls == []
 
 
 def test_notify_mac_invokes_osascript_when_present(monkeypatch):

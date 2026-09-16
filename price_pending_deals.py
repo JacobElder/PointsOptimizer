@@ -1,193 +1,239 @@
 """
-Prices whatever the cloud routine queued into deal_log.json's "pending" list,
-since that routine's cloud environment cannot reach serpapi.com (org egress
-policy block, see TODO.md item 4) but this can.
+Prices the deals the capture routine queued into deal_log.json's "pending" list.
 
-Runs from two places: a Mac LaunchAgent (hourly, whenever the Mac is on) and
-a GitHub Actions scheduled workflow (hourly, always-on, no Mac dependency --
-see .github/workflows/deal_radar_pricing.yml). Both write to the same shared
-deal_log.json via git, so this pulls before reading and handles a rejected
-push gracefully in case both fire close together.
+Cash prices come from cash_quotes (free fast-flights first, SerpApi fallback,
+quotes persisted and reused across nearby dates), so a bulk run is cheap.
 
-Safe to run by hand any time too: `python3 price_pending_deals.py`.
+Runs by hand (`python3 price_pending_deals.py`) or from the manual GitHub
+Actions workflow. Flags:
+    --no-git     price and save locally only; no pull/commit/push
+    --limit N    max deals to price this run (default CAP_PER_RUN)
+    --no-email   skip the macOS notification and Gmail alert
+    --serpapi-cap N  max paid SerpApi fallback calls (default SERPAPI_CAP_PER_RUN)
+
+Git safety: this never runs `git reset --hard`. It commits only the two data
+files, refuses to run off `main`, and on any git failure stops and reports
+instead of discarding anything.
 """
 
 from __future__ import annotations
 
+import argparse
 import shutil
 import subprocess
 import sys
 from datetime import datetime, timezone
 
+import cash_quotes
 import check_alerts
 import deal_email
 import deal_log
 import flight_search
 
-CAP_PER_RUN = 15  # protects the shared SerpApi 250/month free quota
-MAX_PRICE_ATTEMPTS = 4  # give up re-pricing a deal after this many transient failures
+CAP_PER_RUN = 60
+SERPAPI_CAP_PER_RUN = 10
+MAX_PRICE_ATTEMPTS = 4  # stop auto-retrying a deal after this many transient failures
+DATA_FILES = ["deal_log.json", "cash_quotes.json"]
 
-# The binding constraint is SerpApi's 250 cash-price lookups per MONTH (free tier),
-# not CAP_PER_RUN. Track monthly usage in deal_log.json and stop pricing before the
-# quota is blown, reserving a buffer for interactive Flight Analyzer / return-value
-# lookups (which spend the same 250 but aren't tracked here since they run in the app).
-MONTHLY_SERPAPI_BUDGET = 220
-
-# When the budget is tight, spend it on the highest-value redemptions first. We can't
-# know CPP before pricing, but a premium-cabin standout saves far more (40k-145k pts)
-# than an economy one, so price premium cabins first, then fewest points within a tier.
+# Premium cabins first (more points at stake), then fewest points within a tier.
 _CABIN_PRIORITY = {"FIRST": 0, "BUSINESS": 1, "PREMIUM_ECONOMY": 2, "ECONOMY": 3}
 
-
-def _current_month() -> str:
-    return datetime.now(timezone.utc).strftime("%Y-%m")
-
-
-def _serpapi_used(data: dict) -> int:
-    usage = data.get("serpapi_usage") or {}
-    if usage.get("month") != _current_month():
-        return 0  # a new month resets the budget
-    return int(usage.get("count", 0))
-
-
-def _record_serpapi_usage(data: dict, calls_made: int) -> None:
-    data["serpapi_usage"] = {"month": _current_month(), "count": _serpapi_used(data) + calls_made}
-
-# Fields evaluate_alerts() adds on top of a pending entry; stripped when we put a
-# transiently-failed deal back on the queue so it retains its original shape.
+# Fields evaluate_alerts() adds; stripped when a deal stays on the queue.
 _PRICING_FIELDS = (
-    "taxes_usd", "cash_price", "cpp", "verdict", "priced_ok", "error",
-    "price_error", "key", "checked_at", "notified",
+    "taxes_usd", "cash_price", "cpp", "verdict", "priced_ok", "error", "price_error", "key",
+    "checked_at", "notified", "price_status", "nonstop_cash_price", "cash_provider",
+    "cash_is_approx", "cash_quote_date",
 )
+
+
+def _git(*args: str) -> subprocess.CompletedProcess:
+    return subprocess.run(["git", *args], capture_output=True, text=True)
 
 
 def _notify_mac(message: str) -> None:
     if not shutil.which("osascript"):
-        return  # not on macOS (e.g. running in GitHub Actions) -- email is the notification there
+        return  # not on macOS (e.g. GitHub Actions) -- email is the notification there
     escaped = message.replace("\\", "\\\\").replace('"', '\\"')
     script = f'display notification "{escaped}" with title "Deal Radar"'
     subprocess.run(["osascript", "-e", script], check=False)
 
 
-def main() -> None:
-    if not flight_search.is_configured():
-        print("SERPAPI_KEY not configured (env var or .streamlit/secrets.toml) -- nothing to do.")
-        sys.exit(1)
-
-    pull = subprocess.run(["git", "pull", "--ff-only", "origin", "main"], capture_output=True, text=True)
+def _sync_from_origin() -> bool:
+    """Bring local main up to date with origin. Never discards local work."""
+    branch = _git("rev-parse", "--abbrev-ref", "HEAD").stdout.strip()
+    if branch != "main":
+        print(f"On branch '{branch}', not main -- refusing to commit pipeline data here. Use --no-git.")
+        return False
+    if _git("status", "--porcelain", "--", *DATA_FILES).stdout.strip():
+        print(f"Uncommitted edits to {DATA_FILES} -- commit or discard them first.")
+        return False
+    pull = _git("pull", "--rebase", "--autostash", "origin", "main")
     if pull.returncode != 0:
-        # A non-fast-forward (diverged/dirty local checkout, e.g. from an earlier
-        # rejected push) must not wedge the pipeline forever -- hard-reset to the
-        # server-owned state and carry on. deal_log.json is shared server state,
-        # so discarding local divergence is the correct recovery.
-        print(f"git pull not fast-forward; resetting to origin/main:\n{pull.stderr}")
-        subprocess.run(["git", "fetch", "origin", "main"], capture_output=True, text=True)
-        reset = subprocess.run(["git", "reset", "--hard", "origin/main"], capture_output=True, text=True)
-        if reset.returncode != 0:
-            print(f"git reset --hard failed, aborting:\n{reset.stderr}")
-            sys.exit(1)
+        _git("rebase", "--abort")
+        print(f"git pull failed; nothing priced, nothing discarded:\n{pull.stderr}")
+        return False
+    return True
 
-    data = deal_log.load()
-    pending = data["pending"]
-    if not pending:
-        print("No pending deals to price.")
-        return
 
-    # FIX 4: quarantine malformed entries so one bad row can't crash the batch.
-    # Invalid entries stay on the queue (harmless -- skipped before any API call)
-    # rather than being silently dropped.
-    valid = [e for e in pending if deal_log.is_valid_pending(e)]
-    invalid = [e for e in pending if not deal_log.is_valid_pending(e)]
-    if invalid:
-        print(f"Skipping {len(invalid)} malformed pending entry(ies).")
+def _commit_and_push(message: str) -> bool:
+    if _git("add", "--", *DATA_FILES).returncode != 0:
+        print("git add failed")
+        return False
+    commit = _git("commit", "-m", message, "--", *DATA_FILES)
+    if commit.returncode != 0:
+        print(f"git commit failed:\n{commit.stdout}{commit.stderr}")
+        return False
+    for attempt in range(3):
+        push = _git("push", "origin", "main")
+        if push.returncode == 0:
+            return True
+        # Most likely the capture routine pushed meanwhile: replay our commit on top.
+        pull = _git("pull", "--rebase", "--autostash", "origin", "main")
+        if pull.returncode != 0:
+            _git("rebase", "--abort")
+            print(f"push rejected and rebase failed; commit kept locally for next run:\n{pull.stderr}")
+            return False
+    print("push still rejected after retries; commit kept locally for next run.")
+    return False
 
-    # Monthly SerpApi budget guard: never blow the 250/month free quota, and stop
-    # early (leaving deals queued for next month / a plan upgrade) when it's spent.
-    used = _serpapi_used(data)
-    remaining = MONTHLY_SERPAPI_BUDGET - used
-    if remaining <= 0:
-        print(f"Monthly SerpApi budget ({MONTHLY_SERPAPI_BUDGET}) exhausted for {_current_month()}; "
-              f"holding {len(valid)} deal(s) in pending until it resets.")
-        return
 
-    # Prioritize the scarce budget: premium cabins first, then fewest points.
-    valid_sorted = sorted(
-        valid, key=lambda d: (_CABIN_PRIORITY.get(str(d.get("cabin", "")).upper(), 4), int(d["points"]))
-    )
-    run_cap = min(CAP_PER_RUN, remaining)
-    to_price, overflow = valid_sorted[:run_cap], valid_sorted[run_cap:]
+def _requeue_unpriced_deals(data: dict, today: str) -> int:
+    """Older runs filed failed lookups (quota 429s, timeouts, too-far-out dates)
+    into `deals` as NO CASH PRICE, which blocked them forever. Put future-dated
+    ones back on the queue. Idempotent: current runs never file unpriced deals."""
+    keep, moved = [], 0
+    for d in data["deals"]:
+        if d.get("cpp") is None and str(d.get("date", "")) >= today:
+            data["pending"].append({k: v for k, v in d.items() if k not in _PRICING_FIELDS})
+            moved += 1
+        else:
+            keep.append(d)
+    data["deals"] = keep
+    return moved
 
-    # One SerpApi call per distinct route/date/cabin (evaluate_alerts dedups within a batch).
-    calls_made = len({(d["origin"], d["dest"], d["date"], d["cabin"]) for d in to_price})
-    _record_serpapi_usage(data, calls_made)
 
-    priced = check_alerts.evaluate_alerts(to_price)
+def _expire_past_deals(data: dict, today: str) -> int:
+    live, expired = [], []
+    for p in data["pending"]:
+        (expired if isinstance(p, dict) and str(p.get("date", "9999")) < today else live).append(p)
+    data["pending"] = live
+    data.setdefault("expired", []).extend(expired)
+    return len(expired)
+
+
+def price_queue(data: dict, limit: int) -> tuple[list[dict], dict]:
+    """Price up to `limit` queued deals in place. Returns (newly priced, status counts)."""
+    today_d = datetime.now(timezone.utc).date()
+    candidates = []
+    for p in data["pending"]:
+        if not deal_log.is_valid_pending(p) or int(p.get("price_attempts", 0)) >= MAX_PRICE_ATTEMPTS:
+            continue
+        days_out = (datetime.strptime(p["date"], "%Y-%m-%d").date() - today_d).days
+        if 0 <= days_out <= cash_quotes.MAX_LOOKAHEAD_DAYS:
+            candidates.append(p)
+    candidates.sort(key=lambda d: (_CABIN_PRIORITY.get(str(d["cabin"]).upper(), 4), int(d["points"])))
+    to_price = candidates[:limit]
+    if not to_price:
+        return [], {}
+
+    results = check_alerts.evaluate_alerts(to_price)
+    by_id = {id(orig): res for orig, res in zip(to_price, _align(to_price, results))}
     checked_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
-    great, newly_priced, retry = [], [], []
-    for p in priced:
-        if not p.get("priced_ok", True):
-            # FIX 3: transient lookup failure -- keep on the queue for a bounded
-            # number of retries instead of permanently recording NO CASH PRICE.
-            attempts = int(p.get("price_attempts", 0)) + 1
-            if attempts < MAX_PRICE_ATTEMPTS:
-                entry = {k: v for k, v in p.items() if k not in _PRICING_FIELDS}
-                entry["price_attempts"] = attempts
-                retry.append(entry)
-                continue
-            # else: fall through and record it as a definitive NO CASH PRICE.
-        p["key"] = deal_log.make_key(p["program"], p["origin"], p["dest"], p["cabin"], p["date"], p["points"])
-        p["checked_at"] = checked_at
-        p["notified"] = deal_log.is_great(p)
-        if p["notified"]:
-            great.append(p)
-        newly_priced.append(p)
-        data["deals"].append(p)
+    new_pending, newly_priced, counts = [], [], {}
+    for p in data["pending"]:
+        res = by_id.get(id(p))
+        if res is None:
+            new_pending.append(p)
+            continue
+        status = res.get("price_status", "priced" if res.get("cpp") is not None else "failed")
+        counts[status] = counts.get(status, 0) + 1
+        if status == "priced":
+            res["key"] = deal_log.make_key(p["program"], p["origin"], p["dest"], p["cabin"], p["date"], p["points"])
+            res["checked_at"] = checked_at
+            res["notified"] = False
+            res.pop("price_attempts", None)
+            newly_priced.append(res)
+            continue
+        entry = dict(p)
+        entry["last_price_status"] = status
+        entry["last_checked_at"] = checked_at
+        if status == "failed":
+            entry["price_attempts"] = int(p.get("price_attempts", 0)) + 1
+        new_pending.append(entry)
 
-    data["pending"] = invalid + overflow + retry
-    deal_log.save(data)
+    data["pending"] = new_pending
+    data["deals"].extend(newly_priced)
+    return newly_priced, counts
 
-    subprocess.run(["git", "add", "deal_log.json"], check=True)
-    # "[skip ci]" prevents this data commit from re-triggering the push-on-deal_log.json
-    # workflow (which would otherwise loop) or the tests workflow (pointless for bot data).
-    commit = subprocess.run(
-        ["git", "commit", "-m", f"Deal Radar: priced {len(newly_priced)} pending deal(s) [skip ci]"],
-    )
-    pushed = False
-    if commit.returncode == 0:
-        push = subprocess.run(["git", "push", "origin", "main"], capture_output=True, text=True)
-        if push.returncode == 0:
-            pushed = True
+
+def _align(to_price: list[dict], results: list[dict]) -> list[dict]:
+    """evaluate_alerts sorts its output by CPP; map results back to input order."""
+    remaining = list(results)
+    ordered = []
+    for p in to_price:
+        for i, r in enumerate(remaining):
+            if all(r.get(k) == p.get(k) for k in ("origin", "dest", "date", "cabin", "program", "points")):
+                ordered.append(remaining.pop(i))
+                break
         else:
-            # Another runner pushed first: our commit didn't land, so those deals
-            # never reached origin. Reset to avoid wedging, and DO NOT email --
-            # the winning runner priced the same batch and notifies for it.
-            print(f"git push rejected; resetting to origin/main (winner will notify):\n{push.stderr}")
-            subprocess.run(["git", "fetch", "origin", "main"], capture_output=True, text=True)
-            subprocess.run(["git", "reset", "--hard", "origin/main"], capture_output=True, text=True)
+            ordered.append({**p, "price_status": "failed", "cpp": None})
+    return ordered
 
-    print(f"Priced {len(newly_priced)} deal(s), {len(data['pending'])} left in queue, {len(great)} great.")
 
-    # FIX 2: only notify/email when our commit actually landed on origin.
-    if great and not pushed:
-        print(f"{len(great)} great deal(s) found but the commit didn't land -- skipping email to avoid a phantom/duplicate alert.")
-    elif great and pushed:
+def main(argv: list[str] | None = None) -> int:
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--no-git", action="store_true")
+    ap.add_argument("--limit", type=int, default=CAP_PER_RUN)
+    ap.add_argument("--no-email", action="store_true")
+    ap.add_argument("--serpapi-cap", type=int, default=SERPAPI_CAP_PER_RUN,
+                    help="max paid SerpApi fallback calls this run (fast-flights is unlimited)")
+    args = ap.parse_args(argv)
+    flight_search.SERPAPI_MAX_CALLS = args.serpapi_cap
+
+    if not flight_search.is_configured():
+        print("No cash-price provider available (install fast-flights or set SERPAPI_KEY).")
+        return 1
+    if not args.no_git and not _sync_from_origin():
+        return 1
+
+    data = deal_log.load()
+    data.pop("serpapi_usage", None)  # replaced by SerpApi's own account.json; local count drifted
+    today = datetime.now(timezone.utc).date().isoformat()
+    requeued = _requeue_unpriced_deals(data, today)
+    expired = _expire_past_deals(data, today)
+
+    newly_priced, counts = price_queue(data, args.limit)
+    great = [d for d in newly_priced if deal_log.is_great(d)]
+
+    if great and not args.no_email:
         best = max(great, key=lambda d: d["cpp"])
-        msg = (
-            f"{len(great)} great deal(s)! Best: {best['origin']}->{best['dest']} "
-            f"{best['program']} {best['cabin'].title()} {best['cpp']:.2f}c/pt"
-        )
-        _notify_mac(msg)
-
+        _notify_mac(f"{len(great)} great deal(s)! Best: {best['origin']}->{best['dest']} "
+                    f"{best['program']} {best['cabin'].title()} {best['cpp']:.2f}c/pt")
         if deal_email.is_configured():
             try:
                 deal_email.send_deal_alert_email(great)
+                for d in great:
+                    d["notified"] = True
                 print(f"Sent email with {len(great)} great deal(s).")
             except Exception as e:
-                print(f"Email send failed: {e}")
-        else:
-            print("Gmail not configured (GMAIL_ADDRESS/GMAIL_APP_PASSWORD) -- skipped email.")
+                print(f"Email send failed (deals stay notified=False): {e}")
+
+    print(f"Requeued {requeued} previously-unpriced deal(s); expired {expired} past-dated.")
+    print(f"Priced {len(newly_priced)} ({len(great)} great); statuses {counts}; {len(data['pending'])} left in queue.")
+    remaining = flight_search.serpapi_account_remaining() if flight_search.serpapi_configured() else None
+    if remaining is not None:
+        print(f"SerpApi searches left this month (per serpapi.com): {remaining}")
+
+    if not (requeued or expired or counts):
+        print("Nothing changed; no save/commit.")
+        return 0
+    deal_log.save(data)
+    cash_quotes.save(cash_quotes.load())  # prune past-dated quotes; ensures the file exists for git add
+    if args.no_git:
+        return 0
+    return 0 if _commit_and_push(f"Deal Radar: priced {len(newly_priced)} pending deal(s) [skip ci]") else 1
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

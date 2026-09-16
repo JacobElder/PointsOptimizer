@@ -1,3 +1,5 @@
+from datetime import date, timedelta
+
 import pytest
 
 import check_alerts
@@ -6,17 +8,22 @@ from check_alerts import evaluate_alerts
 
 
 class _FakeOffer:
-    def __init__(self, price_usd):
+    def __init__(self, price_usd, stops=1):
         self.price_usd = price_usd
+        self.stops = stops
+        self.provider = "test"
+
+
+FUTURE = (date.today() + timedelta(days=60)).isoformat()
 
 
 def test_evaluate_alerts_computes_cpp_and_verdict(monkeypatch):
     monkeypatch.setattr(
         flight_search, "search_cash_price",
-        lambda origin, dest, date, cabin, max_results=1: [_FakeOffer(1000.0)],
+        lambda origin, dest, date, cabin, max_results=1, **k: [_FakeOffer(1000.0)],
     )
     alerts = [dict(origin="JFK", dest="MAD", program="Air France-KLM Flying Blue",
-                   cabin="BUSINESS", date="2026-11-04", points=43000, taxes=33.50, currency="USD")]
+                   cabin="BUSINESS", date=FUTURE, points=43000, taxes=33.50, currency="USD")]
 
     results = evaluate_alerts(alerts)
 
@@ -30,11 +37,11 @@ def test_evaluate_alerts_computes_cpp_and_verdict(monkeypatch):
 def test_evaluate_alerts_converts_cad_taxes_to_usd(monkeypatch):
     monkeypatch.setattr(
         flight_search, "search_cash_price",
-        lambda origin, dest, date, cabin, max_results=1: [_FakeOffer(500.0)],
+        lambda origin, dest, date, cabin, max_results=1, **k: [_FakeOffer(500.0)],
     )
     monkeypatch.setattr(check_alerts, "_fx_rate", lambda currency: 0.73 if currency == "CAD" else 1.0)
     alerts = [dict(origin="JFK", dest="CTG", program="Air Canada Aeroplan",
-                   cabin="ECONOMY", date="2027-01-27", points=20000, taxes=100.0, currency="CAD")]
+                   cabin="ECONOMY", date=FUTURE, points=20000, taxes=100.0, currency="CAD")]
 
     results = evaluate_alerts(alerts)
 
@@ -55,7 +62,7 @@ def test_fx_rate_falls_back_when_live_lookup_fails(monkeypatch):
 def test_evaluate_alerts_reuses_cash_price_for_duplicate_route_date_cabin(monkeypatch):
     calls = []
 
-    def _fake_search(origin, dest, date, cabin, max_results=1):
+    def _fake_search(origin, dest, date, cabin, max_results=1, **k):
         calls.append((origin, dest, date, cabin))
         return [_FakeOffer(500.0)]
 
@@ -63,9 +70,9 @@ def test_evaluate_alerts_reuses_cash_price_for_duplicate_route_date_cabin(monkey
     monkeypatch.setattr(check_alerts, "_fx_rate", lambda currency: 1.0)
     alerts = [
         dict(origin="JFK", dest="MAD", program="Program A", cabin="BUSINESS",
-             date="2026-11-04", points=40000, taxes=30.0, currency="USD"),
+             date=FUTURE, points=40000, taxes=30.0, currency="USD"),
         dict(origin="JFK", dest="MAD", program="Program B", cabin="BUSINESS",
-             date="2026-11-04", points=50000, taxes=30.0, currency="USD"),
+             date=FUTURE, points=50000, taxes=30.0, currency="USD"),
     ]
 
     results = evaluate_alerts(alerts)
@@ -81,7 +88,7 @@ def test_evaluate_alerts_handles_search_failure(monkeypatch):
     monkeypatch.setattr(flight_search, "search_cash_price", _raise)
     monkeypatch.setattr(check_alerts, "_fx_rate", lambda currency: 1.0)
     alerts = [dict(origin="JFK", dest="XXX", program="Test", cabin="ECONOMY",
-                   date="2026-01-01", points=10000, taxes=10.0, currency="USD")]
+                   date=FUTURE, points=10000, taxes=10.0, currency="USD")]
 
     results = evaluate_alerts(alerts)
 
@@ -98,7 +105,7 @@ def test_evaluate_alerts_no_offers_is_definitive_not_transient(monkeypatch):
                         lambda *a, **k: [])
     monkeypatch.setattr(check_alerts, "_fx_rate", lambda currency: 1.0)
     alerts = [dict(origin="JFK", dest="XXX", program="Test", cabin="ECONOMY",
-                   date="2026-01-01", points=10000, taxes=10.0, currency="USD")]
+                   date=FUTURE, points=10000, taxes=10.0, currency="USD")]
 
     results = evaluate_alerts(alerts)
 
@@ -111,7 +118,7 @@ def test_evaluate_alerts_guards_zero_points(monkeypatch):
                         lambda *a, **k: [_FakeOffer(500.0)])
     monkeypatch.setattr(check_alerts, "_fx_rate", lambda currency: 1.0)
     alerts = [dict(origin="JFK", dest="MAD", program="Test", cabin="BUSINESS",
-                   date="2026-11-04", points=0, taxes=10.0, currency="USD")]
+                   date=FUTURE, points=0, taxes=10.0, currency="USD")]
 
     results = evaluate_alerts(alerts)  # must not raise ZeroDivisionError
 
@@ -125,9 +132,60 @@ def test_evaluate_alerts_verdict_is_cabin_aware(monkeypatch):
                         lambda *a, **k: [_FakeOffer(170.0)])
     monkeypatch.setattr(check_alerts, "_fx_rate", lambda currency: 1.0)
     alerts = [dict(origin="JFK", dest="XXX", program="Test", cabin="ECONOMY",
-                   date="2026-01-01", points=10000, taxes=10.0, currency="USD")]
+                   date=FUTURE, points=10000, taxes=10.0, currency="USD")]
 
     results = evaluate_alerts(alerts)
 
     assert results[0]["cpp"] == pytest.approx(1.6)
     assert results[0]["verdict"] == "BOOK"
+
+
+def test_quota_exhaustion_stops_further_live_lookups(monkeypatch):
+    calls = []
+
+    def _quota(*a, **k):
+        calls.append(a)
+        raise flight_search.QuotaExhausted("429")
+
+    monkeypatch.setattr(flight_search, "search_cash_price", _quota)
+    monkeypatch.setattr(check_alerts, "_fx_rate", lambda currency: 1.0)
+    alerts = [dict(origin="JFK", dest=d, program="T", cabin="ECONOMY", date=FUTURE,
+                   points=10000, taxes=10.0) for d in ("MAD", "LIS", "CDG")]
+
+    results = evaluate_alerts(alerts)
+
+    assert len(calls) == 1
+    assert {r["price_status"] for r in results} == {"quota"}
+    assert all(r["priced_ok"] is False for r in results)
+
+
+def test_past_and_far_future_dates_are_not_looked_up(monkeypatch):
+    monkeypatch.setattr(flight_search, "search_cash_price",
+                        lambda *a, **k: pytest.fail("must not look up out-of-window dates"))
+    monkeypatch.setattr(check_alerts, "_fx_rate", lambda currency: 1.0)
+    past = (date.today() - timedelta(days=1)).isoformat()
+    far = (date.today() + timedelta(days=345)).isoformat()
+    alerts = [dict(origin="JFK", dest="MAD", program="T", cabin="ECONOMY", date=d,
+                   points=10000, taxes=10.0) for d in (past, far)]
+
+    assert {r["price_status"] for r in evaluate_alerts(alerts)} == {"out_of_window"}
+
+
+def test_nearby_date_quote_is_reused_and_flagged_approx(monkeypatch):
+    calls = []
+
+    def _fake(origin, dest, d, cabin, max_results=1, **k):
+        calls.append(d)
+        return [_FakeOffer(800.0, stops=0)]
+
+    monkeypatch.setattr(flight_search, "search_cash_price", _fake)
+    monkeypatch.setattr(check_alerts, "_fx_rate", lambda currency: 1.0)
+    d2 = (date.today() + timedelta(days=63)).isoformat()
+    first = evaluate_alerts([dict(origin="JFK", dest="MAD", program="T", cabin="BUSINESS",
+                                  date=FUTURE, points=40000, taxes=0.0)])
+    second = evaluate_alerts([dict(origin="JFK", dest="MAD", program="T", cabin="BUSINESS",
+                                   date=d2, points=40000, taxes=0.0)])
+
+    assert calls == [FUTURE]
+    assert first[0]["cash_is_approx"] is False and first[0]["nonstop_cash_price"] == 800.0
+    assert second[0]["cash_is_approx"] is True and second[0]["cash_price"] == 800.0

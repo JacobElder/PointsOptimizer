@@ -1,5 +1,6 @@
 import os
 import sys
+from datetime import datetime, timezone
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -7,40 +8,50 @@ import streamlit as st
 
 import check_alerts
 import deal_log
-import flight_search
 import return_finder
 
 st.set_page_config(page_title="Deal Radar — PointsOptimizer", page_icon="📡", layout="centered")
 
 st.title("📡 Deal Radar")
 st.caption(
-    "A cloud routine logs your seats.aero alert emails here (free — no pricing). Pricing is "
-    "**on-demand**: click *Price this deal* on any captured deal to spend one live cash-price "
-    "lookup and get its real CPP, so your SerpApi quota only goes to deals you actually care about."
+    "A cloud routine logs your seats.aero alert emails here. Click *Price this deal* for its real "
+    "CPP: cash fares come free from Google Flights (SerpApi only as a fallback), are saved, and "
+    "are reused for nearby dates on the same route and cabin."
 )
 
 def _price_pending(deal: dict) -> dict:
-    """Live cash price + CPP for one captured (unpriced) deal, on demand.
+    """Price one captured deal on demand and persist the result.
 
-    One SerpApi call per click -- the whole point of the on-demand model is that
-    the scarce 250/month quota is spent only on deals you choose to price.
+    Goes through cash_quotes (free fast-flights first, SerpApi fallback, reused
+    across nearby dates), and on success moves the deal from `pending` to
+    `deals` in deal_log.json so a reload never pays for the same lookup twice.
     """
+    res = check_alerts.evaluate_alerts([deal])[0]
+    status = res.get("price_status")
+    if status != "priced":
+        msg = {
+            "no_fare": "Google Flights has no cash fare for this route/date/cabin.",
+            "out_of_window": res.get("error") or "Date is outside the bookable window.",
+            "quota": "SerpApi monthly quota is used up and the free lookup failed.",
+        }.get(status, res.get("error") or "Cash-price lookup failed.")
+        return {"error": msg}
+
+    data = deal_log.load()
+    key = deal_log.make_key(deal["program"], deal["origin"], deal["dest"], deal["cabin"], deal["date"], deal["points"])
+    data["pending"] = [p for p in data["pending"] if _safe_key(p) != key]
+    if key not in {_safe_key(d) for d in data["deals"]}:
+        data["deals"].append({**res, "key": key, "notified": False,
+                              "checked_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")})
+    deal_log.save(data)
+    return {"cash": res["cash_price"], "taxes_usd": res["taxes_usd"], "cpp": res["cpp"],
+            "verdict": res["verdict"], "approx": res.get("cash_is_approx"), "provider": res.get("cash_provider")}
+
+
+def _safe_key(p: dict) -> str | None:
     try:
-        offers = flight_search.search_cash_price(
-            deal["origin"], deal["dest"], deal["date"], deal["cabin"], max_results=1
-        )
-    except flight_search.NotConfigured:
-        return {"error": "SerpApi cash-price lookup isn't configured (SERPAPI_KEY)."}
-    except flight_search.SearchFailed as e:
-        return {"error": str(e)}
-    if not offers:
-        return {"error": "No cash price found for this route/date/cabin."}
-    cash = offers[0].price_usd
-    taxes_usd = float(deal.get("taxes") or 0) * check_alerts._fx_rate(deal.get("currency", "USD"))
-    points = int(deal.get("points") or 0)
-    cpp = (max(cash - taxes_usd, 0.0) / points) * 100 if points else None
-    verdict = deal_log.verdict_for(cpp, deal.get("cabin", ""))
-    return {"cash": cash, "taxes_usd": taxes_usd, "cpp": cpp, "verdict": verdict}
+        return deal_log.make_key(p["program"], p["origin"], p["dest"], p["cabin"], p["date"], p["points"])
+    except (KeyError, TypeError, ValueError, AttributeError):
+        return None
 
 
 def _pending_id(p: dict, idx: int) -> str:
@@ -114,7 +125,7 @@ if pending:
                 st.markdown(f"[View on seats.aero →]({p['listing_url']})")
 
             res_key = f"pend_priced_{pid}"
-            if st.button("💵 Price this deal (1 cash-price lookup)", key=f"pend_btn_{pid}"):
+            if st.button("💵 Price this deal", key=f"pend_btn_{pid}"):
                 with st.spinner("Fetching live cash price…"):
                     st.session_state[res_key] = _price_pending(p)
 
@@ -129,8 +140,10 @@ if pending:
             badge = {"BOOK": "🟢", "BORDERLINE": "🟡", "SKIP": "🔴"}.get(res["verdict"], "⚪")
             r1, r2 = st.columns([3, 1])
             r1.markdown(f"{badge} **{res['verdict']}**")
+            approx_s = " (fare borrowed from a date within 7 days)" if res.get("approx") else ""
             r1.caption(
                 f"cash ${res['cash']:,.0f} − ${res['taxes_usd']:.0f} taxes over {int(p.get('points') or 0):,} pts"
+                f"{approx_s} · saved to Priced"
             )
             r2.metric("CPP", f"{cpp:.2f}¢" if cpp is not None else "n/a")
 

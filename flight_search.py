@@ -1,13 +1,15 @@
 """
-Optional live cash-price lookups via SerpApi's Google Flights engine.
+Live one-way cash-price lookups (Google Flights data), from two providers:
 
-Free tier: https://serpapi.com — self-serve signup, 250 searches/month free,
-no sales call required. Only used to auto-fill the *cash* price side of a CPP
-calculation; award point-costs still have to be entered manually.
+1. fast-flights (free, no key) -- scrapes Google Flights directly. Primary.
+   Optional dependency: if it isn't installed or its import fails (e.g. a
+   protobuf version clash), it's silently skipped.
+2. SerpApi's Google Flights engine (SERPAPI_KEY; 250 searches/month free) --
+   fallback, used only when fast-flights errors out (not when it returns an
+   empty result, which is a real answer and not worth a paid lookup).
 
-The Flight Analyzer page falls back to manual entry if this isn't configured.
-Configure via environment variable or Streamlit secrets:
-    SERPAPI_KEY
+Both return the same Google Flights prices, so CPPs are comparable across them.
+Configure SerpApi via environment variable or Streamlit secrets: SERPAPI_KEY
 """
 
 from __future__ import annotations
@@ -50,6 +52,11 @@ class SearchFailed(Exception):
     contains the request URL, which embeds the API key as a query parameter."""
 
 
+class QuotaExhausted(SearchFailed):
+    """SerpApi rejected the call because the account's monthly quota is spent.
+    Distinct from a transient failure: retrying this month only wastes runs."""
+
+
 @dataclass
 class FlightSegment:
     airline: str
@@ -77,6 +84,7 @@ class FlightOffer:
     total_duration_minutes: int
     segments: list[FlightSegment]
     layovers: list[Layover]
+    provider: str = "serpapi"
 
     @property
     def airline(self) -> str:
@@ -121,12 +129,31 @@ def _get_api_key() -> str:
     return key
 
 
-def is_configured() -> bool:
+def serpapi_configured() -> bool:
     try:
         _get_api_key()
         return True
     except NotConfigured:
         return False
+
+
+# Set to True (e.g. by tests) to force the SerpApi-only path.
+FAST_FLIGHTS_DISABLED = os.environ.get("POINTSOPT_DISABLE_FAST_FLIGHTS") == "1"
+
+
+def fast_flights_available() -> bool:
+    if FAST_FLIGHTS_DISABLED:
+        return False
+    try:
+        import fast_flights  # noqa: F401
+        return True
+    except Exception:  # ImportError, or protobuf VersionError on a clashing env
+        return False
+
+
+def is_configured() -> bool:
+    """Whether ANY cash-price provider is usable."""
+    return fast_flights_available() or serpapi_configured()
 
 
 def search_cash_price(
@@ -139,8 +166,9 @@ def search_cash_price(
     """
     Query live one-way cash prices for a route/date/cabin via Google Flights, cheapest first.
 
-    Raises NotConfigured if no API key is set, or SearchFailed if the SerpApi
-    call itself fails (network error, rate limit, bad response).
+    Tries fast-flights first, then SerpApi if fast-flights fails. Raises
+    NotConfigured if no provider is usable, QuotaExhausted if SerpApi was needed
+    but its quota is spent, or SearchFailed if every usable provider failed.
 
     Successful, non-empty lookups are memoized (see _CACHE) so repeated identical
     (origin, destination, departure_date, cabin) requests reuse the first result
@@ -158,7 +186,7 @@ def search_cash_price(
         # Cached list is the full fetched result; slice to this call's max_results.
         return cached[:max_results]
 
-    offers = _fetch_offers(origin, destination, departure_date, cabin)
+    offers = _fetch_with_fallback(origin, destination, departure_date, cabin)
 
     # Only cache SUCCESSFUL, NON-EMPTY results. Failures (NotConfigured /
     # SearchFailed) propagate out of _fetch_offers and are never reached here, so
@@ -168,6 +196,100 @@ def search_cash_price(
     if offers:
         _CACHE[key] = offers
     return offers[:max_results]
+
+
+# Per-process cap on paid SerpApi calls (None = unlimited). Bulk jobs set this so a
+# fast-flights outage can't silently drain the monthly quota through the fallback.
+SERPAPI_MAX_CALLS: int | None = None
+serpapi_calls_made = 0
+
+
+def _fetch_with_fallback(origin: str, destination: str, departure_date: str, cabin: str) -> list[FlightOffer]:
+    ff_error: Exception | None = None
+    if fast_flights_available():
+        try:
+            return _fetch_offers_fast_flights(origin, destination, departure_date, cabin)
+        except Exception as e:  # scraper breakage, network, Google blocking
+            ff_error = e
+    if not serpapi_configured():
+        if ff_error is not None:
+            raise SearchFailed(f"Free Google Flights lookup failed ({type(ff_error).__name__}) and no SerpApi key is set.")
+        _get_api_key()  # raises NotConfigured with setup instructions
+    global serpapi_calls_made
+    if SERPAPI_MAX_CALLS is not None and serpapi_calls_made >= SERPAPI_MAX_CALLS:
+        raise QuotaExhausted(f"Per-run SerpApi cap ({SERPAPI_MAX_CALLS}) reached"
+                             + (f"; free lookup failed ({type(ff_error).__name__})" if ff_error else ""))
+    serpapi_calls_made += 1
+    return _fetch_offers(origin, destination, departure_date, cabin)
+
+
+_FF_SEAT = {"ECONOMY": "economy", "PREMIUM_ECONOMY": "premium-economy", "BUSINESS": "business", "FIRST": "first"}
+
+
+def _fetch_offers_fast_flights(origin: str, destination: str, departure_date: str, cabin: str) -> list[FlightOffer]:
+    """Free Google Flights lookup via fast-flights. Raises on any failure;
+    returns [] when Google genuinely has no itineraries (e.g. date too far out)."""
+    from datetime import datetime
+
+    from fast_flights import FlightQuery, FlightsNotFound, create_query, get_flights
+
+    query = create_query(
+        flights=[FlightQuery(date=departure_date, from_airport=origin, to_airport=destination)],
+        seat=_FF_SEAT.get(cabin, "economy"),
+        trip="one-way",
+        currency="USD",
+        language="en",
+    )
+    try:
+        results = get_flights(query)
+    except FlightsNotFound:
+        return []
+
+    def _ts(sdt) -> str:
+        (y, mo, d), (h, mi) = sdt.date, sdt.time
+        return f"{y:04d}-{mo:02d}-{d:02d} {h:02d}:{mi:02d}"
+
+    offers = []
+    for f in results:
+        if not f.flights or not f.price:
+            continue
+        airline = f.airlines[0] if f.airlines else "Unknown"
+        segments = [
+            FlightSegment(
+                airline=airline, flight_number="",
+                dep_airport=sf.from_airport.code, dep_airport_name=sf.from_airport.name,
+                dep_time=_ts(sf.departure),
+                arr_airport=sf.to_airport.code, arr_airport_name=sf.to_airport.name,
+                arr_time=_ts(sf.arrival), duration_minutes=int(sf.duration or 0),
+            )
+            for sf in f.flights
+        ]
+        layovers = []
+        for prev, nxt in zip(segments, segments[1:]):
+            try:
+                gap = datetime.strptime(nxt.dep_time, "%Y-%m-%d %H:%M") - datetime.strptime(prev.arr_time, "%Y-%m-%d %H:%M")
+                mins = max(int(gap.total_seconds() // 60), 0)
+            except ValueError:
+                mins = 0
+            layovers.append(Layover(airport=prev.arr_airport, name=prev.arr_airport_name, duration_minutes=mins))
+        offers.append(FlightOffer(
+            price_usd=float(f.price), cabin=cabin,
+            total_duration_minutes=sum(sg.duration_minutes for sg in segments) + sum(l.duration_minutes for l in layovers),
+            segments=segments, layovers=layovers, provider="fast-flights",
+        ))
+    offers.sort(key=lambda o: o.price_usd)
+    return offers
+
+
+def serpapi_account_remaining() -> int | None:
+    """Searches left this month per SerpApi's own account endpoint (free; does
+    not consume quota). None if unknown. Authoritative, unlike any local counter."""
+    try:
+        resp = requests.get("https://serpapi.com/account.json", params={"api_key": _get_api_key()}, timeout=10)
+        resp.raise_for_status()
+        return int(resp.json().get("total_searches_left"))
+    except Exception:
+        return None
 
 
 def _fetch_offers(
@@ -198,6 +320,8 @@ def _fetch_offers(
         resp.raise_for_status()
         payload = resp.json()
     except requests.HTTPError:
+        if resp.status_code == 429:
+            raise QuotaExhausted("SerpApi monthly search quota is used up (HTTP 429).")
         raise SearchFailed(f"SerpApi returned HTTP {resp.status_code}. Check your key/quota at serpapi.com.")
     except requests.RequestException as e:
         raise SearchFailed(f"Network error during search: {type(e).__name__}. Try again.")

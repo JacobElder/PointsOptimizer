@@ -235,3 +235,48 @@ def test_malformed_price_row_does_not_abort_result_set(monkeypatch):
 
     offers = flight_search.search_cash_price("SFO", "JFK", "2026-09-01", "ECONOMY")
     assert [o.price_usd for o in offers] == [250.0]  # bad row skipped, good row kept
+
+
+def test_serpapi_cap_blocks_paid_fallback(monkeypatch):
+    counter = _Counter(response=_FakeResp(_one_offer_payload()))
+    monkeypatch.setattr(flight_search, "_get_api_key", lambda: "test-key")
+    monkeypatch.setattr(flight_search.requests, "get", counter)
+    monkeypatch.setattr(flight_search, "SERPAPI_MAX_CALLS", 1)
+    monkeypatch.setattr(flight_search, "serpapi_calls_made", 0)
+
+    flight_search.search_cash_price("SFO", "JFK", "2026-12-01")
+    with pytest.raises(flight_search.QuotaExhausted):
+        flight_search.search_cash_price("SFO", "JFK", "2026-12-02")
+    assert counter.calls == 1
+
+
+def test_http_429_is_quota_exhausted(monkeypatch):
+    counter = _Counter(response=_FakeResp({}, status_code=429))
+    monkeypatch.setattr(flight_search, "_get_api_key", lambda: "test-key")
+    monkeypatch.setattr(flight_search.requests, "get", counter)
+    with pytest.raises(flight_search.QuotaExhausted):
+        flight_search.search_cash_price("SFO", "JFK", "2026-12-01")
+
+
+def test_fast_flights_failure_falls_back_to_serpapi(monkeypatch):
+    counter = _Counter(response=_FakeResp(_one_offer_payload(321)))
+    monkeypatch.setattr(flight_search, "FAST_FLIGHTS_DISABLED", False)
+    monkeypatch.setattr(flight_search, "fast_flights_available", lambda: True)
+    monkeypatch.setattr(flight_search, "_fetch_offers_fast_flights",
+                        lambda *a: (_ for _ in ()).throw(RuntimeError("google changed")))
+    monkeypatch.setattr(flight_search, "_get_api_key", lambda: "test-key")
+    monkeypatch.setattr(flight_search.requests, "get", counter)
+
+    offers = flight_search.search_cash_price("SFO", "JFK", "2026-12-03")
+    assert offers[0].price_usd == 321 and offers[0].provider == "serpapi"
+
+
+def test_fast_flights_empty_result_does_not_spend_serpapi(monkeypatch):
+    counter = _Counter(response=_FakeResp(_one_offer_payload()))
+    monkeypatch.setattr(flight_search, "fast_flights_available", lambda: True)
+    monkeypatch.setattr(flight_search, "_fetch_offers_fast_flights", lambda *a: [])
+    monkeypatch.setattr(flight_search, "_get_api_key", lambda: "test-key")
+    monkeypatch.setattr(flight_search.requests, "get", counter)
+
+    assert flight_search.search_cash_price("SFO", "JFK", "2026-12-04") == []
+    assert counter.calls == 0

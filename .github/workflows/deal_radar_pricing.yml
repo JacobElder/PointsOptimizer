@@ -1,17 +1,22 @@
 name: Deal Radar pricing
 
-# Runs price_pending_deals.py on a schedule that doesn't depend on any local
-# machine being on -- the Gmail-fetch half of the pipeline still runs as a
-# separate claude.ai scheduled routine (cloud egress there can't reach
-# serpapi.com, see TODO.md item 4); this workflow does the pricing/email half
-# instead, since GitHub-hosted runners have normal outbound internet access.
+# Runs price_pending_deals.py without depending on a local machine. The Gmail
+# capture half runs as a separate claude.ai scheduled routine. Cash prices come
+# from fast-flights (free); SerpApi is a capped fallback (--serpapi-cap). Google
+# may block scraping from GitHub runner IPs -- if so, runs fall back to SerpApi
+# up to the cap and leave the rest queued.
 on:
   # AUTOMATIC PRICING IS OFF (on-demand model, chosen 2026-07-25). The capture
   # routine still logs seats.aero alerts into deal_log.json's `pending`, but they
   # are priced on demand from the Deal Radar page (pages/5_Deal_Radar.py), one
-  # SerpApi lookup per click. This job is kept as a MANUAL escape hatch only --
+  # lookup per click. This job is kept as a MANUAL escape hatch only --
   # run it from the Actions tab to bulk-price the whole pending queue if ever wanted.
   workflow_dispatch: {}
+
+# Never let two pricing runs race on deal_log.json.
+concurrency:
+  group: deal-radar
+  cancel-in-progress: false
 
 permissions:
   contents: write # needs to commit/push deal_log.json updates

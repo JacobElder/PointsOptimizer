@@ -99,6 +99,26 @@ def append_history(
 ) -> None:
     # Write the header when the file is missing OR exists but is empty (size 0);
     # an existing-but-empty file would otherwise get headerless rows.
+    row = {
+        "date": date.today().isoformat(),
+        "route": route,
+        "program": program,
+        "pool_key": pool_key,
+        "cash_price": round(cash_price, 2),
+        "taxes_fees": round(taxes_fees, 2),
+        "points_required": points_required,
+        "cpp": round(cpp, 4),
+        "avg_simulated_cpp": round(avg_simulated_cpp, 4),
+        "verdict": verdict,
+    }
+    # Re-running the simulation on the same inputs must not add duplicate rows
+    # (they'd skew the History page's parameter calibration).
+    history = load_history()
+    if history:
+        last = history[-1]
+        same_keys = ("date", "route", "program", "pool_key", "cash_price", "taxes_fees", "points_required")
+        if all(str(last.get(k)) == str(row[k]) for k in same_keys):
+            return
     needs_header = (
         not os.path.exists(HISTORY_PATH) or os.path.getsize(HISTORY_PATH) == 0
     )
@@ -106,20 +126,7 @@ def append_history(
         writer = csv.DictWriter(f, fieldnames=HISTORY_COLUMNS)
         if needs_header:
             writer.writeheader()
-        writer.writerow(
-            {
-                "date": date.today().isoformat(),
-                "route": route,
-                "program": program,
-                "pool_key": pool_key,
-                "cash_price": round(cash_price, 2),
-                "taxes_fees": round(taxes_fees, 2),
-                "points_required": points_required,
-                "cpp": round(cpp, 4),
-                "avg_simulated_cpp": round(avg_simulated_cpp, 4),
-                "verdict": verdict,
-            }
-        )
+        writer.writerow(row)
 
 
 def load_history() -> list[dict]:

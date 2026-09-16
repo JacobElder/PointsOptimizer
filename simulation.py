@@ -22,6 +22,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+import math
+
 import numpy as np
 
 
@@ -106,8 +108,13 @@ def run_valuation_simulation(
          The continuous form exp(−rate·t) is always real (unlike (1−d)^t,
          which goes complex for d > 1) and is the correct model form —
          (1−d)^t ≈ (1+d)^-t ≈ exp(−d·t) for small d.
-      4. Deducts points from the running balance; trips beyond the balance
-         are skipped (no points → no points-value to aggregate).
+      4. Values every drawn trip, independent of point_balance. Any rule that
+         conditions on affordability biases the average: crediting a partial
+         balance at the full trip's CPP swung the same deal from 2.54¢ (1k pts)
+         to 1.94¢ (500k), and redeeming only trips that fit cherry-picks cheap,
+         high-CPP trips (2.67¢ at 60k). The question answered is "what is a
+         point worth in typical future use", which doesn't depend on how many
+         you hold; point_balance is validated but doesn't move the estimate.
       5. Returns the NPV-weighted average CPP across all redeemed trips.
 
     The zero-trip fallback is made scale-consistent with the main trip path.
@@ -122,6 +129,12 @@ def run_valuation_simulation(
     # ---------------------------------------------------------------------- #
     # 0. Input validation — raise clear, UI-surfaceable errors               #
     # ---------------------------------------------------------------------- #
+    for name, val in (("current_cpp", current_cpp), ("point_balance", point_balance),
+                      ("cash_price", cash_price)):
+        if not math.isfinite(val):
+            raise ValueError(f"{name} must be a finite number (got {val}).")
+    if cash_price <= 0:
+        raise ValueError(f"cash_price must be greater than 0 (got {cash_price}).")
     if n_iterations < 1:
         raise ValueError(
             f"n_iterations must be at least 1 (got {n_iterations})."
@@ -151,7 +164,6 @@ def run_valuation_simulation(
     total_trips_drawn: list[int] = []
 
     for i in range(n_iterations):
-        remaining_balance = float(point_balance)
         npv_cash_total = 0.0   # sum of NPV cash values from all redeemed point-trips
         points_redeemed_total = 0.0
 
@@ -162,7 +174,7 @@ def run_valuation_simulation(
             n_trips: int = int(rng.poisson(lambda_trips))
             total_trips_drawn.append(n_trips)
 
-            if n_trips == 0 or remaining_balance <= 0:
+            if n_trips == 0:
                 continue
 
             # ---------------------------------------------------------------- #
@@ -182,22 +194,10 @@ def run_valuation_simulation(
             discount = np.exp(-(depreciation_rate + market_return) * year)
 
             for pts_required in trip_point_costs:
-                if remaining_balance <= 0:
-                    break  # balance exhausted; remaining trips paid in cash
-
-                pts_used = min(pts_required, remaining_balance)
-
-                # Raw CPP for this trip (independent of current_cpp):
-                #   cash_price / pts_required  gives what 1 point is worth
-                #   on a trip of this cash value and this point cost.
-                raw_cpp_this_trip = (cash_price / pts_required)  # USD per point
-
-                # NPV cash value from using pts_used points on this future trip
-                npv_cash = pts_used * raw_cpp_this_trip * discount  # USD
-
-                npv_cash_total += npv_cash
-                points_redeemed_total += pts_used
-                remaining_balance -= pts_used
+                # NPV cash value of this future trip's points, at its own CPP
+                # (cash_price / pts_required per point), discounted to today.
+                npv_cash_total += cash_price * discount
+                points_redeemed_total += pts_required
 
         # -------------------------------------------------------------------- #
         # 4. Simulated CPP for this iteration (cents per point)                 #
@@ -215,7 +215,7 @@ def run_valuation_simulation(
             # (median) as before over-stated the fallback by ~exp(σ²/2), a
             # spurious discontinuity that biased avg_simulated_cpp as the
             # fallback fraction grew (small balance / small λ).
-            mid_t = time_horizon / 2.0
+            mid_t = (time_horizon + 1) / 2.0  # mean of discrete years 1..T, matching the trip path
             baseline_cpp = (
                 cash_price * np.exp(-mu_cost - sigma_cost ** 2 / 2.0) * 100
             )  # mean-point-cost-implied CPP (scale-consistent with trip path)

@@ -150,3 +150,13 @@ def test_append_does_not_duplicate_header(paths):
     # The literal header line must appear exactly once in the raw file.
     raw = history.read_text()
     assert raw.count("route") == 1
+
+
+def test_append_history_skips_identical_rerun(tmp_path, monkeypatch):
+    monkeypatch.setattr(ledger, "HISTORY_PATH", str(tmp_path / "history.csv"))
+    kw = dict(route="JFK-LHR", program="Virgin", pool_key="chase_ur", cash_price=900.0,
+              taxes_fees=200.0, points_required=50000, cpp=1.4, avg_simulated_cpp=1.9, verdict="hoard")
+    ledger.append_history(**kw)
+    ledger.append_history(**kw)
+    ledger.append_history(**{**kw, "cash_price": 950.0})
+    assert len(ledger.load_history()) == 3 - 1

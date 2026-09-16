@@ -39,10 +39,10 @@ def test_result_fields_are_finite():
 # ---------------------------------------------------------------------------
 # Decision-logic tests
 #
-# baseline_cpp ≈ cash_price / exp(mu_cost) * 100
-#              = 1500 / exp(11) * 100 ≈ 2.51 cpp
-# After 3 years of 5 % devaluation + 7 % opportunity cost, the discounted
-# avg_simulated_cpp is roughly 2.51 × 0.79 ≈ 1.98 cpp.
+# Points-weighted future CPP ≈ cash_price · exp(−μ − σ²/2) · 100
+#                            = 1500 · exp(−11.125) · 100 ≈ 2.21 cpp
+# Discounted at 5 % devaluation + 5 % opportunity cost over years 1..3,
+# avg_simulated_cpp is roughly 2.21 × 0.82 ≈ 1.8–1.9 cpp.
 # ---------------------------------------------------------------------------
 
 def test_recommend_redeem_when_current_cpp_clearly_above_simulated():
@@ -252,7 +252,7 @@ def test_decision_boundary_is_hoard_when_equal():
     depreciation_rate = 0.05
     market_return = 0.05
     time_horizon = 3
-    mid_t = time_horizon / 2.0
+    mid_t = (time_horizon + 1) / 2.0
     baseline_cpp = cash_price * np.exp(-mu_cost - sigma_cost ** 2 / 2.0) * 100
     discount = np.exp(-(depreciation_rate + market_return) * mid_t)
     boundary = float(baseline_cpp * discount)
@@ -274,3 +274,28 @@ def test_decision_boundary_is_hoard_when_equal():
     assert result.percentile_5 == result.avg_simulated_cpp == result.percentile_95
     # current_cpp == avg_simulated_cpp exactly → strict `>` is False → HOARD.
     assert result.recommend_redeem is False
+
+
+def test_simulated_value_does_not_depend_on_balance():
+    kw = dict(current_cpp=1.9, cash_price=1500, n_iterations=3000, rng_seed=7)
+    values = {run_valuation_simulation(point_balance=b, **kw).avg_simulated_cpp
+              for b in (1_000, 60_000, 5_000_000)}
+    assert len(values) == 1
+
+
+def test_simulated_value_matches_closed_form():
+    import numpy as np
+    r = run_valuation_simulation(current_cpp=1.0, point_balance=100_000, cash_price=1500,
+                                 lambda_trips=4.0, n_iterations=20_000, rng_seed=3)
+    expected = 1500 * np.exp(-11.0 - 0.5 ** 2 / 2) * 100 * np.mean(np.exp(-0.10 * np.arange(1, 4)))
+    assert abs(r.avg_simulated_cpp - expected) / expected < 0.03
+
+
+@pytest.mark.parametrize("bad", [dict(cash_price=0), dict(cash_price=-5),
+                                 dict(cash_price=float("nan")), dict(current_cpp=float("nan")),
+                                 dict(point_balance=float("nan"))])
+def test_rejects_degenerate_inputs(bad):
+    kw = dict(current_cpp=1.5, point_balance=50_000, cash_price=1500, n_iterations=10)
+    kw.update(bad)
+    with pytest.raises(ValueError):
+        run_valuation_simulation(**kw)

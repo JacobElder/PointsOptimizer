@@ -1,6 +1,7 @@
 __pycache__/
 *.pyc
 .pytest_cache/
+.venv/
 .DS_Store
 
 # Local secrets — never commit real API keys

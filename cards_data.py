@@ -4,6 +4,11 @@ and each pool's transfer partners.
 
 Transfer ratios and partner rosters change without notice — treat these as a
 starting point and confirm current terms on the issuer's site before booking.
+
+Last verified 2026-09-16 (Chase/Capital One/Citi changes cross-checked against
+at least two current sources; Wells Fargo verified 2026-07). Known conflicts
+between sources were left unchanged rather than guessed: Capital One TAP (1:1
+vs 2:1.5) and JetBlue (5:3, absent here), Citi Emirates (1:0.8) and Wyndham.
 """
 
 from dataclasses import dataclass, field
@@ -42,13 +47,15 @@ POOLS: dict[str, Pool] = {
         key="chase_ur",
         currency_name="Chase Ultimate Rewards",
         transferable=True,
-        portal_rate_cents=1.25,  # 1.5 with Sapphire Reserve
+        # Chase "Points Boost" (Oct 2025): fixed 1.25¢ (CSP) / 1.5¢ (CSR) portal value
+        # applies only to points earned before Oct 26, 2025, and only until Oct 26, 2027.
+        # New points redeem at 1.0¢ plus selective boosts, so 1.0 is the honest floor.
+        portal_rate_cents=1.0,
         partners=[
             Partner("Aer Lingus AerClub", "airline", "1:1"),
             Partner("Air Canada Aeroplan", "airline", "1:1"),
             Partner("Air France-KLM Flying Blue", "airline", "1:1"),
             Partner("British Airways Executive Club", "airline", "1:1"),
-            Partner("Emirates Skywards", "airline", "1:1"),
             Partner("Iberia Plus", "airline", "1:1"),
             Partner("JetBlue TrueBlue", "airline", "1:1"),
             Partner("Singapore KrisFlyer", "airline", "1:1"),
@@ -57,7 +64,10 @@ POOLS: dict[str, Pool] = {
             Partner("Virgin Atlantic Flying Club", "airline", "1:1"),
             Partner("IHG One Rewards", "hotel", "1:1"),
             Partner("Marriott Bonvoy", "hotel", "1:1"),
-            Partner("World of Hyatt", "hotel", "1:1"),
+            # 4:3 for Sapphire Preferred holders from Oct 1, 2026 (immediately for
+            # CSP applications on/after Jun 15, 2026). Still 1:1 with Sapphire Reserve.
+            Partner("World of Hyatt", "hotel", "4:3"),
+            Partner("Wyndham Rewards", "hotel", "1:1"),  # added Feb 2026
         ],
     ),
     "cap1_miles": Pool(
@@ -74,10 +84,11 @@ POOLS: dict[str, Pool] = {
             Partner("British Airways Executive Club", "airline", "1:1"),
             Partner("Cathay Pacific Asia Miles", "airline", "1:1"),
             Partner("Choice Privileges", "hotel", "1:1"),
-            Partner("Emirates Skywards", "airline", "1:1"),
+            Partner("Emirates Skywards", "airline", "2:1.5"),  # devalued Jan 2026
             Partner("Etihad Guest", "airline", "1:1"),
             Partner("EVA Air Infinity MileageLands", "airline", "2:1.5"),
             Partner("Finnair Plus", "airline", "1:1"),
+            Partner("JAL Mileage Bank", "airline", "2:1.5"),
             Partner("Qantas Frequent Flyer", "airline", "1:1"),
             Partner("Singapore KrisFlyer", "airline", "1:1"),
             Partner("TAP Air Portugal Miles&Go", "airline", "2:1.5"),
@@ -90,12 +101,13 @@ POOLS: dict[str, Pool] = {
         key="citi_ty",
         currency_name="Citi ThankYou Points",
         transferable=True,
-        portal_rate_cents=1.0,  # 1.25 with a premium card via the portal
+        portal_rate_cents=1.0,
         partners=[
             Partner("Air France-KLM Flying Blue", "airline", "1:1"),
+            Partner("American Airlines AAdvantage", "airline", "1:1"),  # Strata Premier/Elite only
             Partner("Avianca LifeMiles", "airline", "1:1"),
             Partner("Cathay Pacific Asia Miles", "airline", "1:1"),
-            Partner("Choice Privileges", "hotel", "1:1"),
+            Partner("Choice Privileges", "hotel", "1:1.5"),  # cut from 1:2 on Apr 19, 2026
             Partner("EVA Air Infinity MileageLands", "airline", "1:1"),
             Partner("JetBlue TrueBlue", "airline", "1:1"),
             Partner("Malaysia Airlines Enrich", "airline", "1:1"),

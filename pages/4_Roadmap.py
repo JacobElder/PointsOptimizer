@@ -53,7 +53,7 @@ for card in planned:
                 st.write(
                     f"Your **{stranded:,} {pool.currency_name}** points would flip from "
                     f"~{pool.portal_rate_cents:.1f}¢ fixed value to transferable — "
-                    f"potentially worth {'more' if pool.portal_rate_cents <= 1.0 else 'considerably more'} "
+                    f"potentially worth {'considerably more' if pool.portal_rate_cents <= 1.0 else 'more'} "
                     "at transfer-partner rates."
                 )
 
@@ -84,9 +84,11 @@ for card in planned:
             )
             if card.name == "Chase Sapphire Reserve":
                 st.write(
-                    "Portal floor improvement: UR points redeem at **1.5¢** in the Chase portal "
-                    "with CSR vs **1.25¢** with your Sapphire Preferred. That raises the "
-                    "guaranteed-value floor every hoard/redeem decision is measured against."
+                    "Portal floor: under Chase's Points Boost, the fixed 1.5¢ (CSR) / 1.25¢ (CSP) "
+                    "rate only applies to points earned before Oct 26, 2025, and ends Oct 26, 2027. "
+                    "New points redeem at 1.0¢ plus selective boosts, so a product change no longer "
+                    "raises the floor much. The bigger CSR difference now: Hyatt stays 1:1 "
+                    "(Sapphire Preferred drops to 4:3 on Oct 1, 2026)."
                 )
         else:
             st.info("No transfer implications — this card doesn't unlock a transferable pool.")

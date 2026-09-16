@@ -1,0 +1,34 @@
+{
+ "quotes": [
+  {
+   "origin": "JFK",
+   "dest": "PTY",
+   "cabin": "BUSINESS",
+   "date": "2026-09-22",
+   "price_usd": 781.0,
+   "nonstop_price_usd": null,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-16T13:56:40Z"
+  },
+  {
+   "origin": "JFK",
+   "dest": "PTY",
+   "cabin": "BUSINESS",
+   "date": "2026-11-20",
+   "price_usd": 879.0,
+   "nonstop_price_usd": 1804.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-16T13:56:41Z"
+  },
+  {
+   "origin": "JFK",
+   "dest": "PTY",
+   "cabin": "BUSINESS",
+   "date": "2027-02-13",
+   "price_usd": 899.0,
+   "nonstop_price_usd": 1804.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-16T13:56:39Z"
+  }
+ ]
+}
