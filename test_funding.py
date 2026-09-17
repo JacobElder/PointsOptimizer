@@ -17,3 +17,16 @@ def test_transfer_from_the_best_active_pool_after_using_held_miles():
 def test_program_no_card_reaches():
     p = funding.plan("Delta SkyMiles", 20000, {"chase_ur": 137000}, {})
     assert p.pools == [] and "None of your points" in p.summary
+
+
+def test_active_transfer_bonus_reduces_points_needed(tmp_path, monkeypatch):
+    f = tmp_path / "bonuses.json"
+    f.write_text('{"bonuses": [{"pool": "chase_ur", "partner": "Air Canada Aeroplan", "bonus_pct": 20, "ends": "2099-01-01"},'
+                 ' {"pool": "bilt", "partner": "Air Canada Aeroplan", "bonus_pct": 50, "ends": "2000-01-01"}]}')
+    monkeypatch.setattr(funding, "BONUSES_PATH", str(f))
+    p = funding.plan("Air Canada Aeroplan", 60000, {"chase_ur": 137000, "bilt": 103000}, {})
+    chase = next(r for r in p.pools if r["pool"].key == "chase_ur")
+    bilt = next(r for r in p.pools if r["pool"].key == "bilt")
+    assert round(chase["pts_needed"]) == 50000 and "bonus" in chase
+    assert bilt["pts_needed"] == 60000 and "bonus" not in bilt  # expired bonus ignored
+    assert "+20% transfer bonus" in p.summary

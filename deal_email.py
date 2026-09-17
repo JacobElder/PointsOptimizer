@@ -89,8 +89,22 @@ def _digest_card(d: dict) -> str:
 
     cabin = d["cabin"].replace("_", " ").title()
     stops = "Nonstop" if d.get("direct") else "Connecting"
+    if d.get("trip"):
+        n = len(d["trip"].get("connections") or [])
+        stops = "Nonstop" if not n else f"{n} stop{'s' if n > 1 else ''}"
     bar = d.get("watch_bar", d["great_floor"])
     surplus = d.get("watch_surplus_usd", d["surplus_usd"])
+
+    trip = d.get("trip") or {}
+    if trip.get("mixed_cabin"):
+        chips += _chip("⚠️ Mixed cabin: " + ", ".join(trip["lower_cabin_legs"]), "#fee2e2", "#991b1b")
+    if trip.get("airport_changes"):
+        chips += _chip("🚕 Airport change: " + ", ".join(trip["airport_changes"]), "#fee2e2", "#991b1b")
+    if d.get("slow"):
+        chips += _chip("🐢 Long itinerary", "#fef3c7", "#92400e")
+    age = d.get("age_days")
+    if age is not None and age > 5:
+        chips += _chip(f"Seen {age:.0f} days ago: may be gone", "#f3f4f6", "#4b5563")
 
     rows = _row("Award", f"<b>{d['points']:,} points</b> + ${d['taxes_usd']:,.0f} taxes &amp; fees")
     fare = f"<b>${d['cash_price']:,.0f}</b> <span style='color:#6b7280'>· {_esc(d.get('cash_basis') or 'cash fare')}</span>"
@@ -115,12 +129,27 @@ def _digest_card(d: dict) -> str:
         more = f" and {len(others) - 6} more" if len(others) > 6 else ""
         dates += f"<br><span style='font-size:12px; color:#6b7280'>Also: {shown}{more}</span>"
     rows += _row("Dates", dates)
-    if d.get("airlines"):
+    if trip:
+        n_stops = len(trip.get("connections") or [])
+        h, m = divmod(int(trip.get("duration_min") or 0), 60)
+        via = f" via {', '.join(places.city(c) for c in trip['connections'])}" if n_stops else ""
+        rows += _row("Flights", f"{_esc(' · '.join(trip.get('flights') or []))}<br>"
+                                f"<span style='font-size:12px; color:#6b7280'>{h}h {m:02d}m · "
+                                f"{'Nonstop' if not n_stops else f'{n_stops} stop' + ('s' if n_stops > 1 else '') + _esc(via)}"
+                                f" · {_esc(trip.get('carriers') or '')}</span>")
+    elif d.get("airlines"):
         rows += _row("Airlines", _esc(places.airline_names(d["airlines"])))
+    if d.get("pay_summary"):
+        rows += _row("Pay with", _esc(d["pay_summary"]))
     if d.get("alternatives"):
         rows += _row("Also", "<br>".join(_esc(a) for a in d["alternatives"]))
 
     link = _google_flights_url(d["origin"], d["dest"], d["date"])
+    book = ""
+    if trip.get("booking_url"):
+        book = (f'<a href="{_esc(trip["booking_url"])}" style="display:inline-block; background:#2563eb; color:#ffffff; '
+                f'font-size:13px; font-weight:700; text-decoration:none; padding:8px 14px; border-radius:8px; '
+                f'margin:0 12px 6px 0;">{_esc(trip.get("booking_label") or "Book")} &rarr;</a>')
     return f"""
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
            style="border:1px solid #e5e7eb; border-radius:12px; margin:0 0 16px; background:#ffffff;">
@@ -147,7 +176,7 @@ def _digest_card(d: dict) -> str:
           {rows}
         </table>
         <div style="margin-top:12px; font-family:{_FONT};">
-          <a href="{link}" style="font-size:13px; color:#2563eb; text-decoration:none; font-weight:600;">
+          {book}<a href="{link}" style="font-size:13px; color:#2563eb; text-decoration:none; font-weight:600;">
             Check the cash fare on Google Flights &rarr;</a>
         </div>
       </td></tr>
@@ -175,6 +204,22 @@ def send_digest_email(sections: list[tuple[str, str, list[dict]]], subject: str,
     if not sections:
         return
     address, app_password = _get_credentials()
+    html_body, text = build_digest(sections, intro)
+    msg = EmailMessage()
+    msg["Subject"] = subject
+    msg["From"] = address
+    msg["To"] = address
+    msg.set_content(text)
+    msg.add_alternative(html_body, subtype="html")
+    with smtplib.SMTP("smtp.gmail.com", 587) as smtp:
+        smtp.starttls()
+        smtp.login(address, app_password)
+        smtp.send_message(msg)
+
+
+def build_digest(sections: list[tuple[str, str, list[dict]]], intro: str) -> tuple[str, str]:
+    """(html, plain text) for the digest email."""
+    sections = [s for s in sections if s[2]]
     body = ""
     text = [intro, ""]
     for title, subtitle, deals in sections:
@@ -197,13 +242,4 @@ def send_digest_email(sections: list[tuple[str, str, list[dict]]], subject: str,
         </div>
       </div>
     </div>"""
-    msg = EmailMessage()
-    msg["Subject"] = subject
-    msg["From"] = address
-    msg["To"] = address
-    msg.set_content("\n".join(text))
-    msg.add_alternative(html_body, subtype="html")
-    with smtplib.SMTP("smtp.gmail.com", 587) as smtp:
-        smtp.starttls()
-        smtp.login(address, app_password)
-        smtp.send_message(msg)
+    return html_body, "\n".join(text)

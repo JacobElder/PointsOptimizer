@@ -88,6 +88,10 @@ def search(origin: str, dest: str, cabins: list[str], start: date | None = None,
     for s in deals[:ROUND_TRIP_CHECKS]:
         deal_finder.apply_round_trip(s, rt_cache)
     deals = sorted(deals, key=lambda s: -s.cpp)[:top]
+    log("Getting flight details…")
+    deal_finder.attach_trips(deals[:ROUND_TRIP_CHECKS + 4], {})
+    # Mixed-cabin awards are worth less than their CPP suggests: list them after full-cabin ones.
+    deals.sort(key=lambda s: (bool(s.trip and s.trip.mixed_cabin), -s.cpp))
     for s in deals:
         s.other_dates.sort()
     if not cands:

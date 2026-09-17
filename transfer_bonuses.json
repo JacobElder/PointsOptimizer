@@ -1,0 +1,8 @@
+{
+  "_help": "Active transfer bonuses. bonus_pct 20 means 1,000 card points -> 1,200 partner points. Partner must match cards_data.py exactly. Expired entries are ignored automatically. Check roame.travel/guides/points-transfer-bonuses or awardtravelfinder.com/transfer-bonuses; Bilt runs Rent Day bonuses on the 1st of each month.",
+  "bonuses": [
+    {"pool": "chase_ur", "partner": "Air Canada Aeroplan", "bonus_pct": 20, "ends": "2026-09-30", "verified": "2026-09-16"},
+    {"pool": "chase_ur", "partner": "Marriott Bonvoy", "bonus_pct": 70, "ends": "2026-10-15", "verified": "2026-09-16"},
+    {"pool": "cap1_miles", "partner": "JAL Mileage Bank", "bonus_pct": 30, "ends": "2026-09-30", "verified": "2026-09-16"}
+  ]
+}

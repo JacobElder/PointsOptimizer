@@ -201,3 +201,16 @@ def test_awards_with_unreported_seat_count_still_rank():
     s = _scored("ANU", "ECONOMY", "american", "JFK", 9500, 388)
     s.c.seats = 0  # American always reports 0 ("unknown")
     assert deal_finder.group_leaders([s]) == [s]
+
+
+def test_mixed_cabin_and_airport_change_rank_lower():
+    import award_trips
+    base = dict(flights=["X1 A–B"], connections=[], duration_min=600, departs_at="", arrives_at="",
+                leg_cabins=["business"], carriers="", booking_url=None, booking_label=None, other_itineraries=0)
+    clean = _scored("ZRH", "BUSINESS", "united", "EWR", 88000, 3000)
+    mixed = _scored("ZRH", "BUSINESS", "united", "EWR", 88000, 3000)
+    change = _scored("ZRH", "BUSINESS", "united", "EWR", 88000, 3000)
+    clean.trip = award_trips.TripInfo(**base, mixed_cabin=False, lower_cabin_legs=[], airport_changes=[])
+    mixed.trip = award_trips.TripInfo(**base, mixed_cabin=True, lower_cabin_legs=["X1 (economy)"], airport_changes=[])
+    change.trip = award_trips.TripInfo(**base, mixed_cabin=False, lower_cabin_legs=[], airport_changes=["DCA → IAD"])
+    assert clean.rank_value > change.rank_value > mixed.rank_value

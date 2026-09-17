@@ -9,6 +9,7 @@ import streamlit as st
 
 import airports
 import cash_quotes
+import digest_view
 import flight_search
 import funding
 import places
@@ -27,36 +28,7 @@ def _cabin(c: str) -> str:
 
 def _pay_block(program: str, points: int, key: str) -> None:
     p = funding.plan(program, points)
-    icon = "✅" if p.covered_by_held or (p.pools and p.pools[0]["covered"]) else "💳"
-    st.markdown(f"{icon} **{p.summary}**")
-    if len(p.pools) > 1:
-        with st.expander("All ways to pay"):
-            for r in p.pools:
-                have = f" · you have {r['balance']:,}" if r["balance"] else " · balance not entered on Wallet"
-                st.write(f"{r['pool'].currency_name} → {program} ({r['partner'].ratio}): "
-                         f"{r['pts_needed']:,.0f} points{have}{' ✅' if r['covered'] else ''}")
-
-
-def _deal_card(s) -> None:
-    d = s.to_dict()
-    verdict = valuation.verdict_for(d["cpp"], d["cabin"])
-    with st.container(border=True):
-        c1, c2 = st.columns([3, 1])
-        c1.markdown(f"**{places.airport_label(d['origin'])} → {places.airport_label(d['dest'])}**")
-        c1.caption(" · ".join(x for x in [
-            d["program"], _cabin(d["cabin"]), places.nice_date(d["date"]),
-            "Nonstop" if d["direct"] else "Connecting",
-            places.airline_names(d["airlines"]) if d["airlines"] else "",
-        ] if x))
-        c1.write(f"**{d['points']:,} points** + ${d['taxes_usd']:,.0f} taxes · cash fare **${d['cash_price']:,.0f}** "
-                 f"({d['cash_basis']})")
-        if d["other_dates"]:
-            c1.caption(f"Same price on {len(d['other_dates'])} other date(s): "
-                       + ", ".join(places.nice_date(x, weekday=False) for x in d["other_dates"][:10])
-                       + (" …" if len(d["other_dates"]) > 10 else ""))
-        c2.metric("Cents per point", f"{d['cpp']:.2f}¢")
-        c2.caption(BADGE.get(verdict, verdict))
-        _pay_block(d["program"], d["points"], key=f"{d['source']}{d['date']}{d['points']}")
+    st.markdown(f"💳 **{places.md_safe(p.summary)}**")
 
 
 def _date_range(label: str, value: tuple[date, date], key: str) -> tuple[date | None, date | None]:
@@ -161,8 +133,8 @@ if result:
                 f"{o.c.points + b.c.points:,} points total"
             )
             if r.pair_round_trip_fare and r.pair_round_trip_fare < r.pair_cash_one_ways:
-                st.caption(f"Valued against the ${r.pair_round_trip_fare:,.0f} round-trip fare, lower than "
-                           f"the two one-way fares (${r.pair_cash_one_ways:,.0f}).")
+                st.caption(places.md_safe(f"Valued against the ${r.pair_round_trip_fare:,.0f} round-trip fare, lower "
+                                          f"than the two one-way fares (${r.pair_cash_one_ways:,.0f})."))
         elif r.outbound.deals and r.inbound.deals:
             st.warning("No return date falls after an outbound date in these ranges.")
         sections = [("Outbound", r.outbound), ("Return", r.inbound)]
@@ -176,7 +148,7 @@ if result:
         if not res.deals:
             st.write("No priced deals for this search.")
         for s in res.deals[:12]:
-            _deal_card(s)
+            digest_view.deal_card(s.to_dict())
 
 # ── Tools ────────────────────────────────────────────────────────────────────
 st.divider()
@@ -223,6 +195,6 @@ with st.expander("💵 Look up cash fares"):
         stops = "Nonstop" if offer.stops == 0 else f"{offer.stops} stop{'s' if offer.stops > 1 else ''}"
         via = f" via {', '.join(places.city(l.airport) for l in offer.layovers)}" if offer.layovers else ""
         hours, mins = divmod(offer.total_duration_minutes, 60)
-        st.write(f"**${offer.price_usd:,.0f}** · {places.airline_names(','.join(offer.carrier_codes)) or offer.airline} · "
+        st.write(f"**\\${offer.price_usd:,.0f}** · {places.airline_names(','.join(offer.carrier_codes)) or offer.airline} · "
                  f"{dep:%a %b %-d %H:%M} → {arr:%H:%M} · {hours}h {mins}m · {stops}{via}"
-                 if dep and arr else f"**${offer.price_usd:,.0f}** · {offer.airline} · {stops}{via}")
+                 if dep and arr else f"**\\${offer.price_usd:,.0f}** · {offer.airline} · {stops}{via}")

@@ -19,8 +19,23 @@ _CITY_OVERRIDES = {
     "ICN": "Seoul", "CPT": "Cape Town", "JNB": "Johannesburg", "GRU": "São Paulo",
     "EZE": "Buenos Aires", "MDE": "Medellín", "CTA": "Catania, Sicily", "PMO": "Palermo, Sicily",
 }
-_AIRLINE_OVERRIDES = {"JL": "Japan Airlines", "NH": "ANA", "VS": "Virgin Atlantic",
-                      "LX": "Swiss", "B6": "JetBlue"}
+# Current, short names for carriers that show up in award results (OpenFlights has
+# defunct or awkward names for several, e.g. AZ "Alitalia", 4Y "Airbus France").
+_AIRLINE_OVERRIDES = {
+    "4Y": "Discover Airlines", "4Z": "Airlink", "A3": "Aegean", "AA": "American", "AC": "Air Canada",
+    "AF": "Air France", "AI": "Air India", "AM": "Aeromexico", "AS": "Alaska", "AT": "Royal Air Maroc",
+    "AV": "Avianca", "AY": "Finnair", "AZ": "ITA Airways", "B6": "JetBlue", "BA": "British Airways",
+    "BR": "EVA Air", "CI": "China Airlines", "CM": "Copa", "CX": "Cathay Pacific", "DE": "Condor",
+    "DL": "Delta", "EI": "Aer Lingus", "EK": "Emirates", "EN": "Air Dolomiti", "ET": "Ethiopian",
+    "EY": "Etihad", "FI": "Icelandair", "HA": "Hawaiian", "IB": "Iberia", "JL": "Japan Airlines",
+    "KE": "Korean Air", "KL": "KLM", "KQ": "Kenya Airways", "LA": "LATAM", "LH": "Lufthansa",
+    "LO": "LOT Polish", "LX": "Swiss", "MS": "EgyptAir", "NH": "ANA", "NZ": "Air New Zealand",
+    "OS": "Austrian", "OZ": "Asiana", "QF": "Qantas", "QK": "Air Canada Express", "QR": "Qatar Airways",
+    "SA": "South African", "SK": "SAS", "SN": "Brussels Airlines", "SQ": "Singapore Airlines",
+    "TK": "Turkish Airlines", "TP": "TAP Air Portugal", "UA": "United", "UX": "Air Europa",
+    "VL": "Lufthansa City", "VS": "Virgin Atlantic", "WK": "Edelweiss", "WN": "Southwest",
+    "YU": "EuroAtlantic", "UX2": "Air Europa",
+}
 _METROS = {"NYC": "New York", "TYO": "Tokyo", "LON": "London", "PAR": "Paris", "MIL": "Milan",
            "ROM": "Rome", "CHI": "Chicago", "WAS": "Washington", "SEL": "Seoul", "OSA": "Osaka",
            "SAO": "São Paulo", "RIO": "Rio de Janeiro", "BUE": "Buenos Aires", "STO": "Stockholm",
@@ -72,6 +87,11 @@ def airline_names(codes: str) -> str:
             if name not in out:
                 out.append(name)
     return ", ".join(out)
+
+
+def md_safe(text: str) -> str:
+    """Escape "$" so Streamlit markdown doesn't render text between two $ as LaTeX math."""
+    return str(text).replace("$", "\\$")
 
 
 def nice_date(iso: str, weekday: bool = True) -> str:

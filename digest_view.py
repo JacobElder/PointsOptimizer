@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime
 
 import streamlit as st
 
 import deal_finder
+import funding
+import ledger
 import places
 
 
@@ -48,40 +51,100 @@ def render_digest(digest: dict | None = None) -> None:
         deal_card(d, rank=i + 1)
 
 
+@st.cache_data(ttl=60, show_spinner=False)
+def _balances() -> tuple[dict, dict]:
+    return ledger.load_balances(), ledger.load_program_balances()
+
+
+def _hm(iso: str) -> str:
+    try:
+        return datetime.fromisoformat(iso.replace("Z", "+00:00")).strftime("%-I:%M %p")
+    except (ValueError, AttributeError):
+        return ""
+
+
+def _days_later(dep: str, arr: str) -> str:
+    try:
+        n = (datetime.fromisoformat(arr[:10]) - datetime.fromisoformat(dep[:10])).days
+    except (ValueError, TypeError):
+        return ""
+    return f" (+{n} day{'s' if n > 1 else ''})" if n > 0 else ""
+
+
+def _duration(minutes: int) -> str:
+    h, m = divmod(int(minutes or 0), 60)
+    return f"{h}h {m:02d}m" if h else f"{m}m"
+
+
 def deal_card(d: dict, rank: int | None = None, bar: float | None = None, surplus: float | None = None) -> None:
+    """One deal: headline numbers, then flight / how to pay / dates, then links."""
+    safe = places.md_safe
     bar = bar if bar is not None else d["great_floor"]
     surplus = surplus if surplus is not None else d["surplus_usd"]
+    trip = d.get("trip") or {}
+    cabin = d["cabin"].replace("_", " ").title()
     with st.container(border=True):
-            c1, c2 = st.columns([3, 1])
-            new = " 🆕" if d.get("new") else ""
-            prefix = f"{rank}. " if rank else ""
-            c1.markdown(f"**{prefix}{places.airport_label(d['origin'])} → {places.airport_label(d['dest'])}**{new}")
-            c1.caption(
-                f"{d['program']} · {d['cabin'].replace('_', ' ').title()} · {places.nice_date(d['date'])} · "
-                f"{d['points']:,} pts + ${d['taxes_usd']:.0f} taxes · "
-                f"{str(d['seats']) + ' seat(s)' if d['seats'] else 'seats not reported'}"
-                f"{' · nonstop' if d.get('direct') else ''}"
-                f"{' · ' + places.airline_names(d['airlines']) if d.get('airlines') else ''}"
-            )
-            if d.get("bookable_now"):
-                c1.caption(f"✅ Bookable now with the {d['held_miles']:,} miles you already hold")
-            elif d.get("held_miles"):
-                c1.caption(f"You hold {d['held_miles']:,}; transfer {d['top_up_needed']:,} more")
-            approx = " (one-way fare from a date within 7 days)" if d.get("cash_is_approx") else ""
-            vs_biz = " · first class valued against the business fare" if d["cabin"] == "FIRST" else ""
-            basis = f" ({d['cash_basis']})" if d.get("cash_basis") else ""
-            own = f" · award airline's own fare ${d['same_carrier_cash']:,.0f}" if d.get("same_carrier_cash") else ""
-            c1.caption(f"Cash fare ${d['cash_price']:,.0f}{basis}{approx}{vs_biz}{own}")
+        title = f"{rank}. " if rank else ""
+        title += f"{places.airport_label(d['origin'])} → {places.airport_label(d['dest'])}"
+        tags = [cabin, d["program"]]
+        if d.get("new"):
+            tags.append("🆕 new")
+        st.markdown(f"#### {safe(title)}")
+        st.caption(" · ".join(safe(t) for t in tags))
+
+        m1, m2, m3, m4 = st.columns(4)
+        m1.metric("Value", f"{d['cpp']:.2f}¢/pt")
+        m2.metric("Points", f"{d['points']:,}", help=f"Plus ${d['taxes_usd']:,.0f} in taxes and fees")
+        m3.metric("Cash fare", f"${d['cash_price']:,.0f}", help=d.get("cash_basis") or None)
+        m4.metric("Saved vs bar", f"${surplus:,.0f}", help=f"Dollars above the {bar:.1f}¢/pt bar for {cabin}")
+        st.caption(safe(f"Plus ${d['taxes_usd']:,.0f} in taxes · cash fare: {d.get('cash_basis') or 'cheapest fare'}"
+                        + (" (from a date within 7 days)" if d.get("cash_is_approx") else "")
+                        + (" · first class compared with the business fare" if d["cabin"] == "FIRST" else "")))
+
+        left, right = st.columns([3, 2], gap="medium")
+        with left:
+            st.markdown("**✈️ Flight**")
+            date_line = places.nice_date(d["date"])
+            if trip:
+                stops = len(trip.get("connections") or [])
+                via = f" via {', '.join(places.city(c) for c in trip['connections'])}" if stops else ""
+                plus = _days_later(trip["departs_at"], trip["arrives_at"])
+                date_line += (f" · {_hm(trip['departs_at'])} → {_hm(trip['arrives_at'])}{plus}"
+                              f" · {_duration(trip['duration_min'])} · "
+                              + ("Nonstop" if not stops else f"{stops} stop{'s' if stops > 1 else ''}{via}"))
+                st.write(safe(date_line))
+                st.caption(safe(" · ".join(trip.get("flights") or []) + (f" · {trip['carriers']}" if trip.get("carriers") else "")))
+                if trip.get("mixed_cabin"):
+                    st.warning(safe("Mixed cabin: " + ", ".join(trip["lower_cabin_legs"]) + ". Worth less than the CPP shows."),
+                               icon="⚠️")
+                if trip.get("airport_changes"):
+                    st.warning("Airport change mid-trip: " + ", ".join(trip["airport_changes"])
+                               + ". You'd have to get between airports yourself.", icon="🚕")
+                if d.get("slow"):
+                    st.caption("🐢 Much longer than flying there directly.")
+            else:
+                st.write(safe(date_line + (" · Nonstop" if d.get("direct") else " · Connecting")))
+                if d.get("airlines"):
+                    st.caption(safe(places.airline_names(d["airlines"])))
             if d.get("other_dates"):
-                c1.caption(f"Also {len(d['other_dates'])} other date(s): "
-                           f"{', '.join(places.nice_date(x, weekday=False) for x in d['other_dates'][:8])}"
-                           + (" …" if len(d["other_dates"]) > 8 else ""))
+                st.markdown("**📅 Also available**")
+                st.caption(", ".join(places.nice_date(x, weekday=False) for x in d["other_dates"][:12])
+                           + (f" and {len(d['other_dates']) - 12} more" if len(d["other_dates"]) > 12 else ""))
             if d.get("alternatives"):
-                c1.caption("Alternatives: " + "; ".join(d["alternatives"]))
-            if d.get("round_trip_half") is not None and d.get("one_way_cash"):
-                c1.caption(f"One-way ${d['one_way_cash']:,.0f} · half of a 7-night round trip "
-                           f"${d['round_trip_half']:,.0f}")
-            c2.metric("CPP", f"{d['cpp']:.2f}¢")
-            c2.caption(f"+${surplus:,.0f} above the {bar:.1f}¢ bar")
+                st.markdown("**🔁 Other ways**")
+                st.caption(safe(" · ".join(d["alternatives"])))
+        with right:
+            st.markdown("**💳 How to pay**")
+            balances, programs = _balances()
+            plan = funding.plan(d["program"], d["points"], balances, programs)
+            st.write(safe(plan.summary))
 
-
+        links = []
+        if trip.get("booking_url"):
+            links.append(f"[{safe(trip.get('booking_label') or 'Book')} →]({trip['booking_url']})")
+        from urllib.parse import quote
+        gf = "https://www.google.com/travel/flights?q=" + quote(f"Flights from {d['origin']} to {d['dest']} on {d['date']} one way")
+        links.append(f"[Check the cash fare on Google Flights →]({gf})")
+        age = d.get("age_days")
+        age_s = "" if age is None else (" · award seen today" if age < 1 else f" · award seen {age:.0f} day{'s' if age >= 1.5 else ''} ago")
+        st.caption(" · ".join(links) + age_s + (" (may be gone)" if (age or 0) > 5 else ""))

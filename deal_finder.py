@@ -37,6 +37,7 @@ from datetime import date as date_cls
 from datetime import datetime, timedelta, timezone
 
 import award_scanner
+import award_trips
 import cash_quotes
 import deal_email
 import fare_model
@@ -127,6 +128,37 @@ class Scored:
     other_dates: list[str] = field(default_factory=list)
     alternatives: list[str] = field(default_factory=list)
     held_miles: int = 0  # miles you already hold in this award's program
+    trip: award_trips.TripInfo | None = None
+
+    @property
+    def age_days(self) -> float | None:
+        try:
+            seen = datetime.fromisoformat(self.c.updated_at.replace("Z", "+00:00"))
+        except (ValueError, AttributeError):
+            return None
+        return (datetime.now(timezone.utc) - seen).total_seconds() / 86400
+
+    @property
+    def slow(self) -> bool:
+        """Itinerary takes far longer than flying the distance nonstop would."""
+        if not self.trip or not self.trip.duration_min or not self.c.distance:
+            return False
+        nonstop_min = self.c.distance / 500 * 60 + 45
+        return self.trip.duration_min > max(1.8 * nonstop_min, nonstop_min + 300)
+
+    @property
+    def rank_value(self) -> float:
+        """Dollar surplus, discounted for things that make a deal worse than its CPP says."""
+        v = self.surplus or 0.0
+        if self.trip and self.trip.mixed_cabin:
+            v *= 0.4
+        if self.trip and self.trip.airport_changes:
+            v *= 0.5  # self-transfer between airports mid-trip
+        if self.slow:
+            v *= 0.75
+        if (self.age_days or 0) > 5:
+            v *= 0.85
+        return v
 
     @property
     def bookable_now(self) -> bool:
@@ -161,6 +193,8 @@ class Scored:
             "est_cash": round(self.est.median_price), "est_cpp": round(self.est_cpp, 2),
             "p_great": round(self.p_great, 2), "seats": c.seats, "direct": c.direct, "airlines": c.airlines,
             "other_dates": self.other_dates, "alternatives": self.alternatives, "updated_at": c.updated_at,
+            "id": c.id, "age_days": round(self.age_days, 1) if self.age_days is not None else None,
+            "trip": self.trip.as_dict() if self.trip else None, "slow": self.slow,
             "held_miles": self.held_miles, "bookable_now": self.bookable_now,
             "top_up_needed": max(c.points - self.held_miles, 0) if self.held_miles else None,
         }
@@ -320,6 +354,18 @@ def apply_round_trip(s: Scored, rt_cache: dict, today: date_cls | None = None) -
     return True
 
 
+# ── trip details ─────────────────────────────────────────────────────────────
+def attach_trips(scored: list[Scored], cache: dict) -> None:
+    """Fetch flight-level detail (1 seats.aero call per award, cached per run)."""
+    for s in scored:
+        if s.trip is not None:
+            continue
+        k = (s.c.id, s.c.cabin, s.c.points)
+        if k not in cache:
+            cache[k] = award_trips.fetch(s.c.id, s.c.cabin, s.c.points)
+        s.trip = cache[k]
+
+
 # ── ranking ──────────────────────────────────────────────────────────────────
 def group_leaders(scored: list[Scored], bar_fn=None) -> list[Scored]:
     """Best award per destination+cabin that clears its bar; the rest of the group
@@ -355,35 +401,41 @@ def pick_top(leaders: list[Scored], top: int, min_economy: int = 5) -> list[Scor
     economy = [s for s in leaders if s.c.cabin not in ("BUSINESS", "FIRST")]
     n_econ = min(len(economy), min_economy)
     picked = premium[: top - n_econ] + economy[: top - min(len(premium), top - n_econ)]
-    return sorted(picked, key=lambda s: -s.surplus)[:top]
+    return sorted(picked, key=lambda s: -s.rank_value)[:top]
 
 
 def shortlist(scored: list[Scored], top: int, min_economy: int = 5, rt_cache: dict | None = None,
-              round_trip: bool = False) -> list[Scored]:
+              round_trip: bool = False, trip_cache: dict | None = None) -> list[Scored]:
     leaders = group_leaders(scored)
-    if round_trip:
-        cache = rt_cache if rt_cache is not None else {}
+    if round_trip or trip_cache is not None:
         premium = [s for s in leaders if s.c.cabin in ("BUSINESS", "FIRST")][: top + ROUND_TRIP_CHECK_EXTRA]
         economy = [s for s in leaders if s.c.cabin not in ("BUSINESS", "FIRST")][: min_economy + 5]
-        for s in premium + economy:
-            apply_round_trip(s, cache)
+        if round_trip:
+            cache = rt_cache if rt_cache is not None else {}
+            for s in premium + economy:
+                apply_round_trip(s, cache)
+        if trip_cache is not None:
+            attach_trips(premium + economy, trip_cache)
         leaders = sorted([s for s in premium + economy if s.cpp is not None and s.cpp >= s.floor],
-                         key=lambda s: -s.surplus)
+                         key=lambda s: -s.rank_value)
     return pick_top(leaders, top, min_economy)
 
 
-def held_miles_report(scored: list[Scored], rt_cache: dict, round_trip: bool = True) -> list[Scored]:
+def held_miles_report(scored: list[Scored], rt_cache: dict, round_trip: bool = True,
+                      trip_cache: dict | None = None) -> list[Scored]:
     """Best deals bookable outright with miles already sitting in a program."""
     leaders = group_leaders([s for s in scored if s.bookable_now])[: HELD_MILES_DEALS + 3]
     if round_trip:
         for s in leaders:
             apply_round_trip(s, rt_cache)
     leaders = [s for s in leaders if s.cpp is not None and s.cpp >= s.floor]
-    return sorted(leaders, key=lambda s: -s.surplus)[:HELD_MILES_DEALS]
+    if trip_cache is not None:
+        attach_trips(leaders, trip_cache)
+    return sorted(leaders, key=lambda s: -s.rank_value)[:HELD_MILES_DEALS]
 
 
 def watch_report(scored: list[Scored], watchlist: list[WatchEntry], rt_cache: dict,
-                 round_trip: bool = True) -> list[dict]:
+                 round_trip: bool = True, trip_cache: dict | None = None) -> list[dict]:
     out = []
     for w in watchlist:
         mine = [s for s in scored if any(x is w for x in s.watch)]
@@ -396,7 +448,9 @@ def watch_report(scored: list[Scored], watchlist: list[WatchEntry], rt_cache: di
             for s in leaders:
                 apply_round_trip(s, rt_cache)
         leaders = [s for s in leaders if s.cpp is not None and s.cpp >= bar(s)]
-        leaders.sort(key=lambda s: -s.surplus_vs(bar(s)))
+        if trip_cache is not None:
+            attach_trips(leaders[:WATCH_DEALS_PER_ENTRY + 1], trip_cache)
+        leaders.sort(key=lambda s: -(s.surplus_vs(bar(s)) * (s.rank_value / s.surplus if s.surplus else 1)))
         deals = []
         for s in leaders[:WATCH_DEALS_PER_ENTRY]:
             d = s.to_dict()
@@ -460,7 +514,8 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
     reported = {} if resend else {k: v for k, v in digest.get("reported", {}).items() if v >= cutoff}
 
     rt_cache: dict = {}
-    ranked = shortlist(scored, top, rt_cache=rt_cache, round_trip=round_trip)
+    trip_cache: dict = {}
+    ranked = shortlist(scored, top, rt_cache=rt_cache, round_trip=round_trip, trip_cache=trip_cache)
     # Serialize now: watch_report regroups some of the same objects and rewrites
     # their other_dates/alternatives for its own subset.
     top_pairs = []
@@ -469,13 +524,14 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
         d["new"] = s.report_key not in reported
         top_pairs.append((s.report_key, d))
     held_pairs = []
-    for s in held_miles_report(scored, rt_cache, round_trip=round_trip):
+    for s in held_miles_report(scored, rt_cache, round_trip=round_trip, trip_cache=trip_cache):
         d = s.to_dict()
         key = f"held:{s.report_key}"
         d["new"] = key not in reported
         held_pairs.append((key, d))
-    watch = watch_report(scored, watchlist, rt_cache, round_trip=round_trip)
-    log(f"Round-trip checks: {len(rt_cache)} ({sum(1 for v in rt_cache.values() if v)} priced)")
+    watch = watch_report(scored, watchlist, rt_cache, round_trip=round_trip, trip_cache=trip_cache)
+    log(f"Round-trip checks: {len(rt_cache)} ({sum(1 for v in rt_cache.values() if v)} priced); "
+        f"flight details: {len(trip_cache)} ({sum(1 for v in trip_cache.values() if v and v.mixed_cabin)} mixed cabin)")
     watch_out, watch_pairs = [], []
     for g in watch:
         for s, d in g["deals"]:
@@ -485,6 +541,10 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
         watch_out.append({"label": g["label"], "matched_awards": g["matched_awards"],
                           "priced": g["priced"], "deals": [d for _, d in g["deals"]]})
 
+    import funding
+    balances = ledger.load_balances()
+    for _, d in top_pairs + held_pairs + watch_pairs:
+        d["pay_summary"] = funding.plan(d["program"], d["points"], balances, program_balances).summary
     fresh_watch = sorted([(k, d) for k, d in watch_pairs if d["new"]], key=lambda kd: -kd[1]["watch_surplus_usd"])
     fresh = ([(k, d) for k, d in held_pairs if d["new"]] + fresh_watch[:WATCH_EMAIL_MAX]
              + [(k, d) for k, d in top_pairs if d["new"]])
@@ -542,7 +602,7 @@ def preview_sources(sources: list[str], max_lookups: int = 60, top: int = 10, lo
     log(f"Found {stats['candidates']:,} awards in {', '.join(sources)} ({stats['calls']} seats.aero calls). Pricing…")
     scored = [s for s in score_candidates(cands, fare_model.FareModel()) if s.c.source in sources]
     price_promising(scored, max_lookups, log=log)
-    ranked = shortlist(scored, top, rt_cache={}, round_trip=True)
+    ranked = shortlist(scored, top, rt_cache={}, round_trip=True, trip_cache={})
     return {"deals": [s.to_dict() for s in ranked], "candidates": stats["candidates"], "calls": stats["calls"]}
 
 
