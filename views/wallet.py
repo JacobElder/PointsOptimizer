@@ -8,8 +8,6 @@ import streamlit as st
 import ledger
 from cards_data import CARDS, POOLS, cards_in_pool, pool_is_active
 
-st.set_page_config(page_title="Wallet — PointsOptimizer", page_icon="💳", layout="centered")
-
 st.title("Your Wallet")
 st.caption(
     "Which of your cards feed which point currency, and where that currency can go. "

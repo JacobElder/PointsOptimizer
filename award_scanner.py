@@ -111,19 +111,24 @@ def sources_for_programs(program_names) -> list[str]:
 
 def scan(config: dict | None = None, include_planned: bool = False, today: date | None = None,
          session: requests.Session | None = None,
-         extra_sources: list[str] | None = None) -> tuple[list[AwardCandidate], dict]:
+         extra_sources: list[str] | None = None, per_source: bool = True) -> tuple[list[AwardCandidate], dict]:
     """Run one scan. Returns (candidates, stats).
 
     extra_sources: programs to scan beyond what your pools can transfer to
-    (e.g. ones you already hold miles in).
+    (e.g. ones you already hold miles in). per_source=False sends one query for
+    all programs per cabin: fine for a single route, but a broad multi-destination
+    scan needs per_source=True to stay under the page cap. Config may set
+    start_date/end_date (YYYY-MM-DD) instead of min/max_days_out.
     """
     cfg = config or load_config()
     today = today or datetime.now(timezone.utc).date()
     sources = list(transferable_sources(include_planned))
     sources += [s for s in (extra_sources or []) if s not in sources]
     wanted_sources = [s for s in sources if not cfg.get("sources") or s in cfg["sources"]]
-    start = today + timedelta(days=int(cfg.get("min_days_out", 3)))
-    end = today + timedelta(days=int(cfg.get("max_days_out", 330)))
+    start = (date.fromisoformat(cfg["start_date"]) if cfg.get("start_date")
+             else today + timedelta(days=int(cfg.get("min_days_out", 3))))
+    end = (date.fromisoformat(cfg["end_date"]) if cfg.get("end_date")
+           else today + timedelta(days=int(cfg.get("max_days_out", 330))))
     max_age = timedelta(days=int(cfg.get("max_data_age_days", 10)))
     now = datetime.now(timezone.utc)
     http = session or requests.Session()
@@ -135,7 +140,9 @@ def scan(config: dict | None = None, include_planned: bool = False, today: date 
     # One query per cabin PER PROGRAM: a combined query across ~15 programs and ~100
     # destinations returned >25k economy rows and silently cut off whole programs
     # (American's 9,500-mile Caribbean awards were never seen).
-    for cabin, source in [(c, src) for c in cfg["cabins"] for src in wanted_sources]:
+    groups = [[src] for src in wanted_sources] if per_source else [wanted_sources]
+    for cabin, group in [(c, g) for c in cfg["cabins"] for g in groups]:
+        source = ",".join(group)
         params = {
             "origin_airport": ",".join(cfg["origins"]),
             "destination_airport": ",".join(cfg["destinations"]),

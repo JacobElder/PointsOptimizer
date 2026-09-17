@@ -445,11 +445,11 @@ def _email_dict(d: dict) -> dict:
 
 def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = False,
         round_trip: bool = True, log=print, max_watch_lookups: int = DEFAULT_MAX_WATCH_LOOKUPS,
-        resend: bool = False) -> dict:
+        resend: bool = False, use_watchlist: bool = True) -> dict:
     flight_search.SERPAPI_MAX_CALLS = SERPAPI_CAP
     started = datetime.now(timezone.utc)
     config = award_scanner.load_config()
-    watchlist = load_watchlist(config)
+    watchlist = load_watchlist(config) if use_watchlist else []
     if watchlist:
         extra = sorted({d for w in watchlist for d in w.dests} - set(config["destinations"]))
         cabins = list(dict.fromkeys(config["cabins"] + [c for w in watchlist for c in (w.cabins or [])]))

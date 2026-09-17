@@ -8,8 +8,6 @@ import streamlit as st
 import ledger
 from cards_data import CARDS, POOLS, pool_is_active, reachable_partner_names
 
-st.set_page_config(page_title="Roadmap — PointsOptimizer", page_icon="🗺️", layout="centered")
-
 st.title("Card Roadmap: What Would Each Unlock?")
 st.caption(
     "For every card on your roadmap: which point pools it would activate, which partner "
