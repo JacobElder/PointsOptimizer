@@ -1,9 +1,15 @@
 """
-Local persistence for point balances.
+Point balances: card pools ({pool_key: points}) and miles already in airline or
+hotel programs ({program name: miles}).
 
-Both files live next to the code and are gitignored — they're personal data.
-- balances.json: {pool_key: point_balance}
-- program_balances.json: {partner program name: miles already transferred into it}
+Storage:
+- With a GIST_TOKEN (GitHub classic token with only the "gist" scope, set as an
+  environment variable or Streamlit secret), balances live in ONE secret Gist
+  (pointsoptimizer_balances.json). The Wallet page on your Mac or the hosted site
+  saves there, and the daily GitHub run reads it, so there's one place to update.
+  The Gist is created on first use from any local balances.
+- Without it, local gitignored files: balances.json and program_balances.json
+  (plus the PROGRAM_BALANCES env var for the GitHub run).
 """
 
 from __future__ import annotations
@@ -12,6 +18,9 @@ import json
 import logging
 import os
 import tempfile
+from datetime import datetime, timezone
+
+import requests
 
 logger = logging.getLogger(__name__)
 
@@ -19,10 +28,116 @@ _BASE = os.path.dirname(os.path.abspath(__file__))
 BALANCES_PATH = os.path.join(_BASE, "balances.json")
 PROGRAM_BALANCES_PATH = os.path.join(_BASE, "program_balances.json")
 
+GIST_FILENAME = "pointsoptimizer_balances.json"
+GIST_DISABLED = False  # tests set this
+_gist_id: str | None = None
+
+
+# ── Gist storage ──────────────────────────────────────────────────────────
+def _gist_token() -> str | None:
+    if GIST_DISABLED:
+        return None
+    token = os.environ.get("GIST_TOKEN")
+    if not token:
+        try:
+            import streamlit as st
+
+            token = st.secrets.get("GIST_TOKEN")
+        except Exception:
+            token = None
+    return token or None
+
+
+def gist_enabled() -> bool:
+    return _gist_token() is not None
+
+
+def _gh(method: str, path: str, **kw):
+    resp = requests.request(method, f"https://api.github.com{path}", timeout=15,
+                            headers={"Authorization": f"Bearer {_gist_token()}",
+                                     "Accept": "application/vnd.github+json"}, **kw)
+    resp.raise_for_status()
+    return resp.json()
+
+
+def _find_gist_id() -> str | None:
+    global _gist_id
+    if _gist_id:
+        return _gist_id
+    for page in range(1, 6):
+        gists = _gh("GET", "/gists", params={"per_page": 100, "page": page})
+        for g in gists:
+            if GIST_FILENAME in (g.get("files") or {}):
+                _gist_id = g["id"]
+                return _gist_id
+        if len(gists) < 100:
+            break
+    return None
+
+
+def _gist_write(data: dict) -> None:
+    global _gist_id
+    body = {"files": {GIST_FILENAME: {"content": json.dumps(data, indent=2, sort_keys=True)}}}
+    gid = _find_gist_id()
+    if gid:
+        _gh("PATCH", f"/gists/{gid}", json=body)
+    else:
+        created = _gh("POST", "/gists", json={**body, "public": False,
+                                              "description": "PointsOptimizer balances"})
+        _gist_id = created["id"]
+
+
+def _gist_read() -> dict | None:
+    """Balances from the Gist; creates it from local files the first time. None on any failure."""
+    try:
+        gid = _find_gist_id()
+        if gid is None:
+            data = {"cards": _load_local_balances(), "programs": _load_local_program_balances(),
+                    "updated_at": datetime.now(timezone.utc).isoformat(timespec="seconds")}
+            _gist_write(data)
+            return data
+        files = _gh("GET", f"/gists/{gid}").get("files", {})
+        return json.loads(files[GIST_FILENAME]["content"])
+    except Exception as e:  # network, auth, malformed content: fall back to local
+        logger.warning("Gist balances unavailable (%s); using local files", type(e).__name__)
+        return None
+
+
+def _gist_update(part: str, values: dict[str, int]) -> bool:
+    current = _gist_read()
+    if current is None:
+        return False
+    current[part] = values
+    current["updated_at"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    try:
+        _gist_write(current)
+        return True
+    except Exception as e:
+        logger.warning("Couldn't save balances to Gist (%s)", type(e).__name__)
+        return False
+
+
+def _coerce(data) -> dict[str, int]:
+    out: dict[str, int] = {}
+    for k, v in (data or {}).items():
+        try:
+            out[str(k)] = int(float(v))
+        except (TypeError, ValueError):
+            continue
+    return out
+
 
 
 # ── Balances ───────────────────────────────────────────────────────────────
 def load_balances() -> dict[str, int]:
+    if gist_enabled():
+        data = _gist_read()
+        if data is not None:
+            return _coerce(data.get("cards"))
+    return _load_local_balances()
+
+
+def _load_local_balances() -> dict[str, int]:
     if not os.path.exists(BALANCES_PATH):
         return {}
     try:
@@ -47,6 +162,14 @@ def load_balances() -> dict[str, int]:
 
 
 def load_program_balances() -> dict[str, int]:
+    if gist_enabled():
+        data = _gist_read()
+        if data is not None:
+            return {k: v for k, v in _coerce(data.get("programs")).items() if v > 0}
+    return _load_local_program_balances()
+
+
+def _load_local_program_balances() -> dict[str, int]:
     """Miles already sitting in airline/hotel programs, keyed by cards_data Partner.name.
 
     Read from program_balances.json (local, gitignored), overridden by the
@@ -79,13 +202,19 @@ def load_program_balances() -> dict[str, int]:
     return out
 
 
-def save_program_balances(balances: dict[str, int]) -> None:
+def save_program_balances(balances: dict[str, int]) -> bool:
+    """Saves locally, and to the Gist when configured. Returns True if the Gist was updated."""
+    balances = {k: int(v) for k, v in balances.items() if int(v) > 0}
+    synced = gist_enabled() and _gist_update("programs", balances)
     with open(PROGRAM_BALANCES_PATH, "w") as f:
-        json.dump({k: int(v) for k, v in balances.items() if int(v) > 0}, f, indent=2, sort_keys=True)
+        json.dump(balances, f, indent=2, sort_keys=True)
         f.write("\n")
+    return bool(synced)
 
 
-def save_balances(balances: dict[str, int]) -> None:
+def save_balances(balances: dict[str, int]) -> bool:
+    """Saves locally, and to the Gist when configured. Returns True if the Gist was updated."""
+    synced = gist_enabled() and _gist_update("cards", {k: int(v) for k, v in balances.items()})
     # Atomic write: dump to a temp file in the SAME directory, then os.replace.
     # os.replace is atomic on POSIX, so a crash mid-write can never truncate or
     # corrupt the existing balances.json — readers see either the old or the
@@ -108,3 +237,4 @@ def save_balances(balances: dict[str, int]) -> None:
         except OSError:
             pass
         raise
+    return bool(synced)

@@ -50,7 +50,8 @@ jobs:
           SERPAPI_KEY: ${{ secrets.SERPAPI_KEY }}
           GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
-          PROGRAM_BALANCES: ${{ secrets.PROGRAM_BALANCES }} # optional JSON, e.g. {"JetBlue TrueBlue": 22516}
+          GIST_TOKEN: ${{ secrets.GIST_TOKEN }} # optional: balances from your private Gist (see README)
+          PROGRAM_BALANCES: ${{ secrets.PROGRAM_BALANCES }} # fallback when GIST_TOKEN isn't set
         run: python deal_finder.py ${{ inputs.resend && '--resend' || '' }}
       - name: Commit digest and quotes
         run: |

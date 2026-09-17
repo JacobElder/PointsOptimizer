@@ -93,7 +93,7 @@ Defined once in `deal_log.py` (`verdict_for`) and used everywhere: Flight Analyz
   ```
 
   `origins` and `cabins` narrow the match, `start`/`end` bound travel dates, and `bar` sets the CPP to report at (omit it for the usual 1.5¢/2.0¢). Watchlist destinations are added to the scan automatically and share a separate lookup budget round-robin (so one entry with thousands of matches can't crowd out the rest). Some destinations have no seats.aero coverage from NYC in any program (as of 2026-09-16: Oaxaca, Tbilisi/Kutaisi); those entries report nothing until coverage appears.
-- **Miles already in airline programs:** Wallet page → "Miles already in airline & hotel programs" (saved to gitignored `program_balances.json`). For the daily GitHub run, put the same numbers in a `PROGRAM_BALANCES` repo secret as JSON, e.g. `{"JetBlue TrueBlue": 22516}`. Southwest isn't covered by seats.aero (its points have a roughly fixed value).
+- **Balances (card points and miles already in airline programs):** edit on the Wallet page. To keep **one copy everywhere** (Mac app, hosted site, daily email), create a GitHub **classic** token with only the `gist` scope and add it as `GIST_TOKEN` in `.streamlit/secrets.toml`, in the Streamlit Cloud app's secrets, and as a GitHub repo secret. Balances then live in a secret Gist (`pointsoptimizer_balances.json`), created automatically from your local balances. Without it, balances are local files and the daily run uses the `PROGRAM_BALANCES` secret. Southwest isn't covered by seats.aero (its points have a roughly fixed value).
 - **Programs:** follow your point pools automatically (Chase UR, Wells Fargo, and Bilt, whose balance can be transferred without an open card). Getting a new card (e.g. Capital One Venture X): change its `status` from `"planned"` to `"held"` in `cards_data.py`; its pool becomes active and its airline partners that seats.aero covers are scanned from the next run. `python deal_finder.py --include-planned` previews that without changing anything.
 
 ---
@@ -133,7 +133,7 @@ CI: `tests.yml` on every push; `cash_price_check.yml` weekly and whenever the pr
 | `funding.py` | How to pay for an award: held miles first, then the best transfer |
 | `seats_aero.py` | Single-date award search for Flight Search; program name mapping |
 | `cards_data.py` | Cards, point pools, transfer partners |
-| `ledger.py` | Card balances and miles held in programs |
+| `ledger.py` | Card balances and miles held in programs (secret Gist when GIST_TOKEN is set, else local files) |
 | `places.py` | City, country and airline names for codes (`airport_coords.json`, `airline_names.json`) |
 | `digest_view.py` | Deal cards on the site |
 | `deal_email.py` | Digest email (Gmail SMTP) |

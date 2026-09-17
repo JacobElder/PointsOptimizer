@@ -115,3 +115,75 @@ def test_program_balances_roundtrip_and_env_override(tmp_path, monkeypatch):
     assert ledger.load_program_balances() == {"JetBlue TrueBlue": 30000, "Alaska Atmos Rewards": 5000}
     monkeypatch.setenv("PROGRAM_BALANCES", "not json")
     assert ledger.load_program_balances() == {"JetBlue TrueBlue": 22516}
+
+
+class _FakeGitHub:
+    """Minimal in-memory GitHub Gists API."""
+
+    def __init__(self):
+        self.gists = {}
+
+    def __call__(self, method, url, **kw):
+        path = url.replace("https://api.github.com", "")
+        body = kw.get("json") or {}
+        if method == "GET" and path == "/gists":
+            data = [{"id": gid, "files": {n: {} for n in g}} for gid, g in self.gists.items()]
+        elif method == "POST" and path == "/gists":
+            gid = f"g{len(self.gists) + 1}"
+            self.gists[gid] = {n: f["content"] for n, f in body["files"].items()}
+            data = {"id": gid}
+        elif method == "PATCH":
+            gid = path.rsplit("/", 1)[-1]
+            self.gists[gid].update({n: f["content"] for n, f in body["files"].items()})
+            data = {"id": gid}
+        else:  # GET /gists/{id}
+            gid = path.rsplit("/", 1)[-1]
+            data = {"files": {n: {"content": c} for n, c in self.gists[gid].items()}}
+
+        class R:
+            def raise_for_status(self):
+                pass
+
+            def json(self_inner):
+                return data
+
+        return R()
+
+
+def test_gist_is_seeded_from_local_files_then_shared(tmp_path, monkeypatch):
+    monkeypatch.setattr(ledger, "BALANCES_PATH", str(tmp_path / "balances.json"))
+    monkeypatch.setattr(ledger, "PROGRAM_BALANCES_PATH", str(tmp_path / "program_balances.json"))
+    ledger.save_balances({"chase_ur": 137000})
+    ledger.save_program_balances({"JetBlue TrueBlue": 22516})
+
+    fake = _FakeGitHub()
+    monkeypatch.setattr(ledger.requests, "request", fake)
+    monkeypatch.setattr(ledger, "GIST_DISABLED", False)
+    monkeypatch.setattr(ledger, "_gist_id", None)
+    monkeypatch.setenv("GIST_TOKEN", "t")
+
+    assert ledger.load_balances() == {"chase_ur": 137000}  # seeds the Gist from local files
+    assert len(fake.gists) == 1
+
+    assert ledger.save_program_balances({"JetBlue TrueBlue": 10000, "American Airlines AAdvantage": 14440}) is True
+    # Another machine (fresh process, no local files) sees the update.
+    monkeypatch.setattr(ledger, "_gist_id", None)
+    monkeypatch.setattr(ledger, "PROGRAM_BALANCES_PATH", str(tmp_path / "elsewhere.json"))
+    assert ledger.load_program_balances() == {"JetBlue TrueBlue": 10000, "American Airlines AAdvantage": 14440}
+
+
+def test_gist_failure_falls_back_to_local(tmp_path, monkeypatch):
+    monkeypatch.setattr(ledger, "BALANCES_PATH", str(tmp_path / "balances.json"))
+    ledger.save_balances({"bilt": 103000})
+
+    def boom(*a, **k):
+        raise ledger.requests.ConnectionError("offline")
+
+    monkeypatch.setattr(ledger.requests, "request", boom)
+    monkeypatch.setattr(ledger, "GIST_DISABLED", False)
+    monkeypatch.setattr(ledger, "_gist_id", None)
+    monkeypatch.setenv("GIST_TOKEN", "t")
+    assert ledger.load_balances() == {"bilt": 103000}
+    assert ledger.save_balances({"bilt": 90000}) is False
+    monkeypatch.setattr(ledger, "GIST_DISABLED", True)
+    assert ledger.load_balances() == {"bilt": 90000}

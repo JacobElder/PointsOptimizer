@@ -32,11 +32,14 @@ if planned:
 
 st.divider()
 st.header("Point Balances")
-st.caption(
-    "Saved to balances.json on the machine running the app (not in the public repo). "
-    "On the hosted Streamlit site these reset whenever it restarts, so keep the real numbers "
-    "in the copy on your Mac (`make app`)."
-)
+if ledger.gist_enabled():
+    st.caption("🔗 Synced: saved to your private balances Gist, shared by this site, the Mac app and the "
+               "daily deal email. Update here and everything uses the new numbers.")
+else:
+    st.caption(
+        "Saved only on the machine running the app (not in the public repo); on the hosted site they "
+        "reset when it restarts. Add a GIST_TOKEN secret to sync one copy everywhere (see README)."
+    )
 
 balances = ledger.load_balances()
 points_pools = [p for p in POOLS.values() if p.key != "cashback"
@@ -55,14 +58,13 @@ for col, pool in zip(bal_cols, points_pools):
         )
 
 if st.button("Save balances"):
-    ledger.save_balances(new_balances)
-    st.success("Balances saved.")
+    synced = ledger.save_balances(new_balances)
+    st.success("Balances saved and synced." if synced else "Balances saved on this machine.")
 
 st.subheader("Miles already in airline & hotel programs")
 st.caption(
-    "Points you've already transferred out (e.g. into JetBlue). The Deal Finder puts deals you can "
-    "book with these first. Saved to program_balances.json (local, gitignored); for the daily GitHub "
-    "run, mirror them in the PROGRAM_BALANCES repo secret."
+    "Points you've already transferred out (e.g. into JetBlue). The deal email and searches put "
+    "deals you can book with these first."
 )
 import seats_aero  # noqa: E402
 
@@ -79,8 +81,8 @@ edited = st.data_editor(
     key="program_balances_editor",
 )
 if st.button("Save program balances"):
-    ledger.save_program_balances({r["Program"]: int(r["Miles"] or 0) for r in edited if r.get("Program")})
-    st.success("Program balances saved.")
+    synced = ledger.save_program_balances({r["Program"]: int(r["Miles"] or 0) for r in edited if r.get("Program")})
+    st.success("Program balances saved and synced." if synced else "Program balances saved on this machine.")
 
 st.divider()
 st.header("Point Pools & Transfer Partners")
