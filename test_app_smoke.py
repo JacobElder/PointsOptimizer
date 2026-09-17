@@ -26,7 +26,7 @@ def test_navigation_lists_every_view():
 
 @pytest.mark.parametrize("mode", ["One date", "Date range", "Any time", "Outbound + return"])
 def test_flight_search_modes_render(mode):
-    at = AppTest.from_file("views/flight_analyzer.py")
+    at = AppTest.from_file("views/flight_search.py")
     at.run(timeout=30)
-    at.radio(key="award_mode").set_value(mode).run(timeout=30)
+    at.radio(key="fs_mode").set_value(mode).run(timeout=30)
     assert not at.exception, [str(e) for e in at.exception]

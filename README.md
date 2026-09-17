@@ -42,7 +42,7 @@ For the scheduled Deal Finder, add the same keys as GitHub repo secrets (Setting
 | Page | What it does |
 |------|--------------|
 | **🏆 Top Deals** (home) | The latest daily scan: book-now deals with miles you already hold, your watchlist, and the top 20. **Scan now** refreshes on demand (quick ~4 min or full ~9 min, no email). |
-| **✈️ Flight Search** | Award search on a route: **one date**, a **date range**, **any time**, or **outbound + return** as two one-way awards. Each result shows CPP against the live cash fare; **Use** fills in the value section and shows which of your points can pay (miles you already hold first). Also a manual cash-fare tab. |
+| **✈️ Flight Search** | One flow: pick a route and **one date**, a **date range**, **any time**, or **outbound + return** (two one-way awards) → ranked deals by cents per point against the live cash fare, each showing exactly how to pay (miles you already hold first, then the best card transfer). Tools: check a deal by hand, look up cash fares. |
 | **💳 Wallet** | Card point balances and miles already in airline programs; transfer partners per pool. |
 | **🗺️ Card Roadmap** | For each card you might get: which partners it unlocks, and a live preview of the deals on your routes you can't book today. |
 
@@ -130,6 +130,7 @@ CI: `tests.yml` on every push; `cash_price_check.yml` weekly and whenever the pr
 | `cash_quotes.py` | Saved fare quotes, nearby-date reuse, comparable-fare matching |
 | `flight_search.py` | Google Flights fares (one-way and round-trip): fast-flights, capped SerpApi fallback |
 | `valuation.py` | CPP math, currency conversion, cabin-aware verdict |
+| `funding.py` | How to pay for an award: held miles first, then the best transfer |
 | `seats_aero.py` | Single-date award search for Flight Search; program name mapping |
 | `cards_data.py` | Cards, point pools, transfer partners |
 | `ledger.py` | Card balances and miles held in programs |

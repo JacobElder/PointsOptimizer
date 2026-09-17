@@ -11,7 +11,7 @@ st.set_page_config(page_title="PointsOptimizer", page_icon="✈️", layout="cen
 
 pages = [
     st.Page("views/top_deals.py", title="Top Deals", icon="🏆", default=True),
-    st.Page("views/flight_analyzer.py", title="Flight Search", icon="✈️"),
+    st.Page("views/flight_search.py", title="Flight Search", icon="✈️"),
     st.Page("views/wallet.py", title="Wallet", icon="💳"),
     st.Page("views/roadmap.py", title="Card Roadmap", icon="🗺️"),
 ]
