@@ -75,6 +75,11 @@ def _render_digest() -> None:
         return
     top = digest.get("top", [])
     scan = digest.get("scan", {})
+    held = digest.get("held_miles", [])
+    if held:
+        st.header("✅ Book now with miles you already hold")
+        for d in held:
+            _deal_card(d)
     for group in digest.get("watchlist", []):
         st.header(f"⭐ Watchlist: {group['label']}")
         if not group["deals"]:
@@ -104,9 +109,14 @@ def _deal_card(d: dict, rank: int | None = None, bar: float | None = None, surpl
             c1.markdown(f"**{prefix}{d['origin']} → {d['dest']}** · {d['cabin'].title()}{new}")
             c1.caption(
                 f"{d['program']} · {d['date']} · {d['points']:,} pts + ${d['taxes_usd']:.0f} taxes · "
-                f"{d['seats']} seat(s){' · nonstop' if d.get('direct') else ''}"
+                f"{str(d['seats']) + ' seat(s)' if d['seats'] else 'seats not reported'}"
+                f"{' · nonstop' if d.get('direct') else ''}"
                 f"{' · ' + d['airlines'] if d.get('airlines') else ''}"
             )
+            if d.get("bookable_now"):
+                c1.caption(f"✅ Bookable now with the {d['held_miles']:,} miles you already hold")
+            elif d.get("held_miles"):
+                c1.caption(f"You hold {d['held_miles']:,}; transfer {d['top_up_needed']:,} more")
             approx = " (one-way fare from a date within 7 days)" if d.get("cash_is_approx") else ""
             vs_biz = " · first class valued against the business fare" if d["cabin"] == "FIRST" else ""
             basis = f" ({d['cash_basis']})" if d.get("cash_basis") else ""

@@ -43,6 +43,7 @@ import deal_email
 import deal_log
 import fare_model
 import flight_search
+import ledger
 
 _BASE = os.path.dirname(os.path.abspath(__file__))
 DIGEST_PATH = os.path.join(_BASE, "deal_digest.json")
@@ -58,7 +59,8 @@ SERPAPI_CAP = 5
 ROUND_TRIP_STAY_DAYS = 7
 ROUND_TRIP_CHECK_EXTRA = 15  # also round-trip-check this many runners-up, since leaders can drop out
 WATCH_DEALS_PER_ENTRY = 2
-WATCH_EMAIL_MAX = 10  # most valuable new watchlist hits per email; the rest are on Deal Radar
+WATCH_EMAIL_MAX = 10
+HELD_MILES_DEALS = 5  # "book now with miles you already have" section size  # most valuable new watchlist hits per email; the rest are on Deal Radar
 
 
 def price_cabin(cabin: str) -> str:
@@ -125,6 +127,11 @@ class Scored:
     surplus: float | None = None
     other_dates: list[str] = field(default_factory=list)
     alternatives: list[str] = field(default_factory=list)
+    held_miles: int = 0  # miles you already hold in this award's program
+
+    @property
+    def bookable_now(self) -> bool:
+        return self.held_miles >= self.c.points
 
     @property
     def group_key(self) -> tuple:
@@ -155,11 +162,14 @@ class Scored:
             "est_cash": round(self.est.median_price), "est_cpp": round(self.est_cpp, 2),
             "p_great": round(self.p_great, 2), "seats": c.seats, "direct": c.direct, "airlines": c.airlines,
             "other_dates": self.other_dates, "alternatives": self.alternatives, "updated_at": c.updated_at,
+            "held_miles": self.held_miles, "bookable_now": self.bookable_now,
+            "top_up_needed": max(c.points - self.held_miles, 0) if self.held_miles else None,
         }
 
 
 def score_candidates(cands: list[award_scanner.AwardCandidate], model: fare_model.FareModel,
-                     watchlist: list[WatchEntry] | None = None) -> list[Scored]:
+                     watchlist: list[WatchEntry] | None = None,
+                     program_balances: dict[str, int] | None = None) -> list[Scored]:
     est_cache: dict[tuple, fare_model.Estimate] = {}
     out = []
     for c in cands:
@@ -172,6 +182,7 @@ def score_candidates(cands: list[award_scanner.AwardCandidate], model: fare_mode
         est_cpp = check_alerts.compute_cpp(est.median_price, taxes_usd, c.points) or 0.0
         # P(cash fare is high enough for this award to clear the bar)
         s = Scored(c, taxes_usd, est, floor, est_cpp, est.prob_at_least(floor * c.points / 100 + taxes_usd))
+        s.held_miles = (program_balances or {}).get(c.program, 0)
         s.watch = [w for w in (watchlist or []) if w.matches(c)]
         if s.watch:
             bar = min(w.bar_for(c.cabin) for w in s.watch)
@@ -212,12 +223,10 @@ def price_promising(scored: list[Scored], max_lookups: int, log=print, max_watch
     """
     stats = {"cached": 0, "live": 0, "watch_live": 0, "no_fare": 0, "failed": 0, "skipped_low_p": 0}
     state = {"quotes": cash_quotes.load(), "stop": False}
-    if max_watch_lookups and watchlist:
-        queues = []
-        for w in watchlist:
-            mine = [s for s in scored if any(x is w for x in s.watch)]
-            if mine:
-                queues.append(sorted(mine, key=lambda s: -_pricing_priority(s)))
+    if max_watch_lookups:
+        groups = [[s for s in scored if any(x is w for x in s.watch)] for w in (watchlist or [])]
+        groups.append([s for s in scored if s.bookable_now])  # awards you can book with miles already held
+        queues = [sorted(g, key=lambda s: -_pricing_priority(s)) for g in groups if g]
         spent = 0
         while queues and spent < max_watch_lookups and not state["stop"]:
             for q in list(queues):
@@ -255,7 +264,8 @@ def _price_one(s: Scored, state: dict, stats: dict, log, allow_live: bool = True
         return "cached"
     if not allow_live:
         return "skipped"
-    if s.p_great < MIN_P_GREAT_TO_PRICE and not (s.watch and s.p_watch >= MIN_P_WATCH_TO_PRICE):
+    if (s.p_great < MIN_P_GREAT_TO_PRICE and not (s.watch and s.p_watch >= MIN_P_WATCH_TO_PRICE)
+            and not (s.bookable_now and s.p_great >= MIN_P_WATCH_TO_PRICE)):
         stats["skipped_low_p"] += 1
         return "skipped"
     try:
@@ -316,7 +326,9 @@ def group_leaders(scored: list[Scored], bar_fn=None) -> list[Scored]:
     """Best award per destination+cabin that clears its bar; the rest of the group
     becomes other_dates (same program+origin) or alternatives."""
     bar_fn = bar_fn or (lambda s: s.floor)
-    confirmed = [s for s in scored if s.cpp is not None and s.cpp >= bar_fn(s) and s.c.seats > 0]
+    # No seat-count filter: the scanner only keeps awards seats.aero marks available, and
+    # some programs (e.g. American) always report 0 remaining seats, meaning "unknown".
+    confirmed = [s for s in scored if s.cpp is not None and s.cpp >= bar_fn(s)]
     best: dict[tuple, Scored] = {}
     seen: dict[tuple, set] = {}
     for s in sorted(confirmed, key=lambda s: -s.surplus_vs(bar_fn(s))):
@@ -359,6 +371,16 @@ def shortlist(scored: list[Scored], top: int, min_economy: int = 5, rt_cache: di
         leaders = sorted([s for s in premium + economy if s.cpp is not None and s.cpp >= s.floor],
                          key=lambda s: -s.surplus)
     return pick_top(leaders, top, min_economy)
+
+
+def held_miles_report(scored: list[Scored], rt_cache: dict, round_trip: bool = True) -> list[Scored]:
+    """Best deals bookable outright with miles already sitting in a program."""
+    leaders = group_leaders([s for s in scored if s.bookable_now])[: HELD_MILES_DEALS + 3]
+    if round_trip:
+        for s in leaders:
+            apply_round_trip(s, rt_cache)
+    leaders = [s for s in leaders if s.cpp is not None and s.cpp >= s.floor]
+    return sorted(leaders, key=lambda s: -s.surplus)[:HELD_MILES_DEALS]
 
 
 def watch_report(scored: list[Scored], watchlist: list[WatchEntry], rt_cache: dict,
@@ -409,8 +431,12 @@ def _email_dict(d: dict) -> dict:
     bar = d.get("watch_bar", d["great_floor"])
     surplus = d.get("watch_surplus_usd", d["surplus_usd"])
     rt_used = d.get("round_trip_half") is not None and d["cash_price"] == d["round_trip_half"]
-    note = ((f"⭐ Watchlist: {d['watch_label']} · " if d.get("watch_label") else "")
-            + f"${surplus:,.0f} above the {bar:.1f}¢ bar · {d['seats']} seat(s) · vs {d['cash_basis']}"
+    note = (("✅ Bookable now with miles you already hold · " if d.get("bookable_now") else "")
+            + (f"You hold {d['held_miles']:,}; transfer {d['top_up_needed']:,} more · "
+               if d.get("held_miles") and not d.get("bookable_now") else "")
+            + (f"⭐ Watchlist: {d['watch_label']} · " if d.get("watch_label") else "")
+            + f"${surplus:,.0f} above the {bar:.1f}¢ bar"
+            + (f" · {d['seats']} seat(s)" if d["seats"] else "") + f" · vs {d['cash_basis']}"
             + (f" (one-way ${d['one_way_cash']:,.0f})" if rt_used and d.get("one_way_cash") else "")
             + (f" · award airline's own fare ${d['same_carrier_cash']:,.0f}" if d.get("same_carrier_cash") else "")
             + (" · cash fare from a date within 7 days" if d["cash_is_approx"] else ""))
@@ -427,13 +453,25 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
         extra = sorted({d for w in watchlist for d in w.dests} - set(config["destinations"]))
         cabins = list(dict.fromkeys(config["cabins"] + [c for w in watchlist for c in (w.cabins or [])]))
         config = {**config, "destinations": config["destinations"] + extra, "cabins": cabins}
-    cands, scan_stats = award_scanner.scan(config, include_planned=include_planned)
+    program_balances = ledger.load_program_balances()
+    transferable = award_scanner.transferable_sources(include_planned)
+    held_sources = award_scanner.sources_for_programs(program_balances)
+    cands, scan_stats = award_scanner.scan(config, include_planned=include_planned, extra_sources=held_sources)
     log(f"Scan: {scan_stats['candidates']:,} fresh awards from {scan_stats['calls']} seats.aero calls "
         f"({scan_stats['stale']:,} stale rows dropped; {scan_stats['rate_limit_remaining']} calls left today)")
+    if scan_stats.get("truncated"):
+        log(f"WARNING: results cut off at the page limit for {', '.join(scan_stats['truncated'])}")
 
     model = fare_model.FareModel()
     log(f"Fare model: {model.summary()}")
-    scored = score_candidates(cands, model, watchlist)
+    if program_balances:
+        unscannable = sorted(set(program_balances) - set(award_scanner._PARTNER_TO_SOURCE))
+        log(f"Miles already held: {program_balances}"
+            + (f" (not covered by seats.aero: {', '.join(unscannable)})" if unscannable else ""))
+    scored = score_candidates(cands, model, watchlist, program_balances)
+    # Programs scanned only because you hold miles there (e.g. American, Delta) can't be
+    # topped up from your cards, so keep those awards only when your miles fully cover them.
+    scored = [s for s in scored if s.c.source in transferable or s.bookable_now]
     promising = sum(1 for s in scored if s.p_great >= MIN_P_GREAT_TO_PRICE)
     log(f"Estimates: {promising:,} candidates >= {MIN_P_GREAT_TO_PRICE:.0%} chance of clearing the bar; "
         f"{sum(1 for s in scored if s.watch):,} match the watchlist")
@@ -455,6 +493,12 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
         d = s.to_dict()
         d["new"] = s.report_key not in reported
         top_pairs.append((s.report_key, d))
+    held_pairs = []
+    for s in held_miles_report(scored, rt_cache, round_trip=round_trip):
+        d = s.to_dict()
+        key = f"held:{s.report_key}"
+        d["new"] = key not in reported
+        held_pairs.append((key, d))
     watch = watch_report(scored, watchlist, rt_cache, round_trip=round_trip)
     log(f"Round-trip checks: {len(rt_cache)} ({sum(1 for v in rt_cache.values() if v)} priced)")
     watch_out, watch_pairs = [], []
@@ -467,16 +511,19 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
                           "priced": g["priced"], "deals": [d for _, d in g["deals"]]})
 
     fresh_watch = sorted([(k, d) for k, d in watch_pairs if d["new"]], key=lambda kd: -kd[1]["watch_surplus_usd"])
-    fresh = fresh_watch[:WATCH_EMAIL_MAX] + [(k, d) for k, d in top_pairs if d["new"]]
+    fresh = ([(k, d) for k, d in held_pairs if d["new"]] + fresh_watch[:WATCH_EMAIL_MAX]
+             + [(k, d) for k, d in top_pairs if d["new"]])
     emailed = 0
     if send_email and fresh and deal_email.is_configured():
         deals = [_email_dict(d) for _, d in fresh]
         n_watch = sum(1 for k, _ in fresh if k.startswith("watch:"))
+        n_held = sum(1 for k, _ in fresh if k.startswith("held:"))
         lead = deals[0]
         try:
             deal_email.send_deal_alert_email(
                 deals,
-                subject=(f"Deal Finder: {n_watch} watchlist + {len(fresh) - n_watch} new standout(s), "
+                subject=(f"Deal Finder: {n_held} book-now + {n_watch} watchlist + "
+                         f"{len(fresh) - n_watch - n_held} new standout(s), "
                          f"lead {lead['origin']}->{lead['dest']} {lead['cpp']:.2f}c/pt"),
                 intro=(f"Ranked from {scan_stats['candidates']:,} award options by dollars saved above the "
                        "great-deal bar, using live Google Flights fares (the lower of the one-way fare and "
@@ -494,6 +541,7 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
         "model": model.summary(),
         "pricing": price_stats,
         "round_trip_checks": len(rt_cache),
+        "held_miles": [d for _, d in held_pairs],
         "watchlist": watch_out,
         "top": [d for _, d in top_pairs],
         "emailed_new": emailed,
@@ -525,6 +573,10 @@ def main(argv: list[str] | None = None) -> int:
     args = ap.parse_args(argv)
     out = run(args.max_lookups, args.top, not args.no_email, args.include_planned, not args.no_round_trip,
               max_watch_lookups=args.max_watch_lookups)
+    if out["held_miles"]:
+        print("\n✅ Book now with miles you already hold:")
+        for i, d in enumerate(out["held_miles"], 1):
+            print(_line(i, d))
     for g in out["watchlist"]:
         print(f"\n⭐ {g['label']}: {len(g['deals'])} deal(s) from {g['matched_awards']:,} matching awards "
               f"({g['priced']} priced)")

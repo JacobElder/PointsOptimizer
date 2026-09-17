@@ -44,6 +44,7 @@ SOURCE_TO_PARTNER = {
     "american": "American Airlines AAdvantage",  # added 2026-09-16 (live-verified)
     "emirates": "Emirates Skywards",  # added 2026-09-16 (live-verified)
     "british": "British Airways Executive Club",
+    "delta": "Delta SkyMiles",  # added 2026-09-16 (live-verified); not a transfer partner of your pools
     "etihad": "Etihad Guest",
     "finnair": "Finnair Plus",
     "flyingblue": "Air France-KLM Flying Blue",

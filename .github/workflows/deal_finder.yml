@@ -5,7 +5,8 @@ name: Deal Finder
 # digest (shown on the Deal Radar page) plus the saved cash quotes.
 #
 # Needs repo secrets: SEATS_AERO_API_KEY, GMAIL_ADDRESS, GMAIL_APP_PASSWORD
-# (SERPAPI_KEY optional: capped fallback if free lookups fail).
+# (SERPAPI_KEY optional: capped fallback if free lookups fail; PROGRAM_BALANCES
+# optional: miles already held in airline programs, kept out of the public repo).
 on:
   schedule:
     - cron: "0 11 * * *" # 7am US Eastern (EDT)
@@ -44,6 +45,7 @@ jobs:
           SERPAPI_KEY: ${{ secrets.SERPAPI_KEY }}
           GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          PROGRAM_BALANCES: ${{ secrets.PROGRAM_BALANCES }} # optional JSON, e.g. {"JetBlue TrueBlue": 22516}
         run: python deal_finder.py
       - name: Commit digest and quotes
         run: |

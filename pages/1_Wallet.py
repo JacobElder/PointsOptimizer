@@ -56,6 +56,30 @@ if st.button("Save balances"):
     ledger.save_balances(new_balances)
     st.success("Balances saved.")
 
+st.subheader("Miles already in airline & hotel programs")
+st.caption(
+    "Points you've already transferred out (e.g. into JetBlue). The Deal Finder puts deals you can "
+    "book with these first. Saved to program_balances.json (local, gitignored); for the daily GitHub "
+    "run, mirror them in the PROGRAM_BALANCES repo secret."
+)
+import seats_aero  # noqa: E402
+
+all_partners = sorted({pt.name for p in POOLS.values() for pt in p.partners}
+                      | set(seats_aero.SOURCE_TO_PARTNER.values()))
+program_balances = ledger.load_program_balances()
+edited = st.data_editor(
+    [{"Program": k, "Miles": v} for k, v in sorted(program_balances.items())] or [{"Program": None, "Miles": 0}],
+    num_rows="dynamic",
+    column_config={
+        "Program": st.column_config.SelectboxColumn("Program", options=all_partners, required=False),
+        "Miles": st.column_config.NumberColumn("Miles", min_value=0, step=500),
+    },
+    key="program_balances_editor",
+)
+if st.button("Save program balances"):
+    ledger.save_program_balances({r["Program"]: int(r["Miles"] or 0) for r in edited if r.get("Program")})
+    st.success("Program balances saved.")
+
 st.divider()
 st.header("Point Pools & Transfer Partners")
 

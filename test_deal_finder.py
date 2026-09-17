@@ -179,3 +179,25 @@ def test_watch_budget_is_shared_round_robin(monkeypatch):
     stats = deal_finder.price_promising(cands, max_lookups=0, log=lambda m: None,
                                         max_watch_lookups=2, watchlist=[big, small])
     assert sorted(looked_up) == ["LIM", "SJU"] and stats["watch_live"] == 2 and stats["live"] == 0
+
+
+def test_held_miles_report_only_includes_fully_covered_awards():
+    cheap = _scored("LIR", "ECONOMY", "jetblue", "JFK", 15000, 700)
+    pricey = _scored("PTY", "ECONOMY", "jetblue", "JFK", 30000, 900)
+    for s in (cheap, pricey):
+        s.held_miles = 22516
+    (only,) = deal_finder.held_miles_report([cheap, pricey], rt_cache={}, round_trip=False)
+    assert only is cheap and only.bookable_now
+    d = pricey.to_dict()
+    assert d["bookable_now"] is False and d["top_up_needed"] == 30000 - 22516
+
+
+def test_held_program_sources_are_added_to_scan():
+    assert award_scanner.sources_for_programs(["American Airlines AAdvantage", "Delta SkyMiles",
+                                               "Southwest Rapid Rewards"]) == ["american", "delta"]
+
+
+def test_awards_with_unreported_seat_count_still_rank():
+    s = _scored("ANU", "ECONOMY", "american", "JFK", 9500, 388)
+    s.c.seats = 0  # American always reports 0 ("unknown")
+    assert deal_finder.group_leaders([s]) == [s]

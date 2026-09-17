@@ -160,3 +160,15 @@ def test_append_history_skips_identical_rerun(tmp_path, monkeypatch):
     ledger.append_history(**kw)
     ledger.append_history(**{**kw, "cash_price": 950.0})
     assert len(ledger.load_history()) == 3 - 1
+
+
+def test_program_balances_roundtrip_and_env_override(tmp_path, monkeypatch):
+    monkeypatch.setattr(ledger, "PROGRAM_BALANCES_PATH", str(tmp_path / "program_balances.json"))
+    monkeypatch.delenv("PROGRAM_BALANCES", raising=False)
+    assert ledger.load_program_balances() == {}
+    ledger.save_program_balances({"JetBlue TrueBlue": 22516, "United MileagePlus": 0})
+    assert ledger.load_program_balances() == {"JetBlue TrueBlue": 22516}
+    monkeypatch.setenv("PROGRAM_BALANCES", '{"JetBlue TrueBlue": 30000, "Alaska Atmos Rewards": "5000"}')
+    assert ledger.load_program_balances() == {"JetBlue TrueBlue": 30000, "Alaska Atmos Rewards": 5000}
+    monkeypatch.setenv("PROGRAM_BALANCES", "not json")
+    assert ledger.load_program_balances() == {"JetBlue TrueBlue": 22516}

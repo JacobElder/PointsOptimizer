@@ -10,4 +10,5 @@ __pycache__/
 
 # Personal data — balances and analysis history stay local
 balances.json
+program_balances.json
 history.csv

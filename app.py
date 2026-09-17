@@ -458,7 +458,16 @@ elif not matches:
         "Check spelling, or this program isn't a partner of any card you hold/plan to get."
     )
 else:
-    ranked = rank_funding_pools(matches, points_required, balances)
+    held = {name: miles for name, miles in ledger.load_program_balances().items()
+            if any(partner.name == name for _, partner in matches)}
+    for name, miles in held.items():
+        if miles >= points_required:
+            st.success(f"✅ You already hold **{miles:,}** {name} miles: enough to book this without "
+                       "transferring anything. Spend those first.")
+        else:
+            st.info(f"You already hold **{miles:,}** {name} miles; transfer only "
+                    f"**{points_required - miles:,.0f}** more.")
+    ranked = rank_funding_pools(matches, max(points_required - sum(held.values()), 0), balances)
 
     if len(ranked) > 1:
         best = ranked[0]

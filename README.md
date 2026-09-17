@@ -53,13 +53,14 @@ For the scheduled Deal Finder, add the same keys as GitHub repo secrets (Setting
 
 `deal_finder.py` runs daily on GitHub Actions (`.github/workflows/deal_finder.yml`, 7am ET) or on demand with `make find`:
 
-1. **Scan** (`award_scanner.py`) — seats.aero Cached Search across `scan_config.json` routes, only in programs your **active** point pools can transfer to. ~16,000 awards for ~21 API calls.
+1. **Scan** (`award_scanner.py`) — seats.aero Cached Search across `scan_config.json` routes (plus watchlist destinations), one query per program per cabin, in programs your **active** point pools can transfer to **plus** programs you already hold miles in. ~145,000 awards for ~200 of the 1,000 daily API calls.
 2. **Estimate** (`fare_model.py`) — predicted cash fare with uncertainty for every award (regression on distance, cabin, region; per-route corrections as real fares accumulate), giving the probability it clears the cabin's great-deal bar.
 3. **Price** (`cash_quotes.py`) — real Google Flights fares for the most promising candidates, highest expected value first. Quotes are saved in `cash_quotes.json` and reused for dates within ±7 days on the same route and cabin.
 4. **Round-trip check** — for deals near the top, also price a 7-night round trip. The award is valued against the **lower** of the one-way fare and half the round trip (one-way fares are often far above half a round trip: EWR–CPT business $5,084 one-way vs $2,519 per direction).
 5. **Rank** — confirmed deals by dollars saved above the bar: `(cash − taxes) − points × bar`. One entry per destination + cabin; other dates, origins and programs listed under it; 5 slots reserved for economy.
-6. **Watchlist** — destinations you care about are always reported when they clear their bar, even outside the top 20 (see below).
-7. **Report** — `deal_digest.json` (shown on Deal Radar) and an email of deals not reported in the last 14 days, watchlist hits first.
+6. **Book now with miles you already hold** — awards fully covered by miles already sitting in a program (e.g. JetBlue, American), listed first. Programs you can't top up from a card (American, Delta) only show awards your balance fully covers.
+7. **Watchlist** — destinations you care about are always reported when they clear their bar, even outside the top 20 (see below).
+8. **Report** — `deal_digest.json` (shown on Deal Radar) and an email of deals not reported in the last 14 days, watchlist hits first.
 
 ### Which cash fare an award is compared against
 
@@ -91,6 +92,7 @@ Defined once in `deal_log.py` (`verdict_for`) and used everywhere: Flight Analyz
   ```
 
   `origins` and `cabins` narrow the match, `start`/`end` bound travel dates, and `bar` sets the CPP to report at (omit it for the usual 1.5¢/2.0¢). Watchlist destinations are added to the scan automatically and share a separate lookup budget round-robin (so one entry with thousands of matches can't crowd out the rest). Some destinations have no seats.aero coverage from NYC in any program (as of 2026-09-16: Oaxaca, Tbilisi/Kutaisi); those entries report nothing until coverage appears.
+- **Miles already in airline programs:** Wallet page → "Miles already in airline & hotel programs" (saved to gitignored `program_balances.json`). For the daily GitHub run, put the same numbers in a `PROGRAM_BALANCES` repo secret as JSON, e.g. `{"JetBlue TrueBlue": 22516}`. Southwest isn't covered by seats.aero (its points have a roughly fixed value).
 - **Programs:** follow your point pools automatically (Chase UR, Wells Fargo, and Bilt, whose balance can be transferred without an open card). Getting a new card (e.g. Capital One Venture X): change its `status` from `"planned"` to `"held"` in `cards_data.py`; its pool becomes active and its airline partners that seats.aero covers are scanned from the next run. `python deal_finder.py --include-planned` previews that without changing anything.
 
 ---

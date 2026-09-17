@@ -8,7 +8,8 @@ flight, one scan pulls everything, and deal_finder.py ranks it.
 API facts (verified 2026-09-16): Pro = 1,000 calls/day; Cached Search takes
 comma-separated origin/destination airports plus `cabins` and `sources`
 filters, pages up to 1,000 rows via skip + cursor, and returns Route.Distance.
-TotalTaxes are in minor units (cents). A full scan here is ~5-20 calls.
+TotalTaxes are in minor units (cents). A full scan is one query per program per
+cabin, ~60-100 calls.
 """
 
 from __future__ import annotations
@@ -29,7 +30,7 @@ CONFIG_PATH = os.path.join(_BASE, "scan_config.json")
 _CABIN_PREFIX = {"ECONOMY": "Y", "PREMIUM_ECONOMY": "W", "BUSINESS": "J", "FIRST": "F"}
 _CABIN_PARAM = {"ECONOMY": "economy", "PREMIUM_ECONOMY": "premium", "BUSINESS": "business", "FIRST": "first"}
 _PARTNER_TO_SOURCE = {v: k for k, v in seats_aero.SOURCE_TO_PARTNER.items()}
-MAX_PAGES_PER_CABIN = 25  # ~100 destinations x 11 months can exceed 10k rows per cabin
+MAX_PAGES_PER_CABIN = 25  # per program and cabin; hitting it is logged as truncated
 
 
 @dataclass
@@ -103,12 +104,23 @@ def _parse(item: dict, cabin: str) -> AwardCandidate | None:
     )
 
 
+def sources_for_programs(program_names) -> list[str]:
+    """seats.aero slugs for programs (cards_data Partner names) you hold miles in."""
+    return [_PARTNER_TO_SOURCE[n] for n in program_names if n in _PARTNER_TO_SOURCE]
+
+
 def scan(config: dict | None = None, include_planned: bool = False, today: date | None = None,
-         session: requests.Session | None = None) -> tuple[list[AwardCandidate], dict]:
-    """Run one scan. Returns (candidates, stats)."""
+         session: requests.Session | None = None,
+         extra_sources: list[str] | None = None) -> tuple[list[AwardCandidate], dict]:
+    """Run one scan. Returns (candidates, stats).
+
+    extra_sources: programs to scan beyond what your pools can transfer to
+    (e.g. ones you already hold miles in).
+    """
     cfg = config or load_config()
     today = today or datetime.now(timezone.utc).date()
-    sources = transferable_sources(include_planned)
+    sources = list(transferable_sources(include_planned))
+    sources += [s for s in (extra_sources or []) if s not in sources]
     wanted_sources = [s for s in sources if not cfg.get("sources") or s in cfg["sources"]]
     start = today + timedelta(days=int(cfg.get("min_days_out", 3)))
     end = today + timedelta(days=int(cfg.get("max_days_out", 330)))
@@ -117,21 +129,25 @@ def scan(config: dict | None = None, include_planned: bool = False, today: date 
     http = session or requests.Session()
     key = seats_aero._get_api_key()
 
-    stats = {"calls": 0, "rows": 0, "stale": 0, "sources": wanted_sources, "rate_limit_remaining": None}
+    stats = {"calls": 0, "rows": 0, "stale": 0, "sources": wanted_sources, "rate_limit_remaining": None,
+             "truncated": []}
     found: dict[tuple, AwardCandidate] = {}
-    for cabin in cfg["cabins"]:
+    # One query per cabin PER PROGRAM: a combined query across ~15 programs and ~100
+    # destinations returned >25k economy rows and silently cut off whole programs
+    # (American's 9,500-mile Caribbean awards were never seen).
+    for cabin, source in [(c, src) for c in cfg["cabins"] for src in wanted_sources]:
         params = {
             "origin_airport": ",".join(cfg["origins"]),
             "destination_airport": ",".join(cfg["destinations"]),
             "cabins": _CABIN_PARAM[cabin],
-            "sources": ",".join(wanted_sources),
+            "sources": source,
             "start_date": start.isoformat(),
             "end_date": end.isoformat(),
             "take": 1000,
             "order_by": "lowest_mileage",
         }
         skip, cursor = 0, None
-        for _ in range(MAX_PAGES_PER_CABIN):
+        for page_no in range(MAX_PAGES_PER_CABIN):
             page = dict(params, skip=skip, **({"cursor": cursor} if cursor else {}))
             resp = http.get(seats_aero.SEARCH_URL, headers={"Partner-Authorization": key}, params=page, timeout=90)
             stats["calls"] += 1
@@ -158,6 +174,8 @@ def scan(config: dict | None = None, include_planned: bool = False, today: date 
                     found[k] = c
             if not payload.get("hasMore") or not rows:
                 break
+            if page_no == MAX_PAGES_PER_CABIN - 1:
+                stats["truncated"].append(f"{source}/{cabin}")
             skip += len(rows)
             cursor = payload.get("cursor", cursor)
     stats["candidates"] = len(found)

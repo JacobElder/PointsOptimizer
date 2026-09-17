@@ -3,6 +3,7 @@ Local persistence for per-pool point balances and analysis history.
 
 Both files live next to the code and are gitignored — they're personal data.
 - balances.json: {pool_key: point_balance}
+- program_balances.json: {partner program name: miles already transferred into it}
 - history.csv: one row per analyzed flight (see HISTORY_COLUMNS)
 """
 
@@ -20,6 +21,7 @@ logger = logging.getLogger(__name__)
 _BASE = os.path.dirname(os.path.abspath(__file__))
 BALANCES_PATH = os.path.join(_BASE, "balances.json")
 HISTORY_PATH = os.path.join(_BASE, "history.csv")
+PROGRAM_BALANCES_PATH = os.path.join(_BASE, "program_balances.json")
 
 HISTORY_COLUMNS = [
     "date",
@@ -58,6 +60,45 @@ def load_balances() -> dict[str, int]:
         except (TypeError, ValueError):
             logger.warning("Skipping unparseable balance for %r: %r", k, v)
     return result
+
+
+def load_program_balances() -> dict[str, int]:
+    """Miles already sitting in airline/hotel programs, keyed by cards_data Partner.name.
+
+    Read from program_balances.json (local, gitignored), overridden by the
+    PROGRAM_BALANCES environment variable (a JSON object) where set, so the
+    GitHub Actions run can get them from a repo secret without publishing them.
+    """
+    data: dict = {}
+    try:
+        with open(PROGRAM_BALANCES_PATH) as f:
+            loaded = json.load(f)
+        if isinstance(loaded, dict):
+            data.update(loaded)
+    except (OSError, json.JSONDecodeError):
+        pass
+    env = os.environ.get("PROGRAM_BALANCES")
+    if env:
+        try:
+            loaded = json.loads(env)
+            if isinstance(loaded, dict):
+                data.update(loaded)
+        except json.JSONDecodeError:
+            logger.warning("PROGRAM_BALANCES is not valid JSON; ignoring it")
+    out: dict[str, int] = {}
+    for k, v in data.items():
+        try:
+            if int(float(v)) > 0:
+                out[str(k)] = int(float(v))
+        except (TypeError, ValueError):
+            continue
+    return out
+
+
+def save_program_balances(balances: dict[str, int]) -> None:
+    with open(PROGRAM_BALANCES_PATH, "w") as f:
+        json.dump({k: int(v) for k, v in balances.items() if int(v) > 0}, f, indent=2, sort_keys=True)
+        f.write("\n")
 
 
 def save_balances(balances: dict[str, int]) -> None:
