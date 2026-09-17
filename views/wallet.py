@@ -32,7 +32,11 @@ if planned:
 
 st.divider()
 st.header("Point Balances")
-st.caption("Saved locally to balances.json (gitignored) and used by the Flight Analyzer.")
+st.caption(
+    "Saved to balances.json on the machine running the app (not in the public repo). "
+    "On the hosted Streamlit site these reset whenever it restarts, so keep the real numbers "
+    "in the copy on your Mac (`make app`)."
+)
 
 balances = ledger.load_balances()
 points_pools = [p for p in POOLS.values() if p.key != "cashback"

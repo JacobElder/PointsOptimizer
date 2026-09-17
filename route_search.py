@@ -20,11 +20,11 @@ from datetime import date, datetime, timedelta, timezone
 
 import award_scanner
 import cash_quotes
-import check_alerts
 import deal_finder
 import fare_model
 import flight_search
 import ledger
+import valuation
 
 DEFAULT_MAX_LOOKUPS = 30
 ROUND_TRIP_CHECKS = 8
@@ -136,6 +136,6 @@ def search_pair(origin: str, dest: str, cabins: list[str], out_start: date, out_
                 cash_total = min(cash_total, result.pair_round_trip_fare)
         except flight_search.SearchFailed:
             pass
-        result.combined_cpp = check_alerts.compute_cpp(cash_total, o.taxes_usd + r.taxes_usd,
+        result.combined_cpp = valuation.compute_cpp(cash_total, o.taxes_usd + r.taxes_usd,
                                                        o.c.points + r.c.points)
     return result

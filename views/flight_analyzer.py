@@ -9,17 +9,13 @@ from datetime import date, datetime
 import streamlit as st
 
 import airports
-import award_charts
 import cash_quotes
-import check_alerts
-import deal_log
 import flight_search
-import going_parse
 import ledger
 import places
-import return_finder
 import route_search
 import seats_aero
+import valuation
 from cards_data import (
     all_partner_names,
     find_partner_pools,
@@ -58,7 +54,7 @@ def _route_deal_row(s, key: str) -> None:
     d = s.to_dict()
     with st.container(border=True):
         c1, c2 = st.columns([3, 1])
-        verdict = deal_log.verdict_for(d["cpp"], d["cabin"])
+        verdict = valuation.verdict_for(d["cpp"], d["cabin"])
         badge = {"BOOK": "🟢", "BORDERLINE": "🟡", "SKIP": "🔴"}.get(verdict, "⚪")
         c1.markdown(f"{badge} **{places.airport_label(d['origin'])} → {places.airport_label(d['dest'])}**")
         c1.caption(f"{d['program']} · {d['cabin'].replace('_', ' ').title()} · {places.nice_date(d['date'])} · "
@@ -105,86 +101,23 @@ def _render_route_result(kind: str, result) -> None:
             _route_deal_row(s, key=f"route_use_{label}_{i}")
 
 
-st.title("✈️ Flight Value Analyzer")
-st.caption(
-    "Paste in a flight you're looking at — the cash price and the points/miles it costs — "
-    "and this tells you the value per point, which of your cards can actually get you there, "
-    "and whether to book it now or hold your points."
-)
-
-# ── At-a-glance summary (always visible, reflects the current inputs below) ───
-st.session_state.setdefault("cash_price_input", 1500.0)
-st.session_state.setdefault("points_required_input", 60000)
-st.session_state.setdefault("taxes_fees_input", 50.0)
-
-st.session_state.setdefault("value_cabin", "ECONOMY")
-
-# One verdict rule for the whole page (and Deal Radar): deal_log.verdict_for, cabin-aware.
-_VERDICT_LABEL = {"BOOK": "✅ Book", "BORDERLINE": "🟡 Borderline", "SKIP": "⛔ Skip"}
-
-
 def _mark_value_touched() -> None:
     st.session_state["_value_touched"] = True
 
 
-sm1, sm2, sm3, sm4 = st.columns(4)
-if st.session_state.get("_value_touched"):
-    _cp = st.session_state["cash_price_input"]
-    _pts = st.session_state["points_required_input"]
-    _tx = st.session_state["taxes_fees_input"]
-    _cpp_now = check_alerts.compute_cpp(_cp, _tx, int(_pts))
-    sm1.metric("Cash price", f"${_cp:,.0f}")
-    sm2.metric("Points", f"{_pts:,}")
-    sm3.metric("Value per point", f"{_cpp_now:.2f}¢" if _cpp_now is not None else "—")
-    sm4.metric("Quick verdict", _VERDICT_LABEL.get(deal_log.verdict_for(_cpp_now, st.session_state["value_cabin"]), "—"))
-else:
-    sm1.metric("Cash price", "—")
-    sm2.metric("Points", "—")
-    sm3.metric("Value per point", "—")
-    sm4.metric("Quick verdict", "—")
-    st.caption("Search an award or enter a cash price and points in ② to get a verdict.")
+st.title("✈️ Flight Search")
+st.caption(
+    "Find award seats on a route (one date, a date range, any time, or out-and-back), see what each is "
+    "worth in cents per point against the live cash fare, and which of your points can pay for it."
+)
 
-st.divider()
-
-# ── Flight inputs ────────────────────────────────────────────────────────────
-st.header("The Flight")
+# Value inputs, filled by the searches below or entered by hand in ②.
+st.session_state.setdefault("cash_price_input", 1500.0)
+st.session_state.setdefault("points_required_input", 60000)
+st.session_state.setdefault("taxes_fees_input", 50.0)
+st.session_state.setdefault("value_cabin", "ECONOMY")
 
 st.session_state.setdefault("flight_label_input", "")
-
-with st.popover("📋 Paste a Going deal"):
-    st.caption("Paste the text of a Going alert email and I'll pull out what I can.")
-    going_text = st.text_area("Deal text", height=150, label_visibility="collapsed")
-    if st.button("Parse deal") and going_text:
-        deal = going_parse.parse_deal(going_text)
-        if not deal.found_anything:
-            st.warning("Couldn't find a price or route in that text.")
-        else:
-            if deal.route_text:
-                st.session_state["flight_label_input"] = deal.route_text
-            # search_origin/search_dest accept free text now, so fall back to the
-            # raw code for airports not in the curated dropdown list.
-            if deal.origin_iata:
-                st.session_state["search_origin"] = airports.option_from_code(deal.origin_iata) or deal.origin_iata.upper()
-            if deal.destination_iata:
-                st.session_state["search_dest"] = airports.option_from_code(deal.destination_iata) or deal.destination_iata.upper()
-            if deal.price_usd:
-                st.session_state["_value_touched"] = True
-                # Going quotes roundtrip totals; award CPP math is usually one-way.
-                st.session_state["cash_price_input"] = (
-                    deal.price_usd / 2 if deal.is_roundtrip else deal.price_usd
-                )
-            parsed_bits = [
-                f"${deal.price_usd:,.0f}" + (" roundtrip → halved to one-way" if deal.is_roundtrip else "")
-                if deal.price_usd else None,
-                deal.route_text,
-                f"{deal.origin_iata}–{deal.destination_iata}" if deal.origin_iata else None,
-                f"travel {deal.raw_dates[0]}" if deal.raw_dates else None,
-            ]
-            st.success("Parsed: " + " · ".join(b for b in parsed_bits if b))
-            st.caption(
-                "Note: a cheap cash fare is usually a pay-cash signal: its CPP will likely "
-                "fall below the bar."
-            )
 
 # Apply a deferred label prefill from a prior "Use this award" click. Must happen
 # BEFORE the widget is instantiated -- writing a widget-keyed session_state value
@@ -440,7 +373,7 @@ with tab_award:
                 akey = "|".join([str(award.source), award.origin, award.destination,
                                  str(award.date), str(award.points), award.cabin])
                 if st.button("Use this award — get CPP", key=f"use_award_{i}", use_container_width=True):
-                    taxes_usd = award.taxes_fees * check_alerts._fx_rate(award.taxes_currency)
+                    taxes_usd = award.taxes_fees * valuation.fx_rate(award.taxes_currency)
                     st.session_state["points_required_input"] = award.points
                     st.session_state["taxes_fees_input"] = round(taxes_usd, 2)
                     if award.known_partner:
@@ -462,10 +395,10 @@ with tab_award:
                                 if quote is not None else None)
                         if comp is not None:
                             st.session_state["cash_price_input"] = comp.price
-                            cpp = check_alerts.compute_cpp(comp.price, taxes_usd, award.points)
+                            cpp = valuation.compute_cpp(comp.price, taxes_usd, award.points)
                             result.update(cash=comp.price, cpp=cpp, approx=quote.approx, basis=comp.basis,
                                           same_carrier=comp.same_carrier_price,
-                                          verdict=deal_log.verdict_for(cpp, award.cabin))
+                                          verdict=valuation.verdict_for(cpp, award.cabin))
                         else:
                             result["note"] = ("No cash fare found for this route/date — "
                                               "enter it in ② below to get CPP.")
@@ -493,37 +426,10 @@ with tab_award:
                 elif res and res.get("note"):
                     st.info(res["note"])
 
-                # Interested in this departure? Find a return leg on the reverse route.
-                _outbound = {"origin": award.origin, "dest": award.destination, "date": award.date,
-                             "cabin": award.cabin, "points": award.points}
-                if res and res.get("cpp") is not None:
-                    _outbound.update(cpp=res["cpp"], cash_price=res["cash"], taxes_usd=res["taxes_usd"])
-                return_finder.render(_outbound, key=f"fa_award_{akey}")
 
 st.divider()
 st.header("② Value & verdict")
 st.caption("Pulled from your searches above, or enter/adjust manually.")
-
-# Sweet-spot reference for the chosen program, with one-click pre-fill
-if program_query:
-    spots = award_charts.spots_for_program(program_query)
-    if spots:
-        with st.popover(f"⭐ {len(spots)} known sweet spot(s) for {program_query}"):
-            st.caption(
-                "Curated reference points, each verified on the date shown. Award pricing "
-                "churns — re-verify before booking."
-            )
-            for j, spot in enumerate(spots):
-                sp_l, sp_r = st.columns([4, 1])
-                sp_l.markdown(
-                    f"**{spot.route}** · {spot.cabin} — **{spot.points_one_way:,} pts** one-way "
-                    f"({spot.pricing_model}, verified {spot.last_verified})"
-                )
-                if spot.notes:
-                    sp_l.caption(spot.notes)
-                if sp_r.button("Use", key=f"use_spot_{j}"):
-                    st.session_state["points_required_input"] = spot.points_one_way
-                    st.rerun()
 
 _CABINS = ["ECONOMY", "PREMIUM_ECONOMY", "BUSINESS", "FIRST"]
 col1, col2, col3, col4 = st.columns(4)
@@ -546,17 +452,17 @@ with col4:
     value_cabin = st.selectbox("Cabin", _CABINS, key="value_cabin",
                                format_func=lambda c: c.replace("_", " ").title())
 
-current_cpp = check_alerts.compute_cpp(cash_price, taxes_fees, int(points_required))
+current_cpp = valuation.compute_cpp(cash_price, taxes_fees, int(points_required))
 st.metric("Value per point (CPP)", f"{current_cpp:.2f}¢", help="(cash price − award taxes/fees) / points × 100")
 if taxes_fees > cash_price:
     st.warning("Award taxes exceed the cash price — this redemption saves nothing; pay cash.")
 
-_great = deal_log.great_floor(value_cabin)
-_verdict = deal_log.verdict_for(current_cpp, value_cabin)
+_great = valuation.great_floor(value_cabin)
+_verdict = valuation.verdict_for(current_cpp, value_cabin)
 if not st.session_state.get("_value_touched"):
     st.caption("Enter a cash price and points above to get a verdict.")
 elif _verdict == "SKIP":
-    st.error(f"⛔ **Skip** — {current_cpp:.2f}¢/pt is below {deal_log.SKIP_CPP:.1f}¢.")
+    st.error(f"⛔ **Skip** — {current_cpp:.2f}¢/pt is below {valuation.SKIP_CPP:.1f}¢.")
 elif _verdict == "BOOK":
     st.success(f"✅ **Book it** — {current_cpp:.2f}¢/pt clears the {_great:.1f}¢ bar for {value_cabin.replace('_', ' ').title()}.")
 else:

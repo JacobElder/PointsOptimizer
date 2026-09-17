@@ -31,7 +31,7 @@ from datetime import datetime, timezone
 import numpy as np
 
 import cash_quotes
-import deal_log
+import valuation
 
 _BASE = os.path.dirname(os.path.abspath(__file__))
 _COORDS_PATH = os.path.join(_BASE, "airport_coords.json")
@@ -92,7 +92,7 @@ class Estimate:
 def training_rows() -> list[dict]:
     """Real observed fares, one per route/cabin/date (newest observation wins)."""
     rows: dict[tuple, dict] = {}
-    for d in deal_log.load().get("deals", []):
+    for d in valuation.recorded_fares():
         if d.get("cash_price") and not d.get("cash_is_approx"):
             key = (d["origin"], d["dest"], d["cabin"], d.get("cash_quote_date") or d["date"])
             rows[key] = {"origin": d["origin"], "dest": d["dest"], "cabin": d["cabin"],

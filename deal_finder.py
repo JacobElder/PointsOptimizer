@@ -38,12 +38,11 @@ from datetime import datetime, timedelta, timezone
 
 import award_scanner
 import cash_quotes
-import check_alerts
 import deal_email
-import deal_log
 import fare_model
 import flight_search
 import ledger
+import valuation
 
 _BASE = os.path.dirname(os.path.abspath(__file__))
 DIGEST_PATH = os.path.join(_BASE, "deal_digest.json")
@@ -99,7 +98,7 @@ class WatchEntry:
                 and (not self.end or c.date <= self.end))
 
     def bar_for(self, cabin: str) -> float:
-        return self.bar if self.bar is not None else deal_log.great_floor(cabin)
+        return self.bar if self.bar is not None else valuation.great_floor(cabin)
 
 
 def load_watchlist(config: dict) -> list[WatchEntry]:
@@ -177,9 +176,9 @@ def score_candidates(cands: list[award_scanner.AwardCandidate], model: fare_mode
         if k not in est_cache:
             est_cache[k] = model.estimate(*k)
         est = est_cache[k]
-        taxes_usd = c.taxes * check_alerts._fx_rate(c.taxes_currency)
-        floor = deal_log.great_floor(c.cabin)
-        est_cpp = check_alerts.compute_cpp(est.median_price, taxes_usd, c.points) or 0.0
+        taxes_usd = c.taxes * valuation.fx_rate(c.taxes_currency)
+        floor = valuation.great_floor(c.cabin)
+        est_cpp = valuation.compute_cpp(est.median_price, taxes_usd, c.points) or 0.0
         # P(cash fare is high enough for this award to clear the bar)
         s = Scored(c, taxes_usd, est, floor, est_cpp, est.prob_at_least(floor * c.points / 100 + taxes_usd))
         s.held_miles = (program_balances or {}).get(c.program, 0)
@@ -193,7 +192,7 @@ def score_candidates(cands: list[award_scanner.AwardCandidate], model: fare_mode
 
 def _set_cash(s: Scored, cash: float) -> None:
     s.cash = cash
-    s.cpp = check_alerts.compute_cpp(cash, s.taxes_usd, s.c.points)
+    s.cpp = valuation.compute_cpp(cash, s.taxes_usd, s.c.points)
     s.surplus = s.surplus_vs(s.floor)
 
 
@@ -530,6 +529,21 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
         json.dump(out, f, indent=1)
         f.write("\n")
     return out
+
+
+def preview_sources(sources: list[str], max_lookups: int = 60, top: int = 10, log=print) -> dict:
+    """Best deals in specific programs you can't reach today (e.g. what a new card would
+    unlock), on your usual routes. No watchlist, no digest, no email."""
+    flight_search.SERPAPI_MAX_CALLS = 0
+    config = {**award_scanner.load_config(), "sources": sources}
+    if not sources:
+        return {"deals": [], "candidates": 0, "calls": 0}
+    cands, stats = award_scanner.scan(config, extra_sources=sources)
+    log(f"Found {stats['candidates']:,} awards in {', '.join(sources)} ({stats['calls']} seats.aero calls). Pricing…")
+    scored = [s for s in score_candidates(cands, fare_model.FareModel()) if s.c.source in sources]
+    price_promising(scored, max_lookups, log=log)
+    ranked = shortlist(scored, top, rt_cache={}, round_trip=True)
+    return {"deals": [s.to_dict() for s in ranked], "candidates": stats["candidates"], "calls": stats["calls"]}
 
 
 def _line(i: int, d: dict) -> str:

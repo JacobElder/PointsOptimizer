@@ -5,10 +5,14 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import streamlit as st
 
+import award_scanner
+import deal_finder
+import digest_view
 import ledger
+import seats_aero
 from cards_data import CARDS, POOLS, pool_is_active, reachable_partner_names
 
-st.title("Card Roadmap: What Would Each Unlock?")
+st.title("🗺️ Card Roadmap")
 st.caption(
     "For every card on your roadmap: which point pools it would activate, which partner "
     "programs become reachable that aren't today, and what happens to points you're "
@@ -65,6 +69,28 @@ for card in planned:
                     f"Redundant with current pools ({len(already_reachable)}): "
                     + ", ".join(already_reachable)
                 )
+            new_sources = sorted(set(award_scanner.sources_for_pool(card.pool_key))
+                                 - set(award_scanner.transferable_sources()))
+            if new_sources and seats_aero.is_configured():
+                res_key = f"roadmap_preview_{card.pool_key}"
+                if st.button(f"🔎 Show the deals {card.name} would unlock right now", key=f"btn_{res_key}"):
+                    with st.status("Scanning programs only this card reaches…", expanded=True) as status:
+                        try:
+                            st.session_state[res_key] = deal_finder.preview_sources(new_sources, log=status.write)
+                            status.update(label="Done", state="complete", expanded=False)
+                        except Exception as e:
+                            status.update(label=f"Scan failed: {e}", state="error")
+                preview = st.session_state.get(res_key)
+                if preview is not None:
+                    if not preview["deals"]:
+                        st.write("No deals clearing your bar in those programs on your routes right now.")
+                    else:
+                        st.write(f"**{len(preview['deals'])} deals** on your routes you can't book today "
+                                 f"(from {preview['candidates']:,} awards):")
+                        for d in preview["deals"]:
+                            digest_view.deal_card(d)
+            elif not new_sources:
+                st.caption("None of this card's new partners are covered by seats.aero, so no deal preview.")
             if new_partners and already_reachable:
                 overlap_pct = len(already_reachable) / len(pool.partners) * 100
                 st.caption(

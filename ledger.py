@@ -1,40 +1,24 @@
 """
-Local persistence for per-pool point balances and analysis history.
+Local persistence for point balances.
 
 Both files live next to the code and are gitignored — they're personal data.
 - balances.json: {pool_key: point_balance}
 - program_balances.json: {partner program name: miles already transferred into it}
-- history.csv: one row per analyzed flight (see HISTORY_COLUMNS)
 """
 
 from __future__ import annotations
 
-import csv
 import json
 import logging
 import os
 import tempfile
-from datetime import date
 
 logger = logging.getLogger(__name__)
 
 _BASE = os.path.dirname(os.path.abspath(__file__))
 BALANCES_PATH = os.path.join(_BASE, "balances.json")
-HISTORY_PATH = os.path.join(_BASE, "history.csv")
 PROGRAM_BALANCES_PATH = os.path.join(_BASE, "program_balances.json")
 
-HISTORY_COLUMNS = [
-    "date",
-    "route",
-    "program",
-    "pool_key",
-    "cash_price",
-    "taxes_fees",
-    "points_required",
-    "cpp",
-    "avg_simulated_cpp",
-    "verdict",
-]
 
 
 # ── Balances ───────────────────────────────────────────────────────────────
@@ -124,54 +108,3 @@ def save_balances(balances: dict[str, int]) -> None:
         except OSError:
             pass
         raise
-
-
-# ── History ────────────────────────────────────────────────────────────────
-def append_history(
-    route: str,
-    program: str,
-    pool_key: str,
-    cash_price: float,
-    taxes_fees: float,
-    points_required: int,
-    cpp: float,
-    avg_simulated_cpp: float,
-    verdict: str,
-) -> None:
-    # Write the header when the file is missing OR exists but is empty (size 0);
-    # an existing-but-empty file would otherwise get headerless rows.
-    row = {
-        "date": date.today().isoformat(),
-        "route": route,
-        "program": program,
-        "pool_key": pool_key,
-        "cash_price": round(cash_price, 2),
-        "taxes_fees": round(taxes_fees, 2),
-        "points_required": points_required,
-        "cpp": round(cpp, 4),
-        "avg_simulated_cpp": round(avg_simulated_cpp, 4),
-        "verdict": verdict,
-    }
-    # Re-running the simulation on the same inputs must not add duplicate rows
-    # (they'd skew the History page's parameter calibration).
-    history = load_history()
-    if history:
-        last = history[-1]
-        same_keys = ("date", "route", "program", "pool_key", "cash_price", "taxes_fees", "points_required")
-        if all(str(last.get(k)) == str(row[k]) for k in same_keys):
-            return
-    needs_header = (
-        not os.path.exists(HISTORY_PATH) or os.path.getsize(HISTORY_PATH) == 0
-    )
-    with open(HISTORY_PATH, "a", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=HISTORY_COLUMNS)
-        if needs_header:
-            writer.writeheader()
-        writer.writerow(row)
-
-
-def load_history() -> list[dict]:
-    if not os.path.exists(HISTORY_PATH):
-        return []
-    with open(HISTORY_PATH, newline="") as f:
-        return list(csv.DictReader(f))

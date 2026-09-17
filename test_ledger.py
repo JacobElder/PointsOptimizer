@@ -1,11 +1,10 @@
 """Data-durability tests for ledger.py (fixes 6a, 6b, 6c).
 
-The module resolves BALANCES_PATH / HISTORY_PATH at import time from its own
-directory. Every test redirects those module-level constants into tmp_path via
-monkeypatch so the user's real balances.json / history.csv are never touched.
+The module resolves BALANCES_PATH at import time from its own directory. Every
+test redirects it into tmp_path via monkeypatch so the user's real balances.json
+is never touched.
 """
 
-import csv
 import json
 import os
 
@@ -18,10 +17,8 @@ import ledger
 def paths(tmp_path, monkeypatch):
     """Point the module at temp files and return them."""
     balances = tmp_path / "balances.json"
-    history = tmp_path / "history.csv"
     monkeypatch.setattr(ledger, "BALANCES_PATH", str(balances))
-    monkeypatch.setattr(ledger, "HISTORY_PATH", str(history))
-    return balances, history
+    return balances, None
 
 
 # ── Balances round-trip ──────────────────────────────────────────────────
@@ -106,60 +103,6 @@ def test_non_dict_json_returns_empty(paths):
     balances, _ = paths
     balances.write_text(json.dumps([1, 2, 3]))
     assert ledger.load_balances() == {}
-
-
-# ── FIX 6c — history header robustness ────────────────────────────────────
-def _append(pool_key="amex_mr", route="JFK-LHR"):
-    ledger.append_history(
-        route=route,
-        program="Test Program",
-        pool_key=pool_key,
-        cash_price=1500.0,
-        taxes_fees=120.0,
-        points_required=60000,
-        cpp=2.5,
-        avg_simulated_cpp=2.4,
-        verdict="REDEEM",
-    )
-
-
-def test_header_written_for_missing_file(paths):
-    _append()
-    rows = ledger.load_history()
-    assert len(rows) == 1
-    assert rows[0]["route"] == "JFK-LHR"
-    assert list(rows[0].keys()) == ledger.HISTORY_COLUMNS
-
-
-def test_header_written_for_empty_file(paths):
-    _, history = paths
-    history.write_text("")  # exists but size 0
-    _append()
-    rows = ledger.load_history()
-    assert len(rows) == 1
-    assert rows[0]["route"] == "JFK-LHR"
-
-
-def test_append_does_not_duplicate_header(paths):
-    _, history = paths
-    _append(route="JFK-LHR")
-    _append(route="SFO-NRT")
-    rows = ledger.load_history()
-    assert len(rows) == 2
-    assert [r["route"] for r in rows] == ["JFK-LHR", "SFO-NRT"]
-    # The literal header line must appear exactly once in the raw file.
-    raw = history.read_text()
-    assert raw.count("route") == 1
-
-
-def test_append_history_skips_identical_rerun(tmp_path, monkeypatch):
-    monkeypatch.setattr(ledger, "HISTORY_PATH", str(tmp_path / "history.csv"))
-    kw = dict(route="JFK-LHR", program="Virgin", pool_key="chase_ur", cash_price=900.0,
-              taxes_fees=200.0, points_required=50000, cpp=1.4, avg_simulated_cpp=1.9, verdict="hoard")
-    ledger.append_history(**kw)
-    ledger.append_history(**kw)
-    ledger.append_history(**{**kw, "cash_price": 950.0})
-    assert len(ledger.load_history()) == 3 - 1
 
 
 def test_program_balances_roundtrip_and_env_override(tmp_path, monkeypatch):

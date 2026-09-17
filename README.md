@@ -13,6 +13,7 @@ cd ~/Documents/GitHub/PointsOptimizer
 make setup     # creates .venv with everything (once)
 make app       # run the Streamlit app
 make find      # scan seats.aero, price the best awards, email new standouts
+make find-resend  # same, but email every current deal (to test the email)
 make test
 ```
 
@@ -40,12 +41,12 @@ For the scheduled Deal Finder, add the same keys as GitHub repo secrets (Setting
 
 | Page | What it does |
 |------|--------------|
-| **Home** (`app.py`) — Flight Analyzer | Search award space (seats.aero) and cash fares for a route, click **Use this award** to get CPP against a comparable cash fare, see which of your point pools can fund it, and run the redeem-vs-hold simulation. |
-| **1 · Wallet** | Point balances per pool, transfer partners, active vs. locked pools (`balances.json`, local). |
-| **3 · History** | Past analyses (`history.csv`) and calibration of simulation parameters. |
-| **4 · Roadmap** | What-if for cards you might open: which transfer partners each would unlock. |
-| **5 · Deal Radar** | The Deal Finder digest (ranked standouts), plus older Gmail-captured alerts with on-demand pricing. |
-| **6 · Redeem or Hoard** | Standalone simulation calculator. |
+| **🏆 Top Deals** (home) | The latest daily scan: book-now deals with miles you already hold, your watchlist, and the top 20. **Scan now** refreshes on demand (quick ~4 min or full ~9 min, no email). |
+| **✈️ Flight Search** | Award search on a route: **one date**, a **date range**, **any time**, or **outbound + return** as two one-way awards. Each result shows CPP against the live cash fare; **Use** fills in the value section and shows which of your points can pay (miles you already hold first). Also a manual cash-fare tab. |
+| **💳 Wallet** | Card point balances and miles already in airline programs; transfer partners per pool. |
+| **🗺️ Card Roadmap** | For each card you might get: which partners it unlocks, and a live preview of the deals on your routes you can't book today. |
+
+`app.py` is only the navigation; each page lives in `views/`.
 
 ---
 
@@ -97,12 +98,6 @@ Defined once in `deal_log.py` (`verdict_for`) and used everywhere: Flight Analyz
 
 ---
 
-## Legacy: Gmail-captured alerts
-
-Before the Deal Finder, a claude.ai routine captured seats.aero alert **emails** into `deal_log.json`, priced by `price_pending_deals.py` (manual GitHub workflow or `make price`). seats.aero alerts are now turned off, so nothing new arrives; the captured history stays browsable on Deal Radar. `price_pending_deals.py` never runs `git reset`, commits only its data files, and refuses to run off `main`.
-
----
-
 ## Accuracy notes
 
 - **CPP** = `(cash fare − award taxes in USD) / points × 100`. Taxes are converted with a live ECB rate (frankfurter.app), static fallback offline. seats.aero API taxes are in cents.
@@ -110,8 +105,8 @@ Before the Deal Finder, a claude.ai routine captured seats.aero alert **emails**
 - **Award data** is seats.aero Cached Search (updated every few days, not live). Results older than 10 days are dropped. Always confirm on the airline's site before transferring points — transfers are irreversible.
 - **Coverage:** seats.aero covers Aeroplan, Flying Blue, BA, Iberia, JetBlue, Singapore, United, Virgin Atlantic, Qatar, Turkish, Etihad, Qantas, Finnair, Aeromexico and more, but not LifeMiles, Asia Miles, TAP, EVA, Aer Lingus or hotel programs.
 - **Transfer partners** in `cards_data.py` were last verified 2026-09-16; known source conflicts are listed in its header.
-- **Streamlit Cloud storage isn't durable:** `balances.json` / `history.csv` reset when the container restarts.
-- **The repo is public:** `deal_log.json`, `deal_digest.json` and `cash_quotes.json` (award and fare data only, no credentials) are visible.
+- **Streamlit Cloud storage isn't durable:** `balances.json` / `program_balances.json` reset when the hosted app restarts.
+- **The repo is public:** `deal_digest.json`, `cash_quotes.json` and `deal_log.json` (award and fare data only, no credentials or balances) are visible. `deal_log.json` is the retired alert pipeline's history, kept because its recorded fares train the fare model.
 
 ---
 
@@ -122,27 +117,23 @@ make test                       # full suite; network is mocked
 .venv/bin/python cash_price_check.py   # confirm free Google Flights lookups work here
 ```
 
-CI: `tests.yml` on every push; `cash_price_check.yml` whenever the price provider changes.
+CI: `tests.yml` on every push; `cash_price_check.yml` weekly and whenever the price provider changes.
 
 ### Module map
 
 | Module | Responsibility |
 |--------|----------------|
-| `deal_finder.py` | Daily scan → estimate → price → rank → digest/email |
-| `award_scanner.py` | seats.aero Cached Search across configured routes and your transferable programs |
-| `fare_model.py` | Cash-fare estimates with uncertainty (`airport_coords.json` from OpenFlights) |
+| `deal_finder.py` | Daily scan → estimate → price → match → round-trip check → rank → digest/email; card previews |
+| `route_search.py` | Best-CPP search on one route across a date range, and outbound + return pairs |
+| `award_scanner.py` | seats.aero Cached Search across routes and your programs |
+| `fare_model.py` | Cash-fare estimates with uncertainty |
 | `cash_quotes.py` | Saved fare quotes, nearby-date reuse, comparable-fare matching |
-| `flight_search.py` | Google Flights cash fares: fast-flights (free) with capped SerpApi fallback |
-| `seats_aero.py` | Single-route award search for the Flight Analyzer |
-| `simulation.py` | Monte Carlo redeem-vs-hold valuation |
+| `flight_search.py` | Google Flights fares (one-way and round-trip): fast-flights, capped SerpApi fallback |
+| `valuation.py` | CPP math, currency conversion, cabin-aware verdict |
+| `seats_aero.py` | Single-date award search for Flight Search; program name mapping |
 | `cards_data.py` | Cards, point pools, transfer partners |
-| `deal_log.py` | Captured-alert state and the cabin-aware verdict |
-| `check_alerts.py` | CPP + verdict for captured alerts; FX rates |
-| `price_pending_deals.py` | Prices captured alerts (manual) |
-| `seats_aero_alerts.py` | Parses seats.aero alert emails (legacy capture) |
-| `deal_email.py` | HTML deal emails via Gmail SMTP |
-| `return_finder.py` | Return-leg search and round-trip valuation |
-| `ledger.py` | Local balances and history |
+| `ledger.py` | Card balances and miles held in programs |
+| `places.py` | City, country and airline names for codes (`airport_coords.json`, `airline_names.json`) |
+| `digest_view.py` | Deal cards on the site |
+| `deal_email.py` | Digest email (Gmail SMTP) |
 | `airports.py` | City/airport dropdown data |
-| `award_charts.py` | Curated sweet-spot reference |
-| `going_parse.py` | Paste-to-parse for Going deal emails |

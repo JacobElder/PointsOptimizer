@@ -104,6 +104,11 @@ def _parse(item: dict, cabin: str) -> AwardCandidate | None:
     )
 
 
+def sources_for_pool(pool_key: str) -> list[str]:
+    """seats.aero slugs for a pool's airline partners (whether or not the pool is active)."""
+    return [_PARTNER_TO_SOURCE[pt.name] for pt in POOLS[pool_key].partners if pt.name in _PARTNER_TO_SOURCE]
+
+
 def sources_for_programs(program_names) -> list[str]:
     """seats.aero slugs for programs (cards_data Partner names) you hold miles in."""
     return [_PARTNER_TO_SOURCE[n] for n in program_names if n in _PARTNER_TO_SOURCE]

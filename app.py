@@ -14,6 +14,5 @@ pages = [
     st.Page("views/flight_analyzer.py", title="Flight Search", icon="✈️"),
     st.Page("views/wallet.py", title="Wallet", icon="💳"),
     st.Page("views/roadmap.py", title="Card Roadmap", icon="🗺️"),
-    st.Page("views/captured_alerts.py", title="Captured Alerts", icon="📬"),
 ]
 st.navigation(pages).run()

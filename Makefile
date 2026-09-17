@@ -2,7 +2,7 @@
 # base Anaconda env can take). `make setup` once, then use the targets below.
 PY := .venv/bin/python
 
-.PHONY: setup app find find-resend find-quiet price test check
+.PHONY: setup app find find-resend find-quiet test check
 
 setup:            ## create .venv with app + pipeline deps
 	python3 -m venv .venv && $(PY) -m pip install -q -r requirements.txt pytest
@@ -18,9 +18,6 @@ find-resend:      ## same, but email every current deal (test the email)
 
 find-quiet:       ## same, no email
 	$(PY) deal_finder.py --no-email
-
-price:            ## price the Gmail-captured pending queue (commits + pushes on main)
-	$(PY) price_pending_deals.py --no-email
 
 test:
 	$(PY) -m pytest -q
