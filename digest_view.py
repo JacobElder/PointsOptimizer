@@ -7,6 +7,7 @@ import json
 import streamlit as st
 
 import deal_finder
+import places
 
 
 def load_digest() -> dict | None:
@@ -54,12 +55,13 @@ def deal_card(d: dict, rank: int | None = None, bar: float | None = None, surplu
             c1, c2 = st.columns([3, 1])
             new = " 🆕" if d.get("new") else ""
             prefix = f"{rank}. " if rank else ""
-            c1.markdown(f"**{prefix}{d['origin']} → {d['dest']}** · {d['cabin'].title()}{new}")
+            c1.markdown(f"**{prefix}{places.airport_label(d['origin'])} → {places.airport_label(d['dest'])}**{new}")
             c1.caption(
-                f"{d['program']} · {d['date']} · {d['points']:,} pts + ${d['taxes_usd']:.0f} taxes · "
+                f"{d['program']} · {d['cabin'].replace('_', ' ').title()} · {places.nice_date(d['date'])} · "
+                f"{d['points']:,} pts + ${d['taxes_usd']:.0f} taxes · "
                 f"{str(d['seats']) + ' seat(s)' if d['seats'] else 'seats not reported'}"
                 f"{' · nonstop' if d.get('direct') else ''}"
-                f"{' · ' + d['airlines'] if d.get('airlines') else ''}"
+                f"{' · ' + places.airline_names(d['airlines']) if d.get('airlines') else ''}"
             )
             if d.get("bookable_now"):
                 c1.caption(f"✅ Bookable now with the {d['held_miles']:,} miles you already hold")
@@ -71,7 +73,8 @@ def deal_card(d: dict, rank: int | None = None, bar: float | None = None, surplu
             own = f" · award airline's own fare ${d['same_carrier_cash']:,.0f}" if d.get("same_carrier_cash") else ""
             c1.caption(f"Cash fare ${d['cash_price']:,.0f}{basis}{approx}{vs_biz}{own}")
             if d.get("other_dates"):
-                c1.caption(f"Also {len(d['other_dates'])} other date(s): {', '.join(d['other_dates'][:8])}"
+                c1.caption(f"Also {len(d['other_dates'])} other date(s): "
+                           f"{', '.join(places.nice_date(x, weekday=False) for x in d['other_dates'][:8])}"
                            + (" …" if len(d["other_dates"]) > 8 else ""))
             if d.get("alternatives"):
                 c1.caption("Alternatives: " + "; ".join(d["alternatives"]))

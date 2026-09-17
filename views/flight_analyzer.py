@@ -16,6 +16,7 @@ import deal_log
 import flight_search
 import going_parse
 import ledger
+import places
 import return_finder
 import route_search
 import seats_aero
@@ -59,9 +60,11 @@ def _route_deal_row(s, key: str) -> None:
         c1, c2 = st.columns([3, 1])
         verdict = deal_log.verdict_for(d["cpp"], d["cabin"])
         badge = {"BOOK": "🟢", "BORDERLINE": "🟡", "SKIP": "🔴"}.get(verdict, "⚪")
-        c1.markdown(f"{badge} **{d['origin']} → {d['dest']}** · {d['cabin'].replace('_', ' ').title()} · {d['date']}")
-        c1.caption(f"{d['program']} · {d['points']:,} pts + ${d['taxes_usd']:.0f} taxes"
-                   f"{' · nonstop' if d['direct'] else ''}{' · ' + d['airlines'] if d['airlines'] else ''}")
+        c1.markdown(f"{badge} **{places.airport_label(d['origin'])} → {places.airport_label(d['dest'])}**")
+        c1.caption(f"{d['program']} · {d['cabin'].replace('_', ' ').title()} · {places.nice_date(d['date'])} · "
+                   f"{d['points']:,} pts + ${d['taxes_usd']:.0f} taxes"
+                   f"{' · nonstop' if d['direct'] else ''}"
+                   f"{' · ' + places.airline_names(d['airlines']) if d['airlines'] else ''}")
         c1.caption(f"vs ${d['cash_price']:,.0f} ({d['cash_basis']})"
                    + (" · ✅ bookable with miles you hold" if d["bookable_now"] else ""))
         if d["other_dates"]:

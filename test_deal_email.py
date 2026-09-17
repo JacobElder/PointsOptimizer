@@ -98,3 +98,17 @@ def test_is_configured_false_without_credentials(monkeypatch):
     monkeypatch.setitem(sys.modules, "streamlit", fake_st)
 
     assert deal_email.is_configured() is False
+
+
+def test_digest_card_uses_place_and_airline_names():
+    d = {"origin": "JFK", "dest": "GCM", "program": "American Airlines AAdvantage", "cabin": "ECONOMY",
+         "date": "2026-12-28", "points": 10000, "taxes_usd": 5.6, "cash_price": 320.0,
+         "cash_basis": "cheapest fare, any stops", "cash_is_approx": False, "one_way_cash": 320.0,
+         "round_trip_half": None, "same_carrier_cash": 370.0, "cpp": 3.14, "great_floor": 1.5,
+         "surplus_usd": 164, "direct": True, "airlines": "AA", "other_dates": ["2026-09-28"] * 8,
+         "alternatives": ["JFK via JetBlue TrueBlue 19,300 pts (1.63¢ one-way)"], "held_miles": 14440,
+         "bookable_now": True, "top_up_needed": 0, "new": True}
+    html = deal_email._digest_card(d)
+    assert "New York (JFK)" in html and "Grand Cayman, Cayman Islands (GCM)" in html
+    assert "American Airlines" in html and "Mon, Dec 28, 2026" in html and "and 2 more" in html
+    assert "Book with the 14,440 miles you have" in html and "google.com/travel/flights" in html

@@ -418,31 +418,6 @@ def _load_digest() -> dict:
         return {}
 
 
-def _email_dict(d: dict) -> dict:
-    extra = []
-    if d["direct"]:
-        extra.append("nonstop")
-    if d["airlines"]:
-        extra.append(d["airlines"])
-    if d["other_dates"]:
-        extra.append(f"+{len(d['other_dates'])} more date(s): {', '.join(d['other_dates'][:6])}")
-    if d["alternatives"]:
-        extra.append("also " + "; ".join(d["alternatives"]))
-    bar = d.get("watch_bar", d["great_floor"])
-    surplus = d.get("watch_surplus_usd", d["surplus_usd"])
-    rt_used = d.get("round_trip_half") is not None and d["cash_price"] == d["round_trip_half"]
-    note = (("✅ Bookable now with miles you already hold · " if d.get("bookable_now") else "")
-            + (f"You hold {d['held_miles']:,}; transfer {d['top_up_needed']:,} more · "
-               if d.get("held_miles") and not d.get("bookable_now") else "")
-            + (f"⭐ Watchlist: {d['watch_label']} · " if d.get("watch_label") else "")
-            + f"${surplus:,.0f} above the {bar:.1f}¢ bar"
-            + (f" · {d['seats']} seat(s)" if d["seats"] else "") + f" · vs {d['cash_basis']}"
-            + (f" (one-way ${d['one_way_cash']:,.0f})" if rt_used and d.get("one_way_cash") else "")
-            + (f" · award airline's own fare ${d['same_carrier_cash']:,.0f}" if d.get("same_carrier_cash") else "")
-            + (" · cash fare from a date within 7 days" if d["cash_is_approx"] else ""))
-    return {**d, "flight_number": " · ".join(extra) or None, "note": note}
-
-
 def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = False,
         round_trip: bool = True, log=print, max_watch_lookups: int = DEFAULT_MAX_WATCH_LOOKUPS,
         resend: bool = False, use_watchlist: bool = True) -> dict:
@@ -516,21 +491,24 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
              + [(k, d) for k, d in top_pairs if d["new"]])
     emailed = 0
     if send_email and fresh and deal_email.is_configured():
-        deals = [_email_dict(d) for _, d in fresh]
-        n_watch = sum(1 for k, _ in fresh if k.startswith("watch:"))
-        n_held = sum(1 for k, _ in fresh if k.startswith("held:"))
-        lead = deals[0]
+        held_new = [d for k, d in fresh if k.startswith("held:")]
+        watch_new = [d for k, d in fresh if k.startswith("watch:")]
+        top_new = [d for k, d in fresh if not k.startswith(("held:", "watch:"))]
+        lead = (held_new + watch_new + top_new)[0]
+        import places
         try:
-            deal_email.send_deal_alert_email(
-                deals,
-                subject=(f"Deal Finder: {n_held} book-now + {n_watch} watchlist + "
-                         f"{len(fresh) - n_watch - n_held} new standout(s), "
-                         f"lead {lead['origin']}->{lead['dest']} {lead['cpp']:.2f}c/pt"),
-                intro=(f"Ranked from {scan_stats['candidates']:,} award options by dollars saved above the "
-                       "great-deal bar, using live Google Flights fares (the lower of the one-way fare and "
-                       "half a round trip)."),
+            deal_email.send_digest_email(
+                [("✅ Book now with miles you already have",
+                  "Covered by miles already in your airline accounts: no transfer needed.", held_new),
+                 ("⭐ Your watchlist", "Destinations you asked to watch, in their best seasons.", watch_new),
+                 ("🏆 Top deals", "The best value across all your routes, ranked by dollars saved.", top_new)],
+                subject=(f"✈️ {len(fresh)} new award deal{'s' if len(fresh) != 1 else ''}: "
+                         f"{places.city(lead['dest'])} {lead['cpp']:.1f}¢/pt"
+                         + (f", {len(held_new)} bookable with miles you have" if held_new else "")),
+                intro=(f"Found in {scan_stats['candidates']:,} award seats on seats.aero, each valued against a live "
+                       "Google Flights fare (the lower of the one-way fare and half a round trip)."),
             )
-            emailed = len(deals)
+            emailed = len(fresh)
             for k, _ in fresh:
                 reported.setdefault(k, started.isoformat())
         except Exception as e:
