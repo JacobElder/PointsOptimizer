@@ -10,7 +10,12 @@ name: Deal Finder
 on:
   schedule:
     - cron: "0 11 * * *" # 7am US Eastern (EDT)
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      resend:
+        description: "Email all current deals, even ones already sent (for testing)"
+        type: boolean
+        default: false
 
 concurrency:
   group: deal-radar
@@ -46,7 +51,7 @@ jobs:
           GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
           PROGRAM_BALANCES: ${{ secrets.PROGRAM_BALANCES }} # optional JSON, e.g. {"JetBlue TrueBlue": 22516}
-        run: python deal_finder.py
+        run: python deal_finder.py ${{ inputs.resend && '--resend' || '' }}
       - name: Commit digest and quotes
         run: |
           git config user.name "Deal Radar bot"

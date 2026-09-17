@@ -2,7 +2,7 @@
 # base Anaconda env can take). `make setup` once, then use the targets below.
 PY := .venv/bin/python
 
-.PHONY: setup app find find-quiet price test check
+.PHONY: setup app find find-resend find-quiet price test check
 
 setup:            ## create .venv with app + pipeline deps
 	python3 -m venv .venv && $(PY) -m pip install -q -r requirements.txt pytest
@@ -12,6 +12,9 @@ app:              ## run the Streamlit app
 
 find:             ## scan seats.aero, price top candidates, email new standouts
 	$(PY) deal_finder.py
+
+find-resend:      ## same, but email every current deal (test the email)
+	$(PY) deal_finder.py --resend
 
 find-quiet:       ## same, no email
 	$(PY) deal_finder.py --no-email

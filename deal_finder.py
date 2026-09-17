@@ -444,7 +444,8 @@ def _email_dict(d: dict) -> dict:
 
 
 def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = False,
-        round_trip: bool = True, log=print, max_watch_lookups: int = DEFAULT_MAX_WATCH_LOOKUPS) -> dict:
+        round_trip: bool = True, log=print, max_watch_lookups: int = DEFAULT_MAX_WATCH_LOOKUPS,
+        resend: bool = False) -> dict:
     flight_search.SERPAPI_MAX_CALLS = SERPAPI_CAP
     started = datetime.now(timezone.utc)
     config = award_scanner.load_config()
@@ -482,7 +483,7 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
 
     digest = _load_digest()
     cutoff = (started - timedelta(days=REPORT_COOLDOWN_DAYS)).isoformat()
-    reported = {k: v for k, v in digest.get("reported", {}).items() if v >= cutoff}
+    reported = {} if resend else {k: v for k, v in digest.get("reported", {}).items() if v >= cutoff}
 
     rt_cache: dict = {}
     ranked = shortlist(scored, top, rt_cache=rt_cache, round_trip=round_trip)
@@ -567,12 +568,14 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--top", type=int, default=DEFAULT_TOP)
     ap.add_argument("--max-watch-lookups", type=int, default=DEFAULT_MAX_WATCH_LOOKUPS)
     ap.add_argument("--no-email", action="store_true")
+    ap.add_argument("--resend", action="store_true",
+                    help="email every current deal, ignoring the 14-day already-reported cooldown (for testing)")
     ap.add_argument("--no-round-trip", action="store_true", help="skip the round-trip fare check")
     ap.add_argument("--include-planned", action="store_true",
                     help="also scan programs reachable only from cards you plan to get")
     args = ap.parse_args(argv)
     out = run(args.max_lookups, args.top, not args.no_email, args.include_planned, not args.no_round_trip,
-              max_watch_lookups=args.max_watch_lookups)
+              max_watch_lookups=args.max_watch_lookups, resend=args.resend)
     if out["held_miles"]:
         print("\n✅ Book now with miles you already hold:")
         for i, d in enumerate(out["held_miles"], 1):
