@@ -834,6 +834,177 @@
    "origin": "EWR",
    "dest": "AMS",
    "cabin": "BUSINESS",
+   "date": "2027-05-22",
+   "price_usd": 1864.0,
+   "nonstop_price_usd": 3969.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:18:00Z",
+   "offers": [
+    [
+     1864.0,
+     1,
+     "FI,FI"
+    ],
+    [
+     2321.0,
+     1,
+     "TP,TP"
+    ],
+    [
+     2321.0,
+     1,
+     "TP,TP"
+    ],
+    [
+     3425.0,
+     1,
+     "LO,LO"
+    ],
+    [
+     3969.0,
+     0,
+     "UA"
+    ],
+    [
+     3972.0,
+     1,
+     "AC,AC"
+    ],
+    [
+     3986.0,
+     1,
+     "LX,LX"
+    ],
+    [
+     3990.0,
+     1,
+     "BA,BA"
+    ],
+    [
+     3990.0,
+     1,
+     "BA,BA"
+    ]
+   ]
+  },
+  {
+   "origin": "EWR",
+   "dest": "AMS",
+   "cabin": "BUSINESS",
+   "date": "2027-06-08",
+   "price_usd": 1814.0,
+   "nonstop_price_usd": 3719.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:18:01Z",
+   "offers": [
+    [
+     1814.0,
+     1,
+     "FI,FI"
+    ],
+    [
+     1841.0,
+     1,
+     "TP,TP"
+    ],
+    [
+     2321.0,
+     1,
+     "TP,TP"
+    ],
+    [
+     3386.0,
+     1,
+     "BA,BA"
+    ],
+    [
+     3719.0,
+     0,
+     "UA"
+    ],
+    [
+     3722.0,
+     1,
+     "AC,AC"
+    ],
+    [
+     3736.0,
+     1,
+     "LX,LX"
+    ],
+    [
+     3740.0,
+     1,
+     "BA,BA"
+    ],
+    [
+     3740.0,
+     1,
+     "BA,BA"
+    ]
+   ]
+  },
+  {
+   "origin": "EWR",
+   "dest": "AMS",
+   "cabin": "BUSINESS",
+   "date": "2027-06-19",
+   "price_usd": 1841.0,
+   "nonstop_price_usd": 3969.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:18:01Z",
+   "offers": [
+    [
+     1841.0,
+     1,
+     "TP,TP"
+    ],
+    [
+     1841.0,
+     1,
+     "TP,TP"
+    ],
+    [
+     1864.0,
+     1,
+     "FI,FI"
+    ],
+    [
+     3425.0,
+     1,
+     "LO,LO"
+    ],
+    [
+     3969.0,
+     0,
+     "UA"
+    ],
+    [
+     3972.0,
+     1,
+     "AC,AC"
+    ],
+    [
+     3977.0,
+     1,
+     "AC,AC"
+    ],
+    [
+     3986.0,
+     1,
+     "LX,LX"
+    ],
+    [
+     3990.0,
+     1,
+     "BA,BA"
+    ]
+   ]
+  },
+  {
+   "origin": "EWR",
+   "dest": "AMS",
+   "cabin": "BUSINESS",
    "date": "2027-07-07",
    "price_usd": 1814.0,
    "nonstop_price_usd": 3719.0,
@@ -884,6 +1055,63 @@
      3739.0,
      1,
      "BA,BA"
+    ]
+   ]
+  },
+  {
+   "origin": "EWR",
+   "dest": "AMS",
+   "cabin": "BUSINESS",
+   "date": "2027-08-08",
+   "price_usd": 1737.0,
+   "nonstop_price_usd": 3639.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:18:02Z",
+   "offers": [
+    [
+     1737.0,
+     1,
+     "FI,FI"
+    ],
+    [
+     1841.0,
+     1,
+     "TP,TP"
+    ],
+    [
+     1841.0,
+     1,
+     "TP,TP"
+    ],
+    [
+     3168.0,
+     1,
+     "BA,BA"
+    ],
+    [
+     3639.0,
+     0,
+     "UA"
+    ],
+    [
+     3642.0,
+     1,
+     "AC,AC"
+    ],
+    [
+     3647.0,
+     1,
+     "AC,AC"
+    ],
+    [
+     3656.0,
+     1,
+     "LX,LX"
+    ],
+    [
+     3740.0,
+     1,
+     "AF,KL"
     ]
    ]
   },
@@ -1859,45 +2087,50 @@
    "dest": "ARN",
    "cabin": "ECONOMY",
    "date": "2026-09-25",
-   "price_usd": 770.0,
-   "nonstop_price_usd": 1769.0,
+   "price_usd": 774.0,
+   "nonstop_price_usd": 1779.0,
    "provider": "fast-flights",
-   "fetched_at": "2026-09-16T18:50:42Z",
+   "fetched_at": "2026-09-19T14:17:15Z",
    "offers": [
     [
-     770.0,
-     1,
-     "UA,LH"
-    ],
-    [
-     775.0,
+     774.0,
      2,
      "UA,LH,LH"
     ],
     [
-     779.0,
-     1,
-     "FI,FI"
+     774.0,
+     2,
+     "UA,UA,LH"
     ],
     [
-     998.0,
+     868.0,
      1,
-     "OS,OS"
+     "TK,TK"
     ],
     [
-     1104.0,
-     1,
-     "UA,LX"
-    ],
-    [
-     1290.0,
+     909.0,
      1,
      "LH,LH"
     ],
     [
-     1440.0,
+     912.0,
      1,
-     "UA,LH"
+     "FI,FI"
+    ],
+    [
+     1007.0,
+     1,
+     "TP,TP"
+    ],
+    [
+     1039.0,
+     1,
+     "FI,FI"
+    ],
+    [
+     1414.0,
+     1,
+     "LX,LX"
     ],
     [
      1478.0,
@@ -1905,12 +2138,12 @@
      "AF,AF"
     ],
     [
-     1724.0,
+     1482.0,
      1,
-     "LX,LX"
+     "LH,LH"
     ],
     [
-     1769.0,
+     1779.0,
      0,
      "SK"
     ]
@@ -1922,9 +2155,9 @@
    "cabin": "ECONOMY",
    "date": "2026-10-03",
    "price_usd": 402.0,
-   "nonstop_price_usd": 1394.0,
+   "nonstop_price_usd": 1404.0,
    "provider": "fast-flights",
-   "fetched_at": "2026-09-16T18:50:43Z",
+   "fetched_at": "2026-09-19T14:17:16Z",
    "offers": [
     [
      402.0,
@@ -1932,24 +2165,24 @@
      "TP,TP"
     ],
     [
-     752.0,
-     1,
-     "UA,SN"
-    ],
-    [
-     841.0,
+     840.0,
      1,
      "LO,LO"
     ],
     [
-     891.0,
+     868.0,
      1,
-     "OS,OS"
+     "TK,TK"
     ],
     [
-     1007.0,
+     1081.0,
      1,
-     "TP,TP"
+     "BA,BA"
+    ],
+    [
+     1101.0,
+     1,
+     "LX,LX"
     ],
     [
      1103.0,
@@ -1957,27 +2190,27 @@
      "AF,AF"
     ],
     [
-     1181.0,
-     1,
-     "FI,FI"
-    ],
-    [
-     1262.0,
-     1,
-     "LX,LX"
-    ],
-    [
-     1327.0,
-     1,
-     "BA,BA"
-    ],
-    [
-     1352.0,
+     1107.0,
      1,
      "LH,LH"
     ],
     [
-     1394.0,
+     1129.0,
+     1,
+     "LH,LH"
+    ],
+    [
+     1221.0,
+     1,
+     "UA,LX"
+    ],
+    [
+     1356.0,
+     1,
+     "FI,FI"
+    ],
+    [
+     1404.0,
      0,
      "SK"
     ]
@@ -1989,9 +2222,9 @@
    "cabin": "ECONOMY",
    "date": "2026-10-15",
    "price_usd": 402.0,
-   "nonstop_price_usd": 849.0,
+   "nonstop_price_usd": 1239.0,
    "provider": "fast-flights",
-   "fetched_at": "2026-09-16T18:50:44Z",
+   "fetched_at": "2026-09-19T14:17:16Z",
    "offers": [
     [
      402.0,
@@ -1999,57 +2232,62 @@
      "TP,TP"
     ],
     [
-     537.0,
-     1,
-     "BA,BA"
-    ],
-    [
-     537.0,
-     1,
-     "BA,BA"
-    ],
-    [
-     537.0,
-     1,
-     "BA,BA"
-    ],
-    [
      542.0,
      1,
      "TP,TP"
     ],
     [
-     556.0,
-     1,
-     "LX,LX"
-    ],
-    [
-     558.0,
-     1,
-     "AF,AF"
-    ],
-    [
-     562.0,
-     1,
-     "LH,LH"
-    ],
-    [
-     566.0,
+     622.0,
      1,
      "UA,SN"
     ],
     [
-     584.0,
+     622.0,
      1,
-     "LH,LH"
+     "OS,OS"
     ],
     [
-     584.0,
+     640.0,
      1,
      "UA,LH"
     ],
     [
-     849.0,
+     708.0,
+     1,
+     "LO,LO"
+    ],
+    [
+     794.0,
+     1,
+     "LX,LX"
+    ],
+    [
+     800.0,
+     1,
+     "LH,LH"
+    ],
+    [
+     822.0,
+     1,
+     "LH,LH"
+    ],
+    [
+     916.0,
+     1,
+     "BA,BA"
+    ],
+    [
+     964.0,
+     1,
+     "UA,LH"
+    ],
+    [
+     1180.0,
+     1,
+     "FI,FI"
+    ],
+    [
+     1239.0,
      0,
      "SK"
     ]
@@ -2447,6 +2685,68 @@
     ],
     [
      879.0,
+     0,
+     "SK"
+    ]
+   ]
+  },
+  {
+   "origin": "EWR",
+   "dest": "ARN",
+   "cabin": "ECONOMY",
+   "date": "2027-03-01",
+   "price_usd": 378.0,
+   "nonstop_price_usd": 889.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:17:17Z",
+   "offers": [
+    [
+     378.0,
+     1,
+     "TP,TP"
+    ],
+    [
+     529.0,
+     2,
+     "AC,AC,LH"
+    ],
+    [
+     558.0,
+     1,
+     "TK,TK"
+    ],
+    [
+     563.0,
+     1,
+     "FI,FI"
+    ],
+    [
+     568.0,
+     1,
+     "BA,BA"
+    ],
+    [
+     586.0,
+     1,
+     "LX,LX"
+    ],
+    [
+     588.0,
+     1,
+     "AF,AF"
+    ],
+    [
+     592.0,
+     1,
+     "LH,LH"
+    ],
+    [
+     596.0,
+     1,
+     "UA,SN"
+    ],
+    [
+     889.0,
      0,
      "SK"
     ]
@@ -5538,6 +5838,58 @@
    "origin": "EWR",
    "dest": "AUA",
    "cabin": "ECONOMY",
+   "date": "2026-12-08",
+   "price_usd": 139.0,
+   "nonstop_price_usd": 295.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:16:17Z",
+   "offers": [
+    [
+     139.0,
+     1,
+     "B6,B6"
+    ],
+    [
+     155.0,
+     1,
+     "AC,AC"
+    ],
+    [
+     160.0,
+     1,
+     "UA,AC"
+    ],
+    [
+     171.0,
+     1,
+     "UA,UA"
+    ],
+    [
+     204.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     258.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     295.0,
+     0,
+     "UA"
+    ],
+    [
+     295.0,
+     0,
+     "UA"
+    ]
+   ]
+  },
+  {
+   "origin": "EWR",
+   "dest": "AUA",
+   "cabin": "ECONOMY",
    "date": "2027-03-10",
    "price_usd": 155.0,
    "nonstop_price_usd": 232.0,
@@ -5666,22 +6018,12 @@
    "price_usd": 2643.0,
    "nonstop_price_usd": null,
    "provider": "fast-flights",
-   "fetched_at": "2026-09-16T23:51:04Z",
+   "fetched_at": "2026-09-19T14:17:04Z",
    "offers": [
     [
      2643.0,
      2,
      "UA,S4,S4"
-    ],
-    [
-     3067.0,
-     1,
-     "FI,FI"
-    ],
-    [
-     3238.0,
-     1,
-     "TP,TP"
     ],
     [
      3238.0,
@@ -5694,19 +6036,9 @@
      "TP,TP,TP"
     ],
     [
-     3584.0,
+     3583.0,
      1,
      "LO,LO"
-    ],
-    [
-     4011.0,
-     1,
-     "AC,AC"
-    ],
-    [
-     4016.0,
-     1,
-     "AC,AC"
     ],
     [
      4461.0,
@@ -5714,14 +6046,34 @@
      "TK,TK"
     ],
     [
-     4692.0,
+     5638.0,
      1,
-     "UA,AC"
+     "TP,TP"
     ],
     [
-     4708.0,
+     6761.0,
+     2,
+     "UA,LX,LX"
+    ],
+    [
+     9148.0,
+     1,
+     "DL,DL"
+    ],
+    [
+     9163.0,
      1,
      "AF,AF"
+    ],
+    [
+     9163.0,
+     1,
+     "BA,BA"
+    ],
+    [
+     13526.0,
+     1,
+     "LX,LX"
     ]
    ]
   },
@@ -6523,6 +6875,83 @@
   },
   {
    "origin": "EWR",
+   "dest": "BGI",
+   "cabin": "ECONOMY",
+   "date": "2027-04-01",
+   "price_usd": 153.0,
+   "nonstop_price_usd": null,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:16:40Z",
+   "offers": [
+    [
+     153.0,
+     1,
+     "AC,AC"
+    ],
+    [
+     163.0,
+     1,
+     "UA,AC"
+    ],
+    [
+     209.0,
+     1,
+     "AC,AC"
+    ],
+    [
+     232.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     232.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     249.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     300.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     354.0,
+     2,
+     "UA,UA,WM"
+    ],
+    [
+     398.0,
+     1,
+     "UA,UA"
+    ],
+    [
+     579.0,
+     1,
+     "DL,DL"
+    ],
+    [
+     1456.0,
+     2,
+     "DL,DL,WS"
+    ],
+    [
+     2182.0,
+     2,
+     "UA,BW,BW"
+    ],
+    [
+     2182.0,
+     3,
+     "UA,BW,BW,BW"
+    ]
+   ]
+  },
+  {
+   "origin": "EWR",
    "dest": "BOG",
    "cabin": "BUSINESS",
    "date": "2027-03-02",
@@ -6712,35 +7141,45 @@
    "dest": "CAI",
    "cabin": "BUSINESS",
    "date": "2026-10-17",
-   "price_usd": 3344.0,
+   "price_usd": 3368.0,
    "nonstop_price_usd": 5691.0,
    "provider": "fast-flights",
-   "fetched_at": "2026-09-16T18:48:00Z",
+   "fetched_at": "2026-09-19T14:16:56Z",
    "offers": [
-    [
-     3344.0,
-     2,
-     "AC,AC,AZ"
-    ],
-    [
-     3349.0,
-     2,
-     "AC,AC,AZ"
-    ],
-    [
-     3354.0,
-     2,
-     "UA,AC,AZ"
-    ],
     [
      3368.0,
      1,
      "OS,OS"
     ],
     [
-     3371.0,
+     3370.0,
      2,
      "UA,UA,LH"
+    ],
+    [
+     3538.0,
+     2,
+     "AC,AC,MS"
+    ],
+    [
+     3539.0,
+     2,
+     "AC,AC,AZ"
+    ],
+    [
+     3543.0,
+     2,
+     "UA,AC,AZ"
+    ],
+    [
+     3553.0,
+     2,
+     "AC,AC,AZ"
+    ],
+    [
+     4666.0,
+     1,
+     "UA,LH"
     ],
     [
      5444.0,
@@ -6751,16 +7190,6 @@
      5691.0,
      0,
      "MS"
-    ],
-    [
-     7268.0,
-     1,
-     "BA,BA"
-    ],
-    [
-     13981.0,
-     1,
-     "UA,MS"
     ]
    ]
   },
@@ -8292,6 +8721,17 @@
   },
   {
    "origin": "EWR",
+   "dest": "CAI",
+   "cabin": "BUSINESS",
+   "date": "2027-08-15",
+   "price_usd": null,
+   "nonstop_price_usd": null,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:16:50Z",
+   "offers": []
+  },
+  {
+   "origin": "EWR",
    "dest": "CDG",
    "cabin": "BUSINESS",
    "date": "2026-09-21",
@@ -8344,6 +8784,120 @@
      13759.0,
      0,
      "UA"
+    ]
+   ]
+  },
+  {
+   "origin": "EWR",
+   "dest": "CDG",
+   "cabin": "BUSINESS",
+   "date": "2026-10-10",
+   "price_usd": 2103.0,
+   "nonstop_price_usd": 3159.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:17:44Z",
+   "offers": [
+    [
+     2103.0,
+     1,
+     "DL,DL"
+    ],
+    [
+     2103.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     2103.0,
+     1,
+     "DL,AF"
+    ],
+    [
+     2113.0,
+     1,
+     "IB,IB"
+    ],
+    [
+     2858.0,
+     1,
+     "FI,FI"
+    ],
+    [
+     3159.0,
+     0,
+     "UA"
+    ],
+    [
+     3163.0,
+     1,
+     "UA,UA"
+    ],
+    [
+     3176.0,
+     1,
+     "LX,LX"
+    ],
+    [
+     3679.0,
+     0,
+     "UA"
+    ],
+    [
+     9069.0,
+     0,
+     "AF"
+    ]
+   ]
+  },
+  {
+   "origin": "EWR",
+   "dest": "CDG",
+   "cabin": "BUSINESS",
+   "date": "2026-10-19",
+   "price_usd": 1723.0,
+   "nonstop_price_usd": 3059.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:17:43Z",
+   "offers": [
+    [
+     1723.0,
+     1,
+     "FI,FI"
+    ],
+    [
+     1953.0,
+     1,
+     "DL,DL"
+    ],
+    [
+     2808.0,
+     1,
+     "FI,FI"
+    ],
+    [
+     3059.0,
+     0,
+     "UA"
+    ],
+    [
+     3059.0,
+     0,
+     "UA"
+    ],
+    [
+     3062.0,
+     1,
+     "AC,AC"
+    ],
+    [
+     3076.0,
+     1,
+     "LX,LX"
+    ],
+    [
+     5209.0,
+     0,
+     "AF"
     ]
    ]
   },
@@ -9021,7 +9575,7 @@
    "price_usd": 2804.0,
    "nonstop_price_usd": null,
    "provider": "fast-flights",
-   "fetched_at": "2026-09-16T22:24:40Z",
+   "fetched_at": "2026-09-19T14:16:27Z",
    "offers": [
     [
      2804.0,
@@ -9029,7 +9583,7 @@
      "TP,TP"
     ],
     [
-     2813.0,
+     2812.0,
      2,
      "TP,TP,TP"
     ],
@@ -9044,32 +9598,17 @@
      "AF,AF"
     ],
     [
-     7617.0,
-     1,
-     "IB,AT"
-    ],
-    [
-     7648.0,
-     2,
-     "IB,IB,AT"
-    ],
-    [
-     8330.0,
-     2,
-     "IB,IB,AT"
-    ],
-    [
-     8447.0,
+     9180.0,
      2,
      "BA,BA,AT"
     ],
     [
-     8447.0,
+     9180.0,
      2,
      "BA,BA,AT"
     ],
     [
-     8449.0,
+     9183.0,
      2,
      "BA,BA,AT"
     ],
@@ -10094,6 +10633,63 @@
    "origin": "EWR",
    "dest": "CPH",
    "cabin": "BUSINESS",
+   "date": "2026-10-06",
+   "price_usd": 2781.0,
+   "nonstop_price_usd": 8246.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:17:59Z",
+   "offers": [
+    [
+     2781.0,
+     1,
+     "FI,FI"
+    ],
+    [
+     3202.0,
+     1,
+     "TP,TP"
+    ],
+    [
+     3366.0,
+     1,
+     "LO,LO"
+    ],
+    [
+     5509.0,
+     1,
+     "LO,LO"
+    ],
+    [
+     5602.0,
+     1,
+     "TP,TP"
+    ],
+    [
+     8246.0,
+     0,
+     "SK"
+    ],
+    [
+     8836.0,
+     1,
+     "LX,LX"
+    ],
+    [
+     8838.0,
+     1,
+     "BA,BA"
+    ],
+    [
+     8846.0,
+     1,
+     "UA,SN"
+    ]
+   ]
+  },
+  {
+   "origin": "EWR",
+   "dest": "CPH",
+   "cabin": "BUSINESS",
    "date": "2026-10-24",
    "price_usd": 1846.0,
    "nonstop_price_usd": 6744.0,
@@ -10144,6 +10740,68 @@
      6767.0,
      1,
      "LH,LH"
+    ]
+   ]
+  },
+  {
+   "origin": "EWR",
+   "dest": "CPH",
+   "cabin": "BUSINESS",
+   "date": "2026-11-01",
+   "price_usd": 2651.0,
+   "nonstop_price_usd": 8246.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:17:38Z",
+   "offers": [
+    [
+     2651.0,
+     1,
+     "FI,FI"
+    ],
+    [
+     3202.0,
+     1,
+     "TP,TP"
+    ],
+    [
+     4470.0,
+     1,
+     "EK,SK"
+    ],
+    [
+     4814.0,
+     1,
+     "LO,SK"
+    ],
+    [
+     6913.0,
+     1,
+     "BA,BA"
+    ],
+    [
+     7011.0,
+     1,
+     "LX,LX"
+    ],
+    [
+     7013.0,
+     1,
+     "AF,AF"
+    ],
+    [
+     7039.0,
+     1,
+     "UA,VL"
+    ],
+    [
+     8246.0,
+     0,
+     "SK"
+    ],
+    [
+     8250.0,
+     1,
+     "SK,SK"
     ]
    ]
   },
@@ -11389,16 +12047,11 @@
    "dest": "CPH",
    "cabin": "ECONOMY",
    "date": "2026-10-11",
-   "price_usd": 245.0,
-   "nonstop_price_usd": 1179.0,
+   "price_usd": 426.0,
+   "nonstop_price_usd": 1189.0,
    "provider": "fast-flights",
-   "fetched_at": "2026-09-16T22:15:19Z",
+   "fetched_at": "2026-09-19T14:17:35Z",
    "offers": [
-    [
-     245.0,
-     1,
-     "FI,FI"
-    ],
     [
      426.0,
      1,
@@ -11408,6 +12061,11 @@
      543.0,
      2,
      "AC,AC,SN"
+    ],
+    [
+     556.0,
+     1,
+     "TK,TK"
     ],
     [
      650.0,
@@ -11420,22 +12078,32 @@
      "UA,SN"
     ],
     [
+     676.0,
+     1,
+     "FI,FI"
+    ],
+    [
      678.0,
      1,
      "LH,LH"
     ],
     [
-     867.0,
+     866.0,
      1,
      "BA,BA"
     ],
     [
-     888.0,
+     887.0,
      1,
      "AF,SK"
     ],
     [
-     1179.0,
+     888.0,
+     1,
+     "AF,AF"
+    ],
+    [
+     1189.0,
      0,
      "SK"
     ]
@@ -12765,6 +13433,103 @@
   },
   {
    "origin": "EWR",
+   "dest": "CPH",
+   "cabin": "ECONOMY",
+   "date": "2027-08-14",
+   "price_usd": 446.0,
+   "nonstop_price_usd": 939.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:16:08Z",
+   "offers": [
+    [
+     446.0,
+     1,
+     "TP,TP"
+    ],
+    [
+     446.0,
+     1,
+     "TP,TP"
+    ],
+    [
+     584.0,
+     1,
+     "DL,DL"
+    ],
+    [
+     596.0,
+     1,
+     "TK,TK"
+    ],
+    [
+     618.0,
+     1,
+     "BA,BA"
+    ],
+    [
+     618.0,
+     1,
+     "BA,BA"
+    ],
+    [
+     627.0,
+     1,
+     "AC,AC"
+    ],
+    [
+     636.0,
+     1,
+     "LX,LX"
+    ],
+    [
+     637.0,
+     1,
+     "AF,SK"
+    ],
+    [
+     637.0,
+     1,
+     "AF,SK"
+    ],
+    [
+     638.0,
+     1,
+     "AF,AF"
+    ],
+    [
+     638.0,
+     1,
+     "AF,AF"
+    ],
+    [
+     646.0,
+     1,
+     "UA,SN"
+    ],
+    [
+     665.0,
+     1,
+     "LH,LH"
+    ],
+    [
+     665.0,
+     1,
+     "UA,LH"
+    ],
+    [
+     734.0,
+     1,
+     "FI,FI"
+    ],
+    [
+     939.0,
+     0,
+     "SK"
+    ]
+   ]
+  },
+  {
+   "origin": "EWR",
    "dest": "CPT",
    "cabin": "BUSINESS",
    "date": "2026-12-10",
@@ -13898,23 +14663,18 @@
    "dest": "CPT",
    "cabin": "ECONOMY",
    "date": "2026-09-29",
-   "price_usd": 999.0,
+   "price_usd": 1069.0,
    "nonstop_price_usd": null,
    "provider": "fast-flights",
-   "fetched_at": "2026-09-17T03:23:33Z",
+   "fetched_at": "2026-09-19T14:17:05Z",
    "offers": [
-    [
-     999.0,
-     2,
-     "AC,EK,EK"
-    ],
     [
      1069.0,
      2,
      "ET,ET,ET"
     ],
     [
-     1175.0,
+     1168.0,
      2,
      "AC,EK,EK"
     ],
@@ -13924,29 +14684,29 @@
      "EK,EK,EK"
     ],
     [
-     1496.0,
+     1420.0,
      2,
-     "EK,EK,EK"
+     "AC,EK,EK"
     ],
     [
-     1604.0,
+     1613.0,
      1,
      "LX,WK"
     ],
     [
-     1621.0,
+     1631.0,
      2,
      "UA,LH,LH"
     ],
     [
-     1657.0,
+     1660.0,
      1,
-     "UA,4Z"
+     "TK,TK"
     ],
     [
-     1675.0,
-     2,
-     "DL,DL,KL"
+     1667.0,
+     1,
+     "UA,4Z"
     ],
     [
      1721.0,
@@ -13954,7 +14714,12 @@
      "UA,ET,ET"
     ],
     [
-     1840.0,
+     1777.0,
+     2,
+     "EK,EK,EK"
+    ],
+    [
+     1862.0,
      2,
      "AF,AF,KL"
     ]
@@ -13965,20 +14730,20 @@
    "dest": "CPT",
    "cabin": "ECONOMY",
    "date": "2026-10-08",
-   "price_usd": 1069.0,
+   "price_usd": 994.0,
    "nonstop_price_usd": null,
    "provider": "fast-flights",
-   "fetched_at": "2026-09-17T03:23:35Z",
+   "fetched_at": "2026-09-19T14:17:06Z",
    "offers": [
+    [
+     994.0,
+     2,
+     "AC,EK,EK"
+    ],
     [
      1069.0,
      2,
      "ET,ET,ET"
-    ],
-    [
-     1175.0,
-     2,
-     "AC,EK,EK"
     ],
     [
      1268.0,
@@ -13996,7 +14761,17 @@
      "UA,WK"
     ],
     [
-     1457.0,
+     1318.0,
+     1,
+     "AF,AF"
+    ],
+    [
+     1462.0,
+     1,
+     "UA,SA"
+    ],
+    [
+     1467.0,
      1,
      "UA,4Z"
     ]
@@ -14007,13 +14782,13 @@
    "dest": "CPT",
    "cabin": "ECONOMY",
    "date": "2026-10-18",
-   "price_usd": 999.0,
+   "price_usd": 1014.0,
    "nonstop_price_usd": 1264.0,
    "provider": "fast-flights",
-   "fetched_at": "2026-09-17T01:09:43Z",
+   "fetched_at": "2026-09-19T14:17:03Z",
    "offers": [
     [
-     999.0,
+     1014.0,
      2,
      "AC,EK,EK"
     ],
@@ -14038,22 +14813,27 @@
      "EK,EK,EK"
     ],
     [
+     1281.0,
+     1,
+     "UA,UA"
+    ],
+    [
      1291.0,
      1,
      "LX,WK"
     ],
     [
-     1452.0,
+     1462.0,
      1,
      "UA,SA"
     ],
     [
-     1457.0,
+     1467.0,
      1,
      "UA,4Z"
     ],
     [
-     1499.0,
+     1510.0,
      2,
      "AF,AF,KL"
     ]
@@ -16543,20 +17323,20 @@
    "dest": "CTA",
    "cabin": "ECONOMY",
    "date": "2026-09-28",
-   "price_usd": 533.0,
+   "price_usd": 535.0,
    "nonstop_price_usd": null,
    "provider": "fast-flights",
-   "fetched_at": "2026-09-17T01:09:09Z",
+   "fetched_at": "2026-09-19T14:16:29Z",
    "offers": [
-    [
-     533.0,
-     1,
-     "EK,A3"
-    ],
     [
      535.0,
      2,
      "TP,TP,AZ"
+    ],
+    [
+     535.0,
+     1,
+     "EK,A3"
     ],
     [
      621.0,
@@ -16564,42 +17344,32 @@
      "BA,BA"
     ],
     [
-     726.0,
+     743.0,
      1,
      "IB,IB"
     ],
     [
-     1162.0,
-     2,
-     "DL,DL,AZ"
-    ],
-    [
-     1290.0,
-     2,
-     "AF,AF,AZ"
-    ],
-    [
-     1290.0,
-     2,
-     "AF,AF,AZ"
-    ],
-    [
-     1717.0,
-     1,
-     "UA,AZ"
-    ],
-    [
-     1717.0,
-     1,
-     "UA,AZ"
-    ],
-    [
-     1719.0,
+     1160.0,
      1,
      "UA,VL"
     ],
     [
-     1720.0,
+     1160.0,
+     1,
+     "LH,LH"
+    ],
+    [
+     1278.0,
+     1,
+     "UA,AZ"
+    ],
+    [
+     1278.0,
+     1,
+     "UA,AZ"
+    ],
+    [
+     1281.0,
      2,
      "AC,AC,AZ"
     ]
@@ -16613,7 +17383,7 @@
    "price_usd": 535.0,
    "nonstop_price_usd": null,
    "provider": "fast-flights",
-   "fetched_at": "2026-09-17T01:09:17Z",
+   "fetched_at": "2026-09-19T14:16:32Z",
    "offers": [
     [
      535.0,
@@ -16631,42 +17401,62 @@
      "BA,BA"
     ],
     [
+     728.0,
+     2,
+     "TP,TP,AZ"
+    ],
+    [
      749.0,
      1,
      "SK,SK"
     ],
     [
-     757.0,
+     756.0,
      2,
      "IB,VY,VY"
     ],
     [
-     854.0,
-     2,
-     "TP,TP,AZ"
-    ],
-    [
-     974.0,
-     2,
-     "DL,DL,AZ"
-    ],
-    [
-     1324.0,
+     952.0,
      1,
      "AC,AC"
     ],
     [
-     1342.0,
+     952.0,
      1,
-     "UA,AZ"
+     "UA,AC"
     ],
     [
-     1344.0,
+     966.0,
+     1,
+     "LX,WK"
+    ],
+    [
+     972.0,
      1,
      "UA,VL"
     ],
     [
-     1355.0,
+     972.0,
+     1,
+     "LH,LH"
+    ],
+    [
+     994.0,
+     1,
+     "LH,LH"
+    ],
+    [
+     994.0,
+     1,
+     "UA,LH"
+    ],
+    [
+     1090.0,
+     1,
+     "UA,AZ"
+    ],
+    [
+     1103.0,
      2,
      "LX,LX,AZ"
     ]
@@ -16680,7 +17470,7 @@
    "price_usd": 492.0,
    "nonstop_price_usd": null,
    "provider": "fast-flights",
-   "fetched_at": "2026-09-17T01:08:51Z",
+   "fetched_at": "2026-09-19T14:16:27Z",
    "offers": [
     [
      492.0,
@@ -16728,12 +17518,17 @@
      "DL,DL,AZ"
     ],
     [
-     519.0,
+     522.0,
+     2,
+     "UA,LX,WK"
+    ],
+    [
+     523.0,
      1,
      "EK,A3"
     ],
     [
-     595.0,
+     594.0,
      1,
      "BA,BA"
     ],
@@ -16743,12 +17538,12 @@
      "UA,SN"
     ],
     [
-     620.0,
+     630.0,
      1,
      "UA,AZ"
     ],
     [
-     914.0,
+     924.0,
      1,
      "UA,AZ"
     ]
@@ -19422,6 +20217,197 @@
   },
   {
    "origin": "EWR",
+   "dest": "CUR",
+   "cabin": "ECONOMY",
+   "date": "2026-12-05",
+   "price_usd": 160.0,
+   "nonstop_price_usd": 275.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:16:42Z",
+   "offers": [
+    [
+     160.0,
+     1,
+     "AC,AC"
+    ],
+    [
+     165.0,
+     1,
+     "UA,AC"
+    ],
+    [
+     235.0,
+     2,
+     "DM,DM,DM"
+    ],
+    [
+     275.0,
+     0,
+     "UA"
+    ],
+    [
+     283.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     318.0,
+     1,
+     "DL,DL"
+    ],
+    [
+     328.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     591.0,
+     2,
+     "UA,CM,CM"
+    ],
+    [
+     651.0,
+     1,
+     "UA,CM"
+    ]
+   ]
+  },
+  {
+   "origin": "EWR",
+   "dest": "CUR",
+   "cabin": "ECONOMY",
+   "date": "2027-02-16",
+   "price_usd": 273.0,
+   "nonstop_price_usd": null,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:16:34Z",
+   "offers": [
+    [
+     273.0,
+     1,
+     "AC,AC"
+    ],
+    [
+     278.0,
+     1,
+     "UA,AC"
+    ],
+    [
+     283.0,
+     2,
+     "AA,AA,AA"
+    ],
+    [
+     303.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     328.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     344.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     359.0,
+     1,
+     "DL,DL"
+    ],
+    [
+     373.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     405.0,
+     1,
+     "UA,CM"
+    ],
+    [
+     440.0,
+     2,
+     "UA,CM,CM"
+    ],
+    [
+     521.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     2159.0,
+     2,
+     "UA,CM,CM"
+    ]
+   ]
+  },
+  {
+   "origin": "EWR",
+   "dest": "CUR",
+   "cabin": "ECONOMY",
+   "date": "2027-04-11",
+   "price_usd": 161.0,
+   "nonstop_price_usd": null,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:16:26Z",
+   "offers": [
+    [
+     161.0,
+     2,
+     "DM,DM,DM"
+    ],
+    [
+     223.0,
+     1,
+     "AC,AC"
+    ],
+    [
+     228.0,
+     1,
+     "AC,AC"
+    ],
+    [
+     283.0,
+     2,
+     "AA,AA,AA"
+    ],
+    [
+     328.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     328.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     430.0,
+     1,
+     "UA,CM"
+    ],
+    [
+     435.0,
+     1,
+     "UA,CM"
+    ],
+    [
+     438.0,
+     1,
+     "DL,DL"
+    ],
+    [
+     521.0,
+     1,
+     "AA,AA"
+    ]
+   ]
+  },
+  {
+   "origin": "EWR",
    "dest": "CUZ",
    "cabin": "BUSINESS",
    "date": "2026-09-25",
@@ -19487,35 +20473,45 @@
    "dest": "CUZ",
    "cabin": "BUSINESS",
    "date": "2026-10-03",
-   "price_usd": 1448.0,
+   "price_usd": 2179.0,
    "nonstop_price_usd": null,
    "provider": "fast-flights",
-   "fetched_at": "2026-09-16T23:59:11Z",
+   "fetched_at": "2026-09-19T14:16:59Z",
    "offers": [
     [
-     1448.0,
+     2179.0,
      2,
      "AC,AV,AV"
     ],
     [
-     1615.0,
+     2196.0,
      2,
-     "UA,AV,AV"
+     "AA,AA,JA"
     ],
     [
-     2102.0,
+     2196.0,
+     2,
+     "AA,AA,JA"
+    ],
+    [
+     2263.0,
      3,
      "DL,DL,LA,LA"
     ],
     [
-     2196.0,
+     2530.0,
      2,
-     "AA,AA,JA"
+     "UA,AV,AV"
     ],
     [
-     2196.0,
+     3621.0,
      2,
-     "AA,AA,JA"
+     "DL,LA,LA"
+    ],
+    [
+     3688.0,
+     3,
+     "DL,DL,LA,LA"
     ],
     [
      5111.0,
@@ -21037,6 +22033,1155 @@
   {
    "origin": "EWR",
    "dest": "CUZ",
+   "cabin": "BUSINESS",
+   "date": "2027-08-15",
+   "price_usd": null,
+   "nonstop_price_usd": null,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:16:06Z",
+   "offers": []
+  },
+  {
+   "origin": "EWR",
+   "dest": "CUZ",
+   "cabin": "ECONOMY",
+   "date": "2026-09-22",
+   "price_usd": 521.0,
+   "nonstop_price_usd": null,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:18:03Z",
+   "offers": [
+    [
+     521.0,
+     2,
+     "AC,AC,AV"
+    ],
+    [
+     521.0,
+     2,
+     "UA,AC,AV"
+    ],
+    [
+     667.0,
+     2,
+     "AC,AC,AV"
+    ],
+    [
+     683.0,
+     1,
+     "UA,AV"
+    ],
+    [
+     687.0,
+     2,
+     "UA,UA,AV"
+    ],
+    [
+     706.0,
+     2,
+     "AA,AA,JA"
+    ],
+    [
+     706.0,
+     2,
+     "AA,AA,JA"
+    ],
+    [
+     706.0,
+     2,
+     "AA,AA,JA"
+    ],
+    [
+     1037.0,
+     2,
+     "UA,AC,AV"
+    ],
+    [
+     1211.0,
+     3,
+     "DL,DL,LA,LA"
+    ],
+    [
+     1251.0,
+     2,
+     "DL,DL,LA"
+    ],
+    [
+     2358.0,
+     2,
+     "UA,AV,AV"
+    ]
+   ]
+  },
+  {
+   "origin": "EWR",
+   "dest": "CUZ",
+   "cabin": "ECONOMY",
+   "date": "2026-10-06",
+   "price_usd": 706.0,
+   "nonstop_price_usd": null,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:18:03Z",
+   "offers": [
+    [
+     706.0,
+     2,
+     "AA,AA,JA"
+    ],
+    [
+     761.0,
+     2,
+     "DL,DL,LA"
+    ],
+    [
+     761.0,
+     2,
+     "DL,DL,LA"
+    ],
+    [
+     818.0,
+     2,
+     "AA,AA,JA"
+    ],
+    [
+     900.0,
+     2,
+     "DL,LA,LA"
+    ],
+    [
+     1037.0,
+     2,
+     "AC,AC,AV"
+    ],
+    [
+     1037.0,
+     2,
+     "UA,AC,AV"
+    ],
+    [
+     1224.0,
+     3,
+     "DL,DL,LA,LA"
+    ],
+    [
+     1299.0,
+     1,
+     "UA,AV"
+    ],
+    [
+     2658.0,
+     2,
+     "UA,AV,AV"
+    ]
+   ]
+  },
+  {
+   "origin": "EWR",
+   "dest": "CUZ",
+   "cabin": "ECONOMY",
+   "date": "2026-10-21",
+   "price_usd": 681.0,
+   "nonstop_price_usd": null,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:18:04Z",
+   "offers": [
+    [
+     681.0,
+     2,
+     "DL,DL,LA"
+    ],
+    [
+     681.0,
+     2,
+     "DL,LA,LA"
+    ],
+    [
+     681.0,
+     2,
+     "DL,DL,LA"
+    ],
+    [
+     706.0,
+     2,
+     "AA,AA,JA"
+    ],
+    [
+     706.0,
+     2,
+     "AA,AA,JA"
+    ],
+    [
+     791.0,
+     1,
+     "UA,AV"
+    ],
+    [
+     795.0,
+     2,
+     "UA,UA,AV"
+    ],
+    [
+     967.0,
+     3,
+     "DL,DL,LA,LA"
+    ],
+    [
+     1092.0,
+     2,
+     "AC,AC,AV"
+    ]
+   ]
+  },
+  {
+   "origin": "EWR",
+   "dest": "CUZ",
+   "cabin": "ECONOMY",
+   "date": "2026-10-30",
+   "price_usd": 721.0,
+   "nonstop_price_usd": null,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:18:04Z",
+   "offers": [
+    [
+     721.0,
+     2,
+     "DL,LA,LA"
+    ],
+    [
+     729.0,
+     2,
+     "AA,AA,JA"
+    ],
+    [
+     729.0,
+     2,
+     "AA,AA,JA"
+    ],
+    [
+     729.0,
+     2,
+     "AA,AA,JA"
+    ],
+    [
+     806.0,
+     2,
+     "UA,UA,AV"
+    ],
+    [
+     833.0,
+     2,
+     "AA,AA,JA"
+    ],
+    [
+     833.0,
+     2,
+     "AA,AA,JA"
+    ],
+    [
+     940.0,
+     2,
+     "DL,DL,LA"
+    ],
+    [
+     974.0,
+     1,
+     "UA,AV"
+    ],
+    [
+     1117.0,
+     2,
+     "AC,AC,AV"
+    ],
+    [
+     3962.0,
+     2,
+     "UA,LA,LA"
+    ]
+   ]
+  },
+  {
+   "origin": "EWR",
+   "dest": "CUZ",
+   "cabin": "ECONOMY",
+   "date": "2026-11-10",
+   "price_usd": 636.0,
+   "nonstop_price_usd": null,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:18:05Z",
+   "offers": [
+    [
+     636.0,
+     2,
+     "DL,DL,LA"
+    ],
+    [
+     636.0,
+     2,
+     "DL,LA,LA"
+    ],
+    [
+     636.0,
+     2,
+     "DL,DL,LA"
+    ],
+    [
+     1000.0,
+     2,
+     "AA,AA,JA"
+    ],
+    [
+     1037.0,
+     2,
+     "UA,AC,AV"
+    ],
+    [
+     1037.0,
+     2,
+     "AC,AC,AV"
+    ],
+    [
+     1149.0,
+     1,
+     "UA,AV"
+    ],
+    [
+     1184.0,
+     2,
+     "UA,AV,AV"
+    ],
+    [
+     1214.0,
+     2,
+     "AC,AV,AV"
+    ],
+    [
+     1251.0,
+     2,
+     "AA,AA,JA"
+    ],
+    [
+     3962.0,
+     2,
+     "UA,LA,LA"
+    ]
+   ]
+  },
+  {
+   "origin": "EWR",
+   "dest": "CUZ",
+   "cabin": "ECONOMY",
+   "date": "2026-11-18",
+   "price_usd": 632.0,
+   "nonstop_price_usd": null,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:18:06Z",
+   "offers": [
+    [
+     632.0,
+     1,
+     "UA,AV"
+    ],
+    [
+     636.0,
+     2,
+     "DL,DL,LA"
+    ],
+    [
+     636.0,
+     2,
+     "DL,LA,LA"
+    ],
+    [
+     706.0,
+     2,
+     "AA,AA,JA"
+    ],
+    [
+     721.0,
+     2,
+     "UA,AC,AV"
+    ],
+    [
+     795.0,
+     2,
+     "UA,UA,AV"
+    ],
+    [
+     818.0,
+     2,
+     "AA,AA,JA"
+    ],
+    [
+     1042.0,
+     2,
+     "AC,AC,AV"
+    ]
+   ]
+  },
+  {
+   "origin": "EWR",
+   "dest": "CUZ",
+   "cabin": "ECONOMY",
+   "date": "2026-11-30",
+   "price_usd": 636.0,
+   "nonstop_price_usd": null,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:18:06Z",
+   "offers": [
+    [
+     636.0,
+     2,
+     "DL,DL,LA"
+    ],
+    [
+     636.0,
+     2,
+     "DL,LA,LA"
+    ],
+    [
+     706.0,
+     2,
+     "AA,AA,JA"
+    ],
+    [
+     900.0,
+     2,
+     "DL,DL,LA"
+    ],
+    [
+     974.0,
+     1,
+     "UA,AV"
+    ],
+    [
+     1042.0,
+     2,
+     "AC,AC,AV"
+    ],
+    [
+     1092.0,
+     2,
+     "AC,AC,AV"
+    ],
+    [
+     1222.0,
+     2,
+     "UA,AC,AV"
+    ]
+   ]
+  },
+  {
+   "origin": "EWR",
+   "dest": "CUZ",
+   "cabin": "ECONOMY",
+   "date": "2026-12-08",
+   "price_usd": 636.0,
+   "nonstop_price_usd": null,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:18:07Z",
+   "offers": [
+    [
+     636.0,
+     2,
+     "DL,DL,LA"
+    ],
+    [
+     636.0,
+     2,
+     "DL,LA,LA"
+    ],
+    [
+     636.0,
+     2,
+     "DL,DL,LA"
+    ],
+    [
+     706.0,
+     2,
+     "AA,AA,JA"
+    ],
+    [
+     706.0,
+     2,
+     "AA,AA,JA"
+    ],
+    [
+     897.0,
+     2,
+     "AA,AA,JA"
+    ],
+    [
+     978.0,
+     2,
+     "UA,UA,AV"
+    ],
+    [
+     1117.0,
+     2,
+     "AC,AC,AV"
+    ],
+    [
+     1149.0,
+     1,
+     "UA,AV"
+    ],
+    [
+     1151.0,
+     2,
+     "AC,AC,LA"
+    ],
+    [
+     1247.0,
+     2,
+     "UA,AC,AV"
+    ]
+   ]
+  },
+  {
+   "origin": "EWR",
+   "dest": "CUZ",
+   "cabin": "ECONOMY",
+   "date": "2026-12-30",
+   "price_usd": 636.0,
+   "nonstop_price_usd": null,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:18:07Z",
+   "offers": [
+    [
+     636.0,
+     2,
+     "DL,LA,LA"
+    ],
+    [
+     706.0,
+     2,
+     "AA,AA,JA"
+    ],
+    [
+     818.0,
+     2,
+     "AA,AA,JA"
+    ],
+    [
+     974.0,
+     1,
+     "UA,AV"
+    ],
+    [
+     1092.0,
+     2,
+     "AC,AC,AV"
+    ],
+    [
+     1157.0,
+     2,
+     "DL,DL,LA"
+    ],
+    [
+     1169.0,
+     2,
+     "UA,AC,LA"
+    ],
+    [
+     1169.0,
+     2,
+     "AC,AC,LA"
+    ],
+    [
+     1251.0,
+     2,
+     "AA,AA,JA"
+    ],
+    [
+     1357.0,
+     2,
+     "AC,AC,AV"
+    ]
+   ]
+  },
+  {
+   "origin": "EWR",
+   "dest": "CUZ",
+   "cabin": "ECONOMY",
+   "date": "2027-01-11",
+   "price_usd": 636.0,
+   "nonstop_price_usd": null,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:18:08Z",
+   "offers": [
+    [
+     636.0,
+     2,
+     "DL,DL,LA"
+    ],
+    [
+     636.0,
+     2,
+     "DL,LA,LA"
+    ],
+    [
+     636.0,
+     2,
+     "DL,DL,LA"
+    ],
+    [
+     706.0,
+     2,
+     "AA,AA,JA"
+    ],
+    [
+     1037.0,
+     2,
+     "AC,AC,AV"
+    ],
+    [
+     1037.0,
+     2,
+     "UA,AC,AV"
+    ],
+    [
+     1042.0,
+     2,
+     "AC,AC,AV"
+    ],
+    [
+     1153.0,
+     2,
+     "UA,UA,AV"
+    ],
+    [
+     1284.0,
+     1,
+     "UA,AV"
+    ],
+    [
+     3949.0,
+     2,
+     "UA,LA,LA"
+    ]
+   ]
+  },
+  {
+   "origin": "EWR",
+   "dest": "CUZ",
+   "cabin": "ECONOMY",
+   "date": "2027-01-19",
+   "price_usd": 593.0,
+   "nonstop_price_usd": null,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:18:08Z",
+   "offers": [
+    [
+     593.0,
+     2,
+     "AC,AC,AV"
+    ],
+    [
+     593.0,
+     2,
+     "UA,AC,AV"
+    ],
+    [
+     636.0,
+     2,
+     "DL,DL,LA"
+    ],
+    [
+     636.0,
+     2,
+     "DL,LA,LA"
+    ],
+    [
+     636.0,
+     2,
+     "DL,DL,LA"
+    ],
+    [
+     702.0,
+     2,
+     "AC,AC,AV"
+    ],
+    [
+     706.0,
+     2,
+     "AA,AA,JA"
+    ],
+    [
+     974.0,
+     1,
+     "UA,AV"
+    ],
+    [
+     978.0,
+     2,
+     "UA,UA,AV"
+    ]
+   ]
+  },
+  {
+   "origin": "EWR",
+   "dest": "CUZ",
+   "cabin": "ECONOMY",
+   "date": "2027-02-02",
+   "price_usd": 543.0,
+   "nonstop_price_usd": null,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:18:09Z",
+   "offers": [
+    [
+     543.0,
+     2,
+     "AC,AC,AV"
+    ],
+    [
+     593.0,
+     2,
+     "AC,AC,AV"
+    ],
+    [
+     593.0,
+     2,
+     "UA,AC,AV"
+    ],
+    [
+     632.0,
+     1,
+     "UA,AV"
+    ],
+    [
+     636.0,
+     2,
+     "DL,DL,LA"
+    ],
+    [
+     636.0,
+     2,
+     "DL,LA,LA"
+    ],
+    [
+     636.0,
+     2,
+     "UA,UA,AV"
+    ],
+    [
+     706.0,
+     2,
+     "AA,AA,JA"
+    ]
+   ]
+  },
+  {
+   "origin": "EWR",
+   "dest": "CUZ",
+   "cabin": "ECONOMY",
+   "date": "2027-02-10",
+   "price_usd": 598.0,
+   "nonstop_price_usd": null,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:18:09Z",
+   "offers": [
+    [
+     598.0,
+     2,
+     "AC,AC,AV"
+    ],
+    [
+     632.0,
+     1,
+     "UA,AV"
+    ],
+    [
+     636.0,
+     2,
+     "DL,LA,LA"
+    ],
+    [
+     636.0,
+     2,
+     "DL,DL,LA"
+    ],
+    [
+     677.0,
+     3,
+     "DL,DL,LA,LA"
+    ],
+    [
+     706.0,
+     2,
+     "AA,AA,JA"
+    ],
+    [
+     792.0,
+     2,
+     "UA,AC,AV"
+    ],
+    [
+     792.0,
+     2,
+     "AC,AC,AV"
+    ],
+    [
+     818.0,
+     2,
+     "AA,AA,JA"
+    ],
+    [
+     900.0,
+     2,
+     "DL,DL,LA"
+    ]
+   ]
+  },
+  {
+   "origin": "EWR",
+   "dest": "CUZ",
+   "cabin": "ECONOMY",
+   "date": "2027-02-24",
+   "price_usd": 548.0,
+   "nonstop_price_usd": null,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:18:10Z",
+   "offers": [
+    [
+     548.0,
+     2,
+     "AC,AC,AV"
+    ],
+    [
+     598.0,
+     2,
+     "UA,AC,AV"
+    ],
+    [
+     632.0,
+     1,
+     "UA,AV"
+    ],
+    [
+     636.0,
+     2,
+     "DL,DL,LA"
+    ],
+    [
+     636.0,
+     2,
+     "DL,LA,LA"
+    ],
+    [
+     636.0,
+     2,
+     "UA,UA,AV"
+    ],
+    [
+     706.0,
+     2,
+     "AA,AA,JA"
+    ],
+    [
+     792.0,
+     2,
+     "AC,AC,AV"
+    ],
+    [
+     818.0,
+     2,
+     "AA,AA,JA"
+    ]
+   ]
+  },
+  {
+   "origin": "EWR",
+   "dest": "CUZ",
+   "cabin": "ECONOMY",
+   "date": "2027-03-04",
+   "price_usd": 567.0,
+   "nonstop_price_usd": null,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:18:10Z",
+   "offers": [
+    [
+     567.0,
+     2,
+     "AC,AC,AV"
+    ],
+    [
+     621.0,
+     2,
+     "AC,AC,AV"
+    ],
+    [
+     621.0,
+     2,
+     "UA,AC,AV"
+    ],
+    [
+     636.0,
+     2,
+     "DL,LA,LA"
+    ],
+    [
+     706.0,
+     2,
+     "AA,AA,JA"
+    ],
+    [
+     791.0,
+     1,
+     "UA,AV"
+    ],
+    [
+     900.0,
+     2,
+     "DL,DL,LA"
+    ],
+    [
+     1153.0,
+     2,
+     "UA,UA,AV"
+    ],
+    [
+     1372.0,
+     2,
+     "UA,AC,AV"
+    ]
+   ]
+  },
+  {
+   "origin": "EWR",
+   "dest": "CUZ",
+   "cabin": "ECONOMY",
+   "date": "2027-03-12",
+   "price_usd": 621.0,
+   "nonstop_price_usd": null,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:18:11Z",
+   "offers": [
+    [
+     621.0,
+     2,
+     "AC,AC,AV"
+    ],
+    [
+     621.0,
+     2,
+     "UA,AC,AV"
+    ],
+    [
+     672.0,
+     2,
+     "AC,AC,AV"
+    ],
+    [
+     672.0,
+     2,
+     "UA,AC,AV"
+    ],
+    [
+     676.0,
+     2,
+     "DL,LA,LA"
+    ],
+    [
+     729.0,
+     2,
+     "AA,AA,JA"
+    ],
+    [
+     940.0,
+     2,
+     "DL,DL,LA"
+    ],
+    [
+     974.0,
+     1,
+     "UA,AV"
+    ],
+    [
+     3949.0,
+     2,
+     "UA,LA,LA"
+    ]
+   ]
+  },
+  {
+   "origin": "EWR",
+   "dest": "CUZ",
+   "cabin": "ECONOMY",
+   "date": "2027-03-31",
+   "price_usd": 548.0,
+   "nonstop_price_usd": null,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:18:13Z",
+   "offers": [
+    [
+     548.0,
+     2,
+     "AC,AC,AV"
+    ],
+    [
+     548.0,
+     2,
+     "UA,AC,AV"
+    ],
+    [
+     632.0,
+     1,
+     "UA,AV"
+    ],
+    [
+     636.0,
+     2,
+     "DL,LA,LA"
+    ],
+    [
+     636.0,
+     2,
+     "DL,DL,LA"
+    ],
+    [
+     636.0,
+     2,
+     "DL,DL,LA"
+    ],
+    [
+     636.0,
+     2,
+     "UA,UA,AV"
+    ],
+    [
+     677.0,
+     3,
+     "DL,DL,LA,LA"
+    ],
+    [
+     706.0,
+     2,
+     "AA,AA,JA"
+    ],
+    [
+     1157.0,
+     2,
+     "DL,DL,LA"
+    ],
+    [
+     3962.0,
+     2,
+     "UA,LA,LA"
+    ]
+   ]
+  },
+  {
+   "origin": "EWR",
+   "dest": "CUZ",
+   "cabin": "ECONOMY",
+   "date": "2027-04-09",
+   "price_usd": 548.0,
+   "nonstop_price_usd": null,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:18:11Z",
+   "offers": [
+    [
+     548.0,
+     2,
+     "AC,AC,AV"
+    ],
+    [
+     598.0,
+     2,
+     "UA,AC,AV"
+    ],
+    [
+     676.0,
+     2,
+     "DL,DL,LA"
+    ],
+    [
+     676.0,
+     2,
+     "DL,LA,LA"
+    ],
+    [
+     729.0,
+     2,
+     "AA,AA,JA"
+    ],
+    [
+     729.0,
+     2,
+     "AA,AA,JA"
+    ],
+    [
+     802.0,
+     1,
+     "UA,AV"
+    ],
+    [
+     806.0,
+     2,
+     "UA,UA,AV"
+    ]
+   ]
+  },
+  {
+   "origin": "EWR",
+   "dest": "CUZ",
+   "cabin": "ECONOMY",
+   "date": "2027-04-17",
+   "price_usd": 543.0,
+   "nonstop_price_usd": null,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:18:12Z",
+   "offers": [
+    [
+     543.0,
+     2,
+     "UA,AC,AV"
+    ],
+    [
+     632.0,
+     1,
+     "UA,AV"
+    ],
+    [
+     676.0,
+     2,
+     "DL,LA,LA"
+    ],
+    [
+     676.0,
+     2,
+     "DL,DL,LA"
+    ],
+    [
+     729.0,
+     2,
+     "AA,AA,JA"
+    ],
+    [
+     729.0,
+     2,
+     "AA,AA,JA"
+    ],
+    [
+     806.0,
+     2,
+     "UA,UA,AV"
+    ],
+    [
+     940.0,
+     2,
+     "DL,DL,LA"
+    ],
+    [
+     3962.0,
+     2,
+     "UA,LA,LA"
+    ]
+   ]
+  },
+  {
+   "origin": "EWR",
+   "dest": "CUZ",
    "cabin": "ECONOMY",
    "date": "2027-05-01",
    "price_usd": 632.0,
@@ -21334,6 +23479,73 @@
    "provider": "fast-flights",
    "fetched_at": "2026-09-18T14:52:20Z",
    "offers": []
+  },
+  {
+   "origin": "EWR",
+   "dest": "DEL",
+   "cabin": "BUSINESS",
+   "date": "2026-09-22",
+   "price_usd": 3422.0,
+   "nonstop_price_usd": 16673.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:16:49Z",
+   "offers": [
+    [
+     3422.0,
+     1,
+     "AF,AF"
+    ],
+    [
+     3426.0,
+     2,
+     "DL,KL,KL"
+    ],
+    [
+     3618.0,
+     2,
+     "AC,EK,EK"
+    ],
+    [
+     4010.0,
+     2,
+     "AC,EK,EK"
+    ],
+    [
+     4098.0,
+     2,
+     "UA,LH,LH"
+    ],
+    [
+     4104.0,
+     2,
+     "UA,LX,LX"
+    ],
+    [
+     4129.0,
+     2,
+     "UA,LH,LH"
+    ],
+    [
+     4329.0,
+     2,
+     "UA,VL,LH"
+    ],
+    [
+     7237.0,
+     1,
+     "LX,LX"
+    ],
+    [
+     7242.0,
+     1,
+     "LH,LH"
+    ],
+    [
+     16673.0,
+     0,
+     "AI"
+    ]
+   ]
   },
   {
    "origin": "EWR",
@@ -26418,6 +28630,130 @@
    "origin": "EWR",
    "dest": "FCO",
    "cabin": "BUSINESS",
+   "date": "2027-06-10",
+   "price_usd": 1864.0,
+   "nonstop_price_usd": 3879.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:17:49Z",
+   "offers": [
+    [
+     1864.0,
+     1,
+     "FI,FI"
+    ],
+    [
+     1921.0,
+     1,
+     "TP,TP"
+    ],
+    [
+     2401.0,
+     1,
+     "TP,TP"
+    ],
+    [
+     3197.0,
+     2,
+     "FI,FI,SK"
+    ],
+    [
+     3492.0,
+     1,
+     "AC,AC"
+    ],
+    [
+     3492.0,
+     1,
+     "AC,AC"
+    ],
+    [
+     3492.0,
+     1,
+     "UA,AC"
+    ],
+    [
+     3510.0,
+     1,
+     "BA,BA"
+    ],
+    [
+     3879.0,
+     0,
+     "UA"
+    ],
+    [
+     3879.0,
+     0,
+     "UA"
+    ]
+   ]
+  },
+  {
+   "origin": "EWR",
+   "dest": "FCO",
+   "cabin": "BUSINESS",
+   "date": "2027-06-26",
+   "price_usd": 1864.0,
+   "nonstop_price_usd": 3730.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:17:50Z",
+   "offers": [
+    [
+     1864.0,
+     1,
+     "FI,FI"
+    ],
+    [
+     2401.0,
+     1,
+     "TP,TP"
+    ],
+    [
+     3424.0,
+     1,
+     "LO,LO"
+    ],
+    [
+     3492.0,
+     1,
+     "AC,AC"
+    ],
+    [
+     3492.0,
+     1,
+     "UA,AC"
+    ],
+    [
+     3493.0,
+     1,
+     "UA,UA"
+    ],
+    [
+     3506.0,
+     1,
+     "LX,LX"
+    ],
+    [
+     3510.0,
+     1,
+     "BA,BA"
+    ],
+    [
+     3730.0,
+     0,
+     "UA"
+    ],
+    [
+     6739.0,
+     0,
+     "UA"
+    ]
+   ]
+  },
+  {
+   "origin": "EWR",
+   "dest": "FCO",
+   "cabin": "BUSINESS",
    "date": "2027-07-31",
    "price_usd": 1921.0,
    "nonstop_price_usd": 2989.0,
@@ -28708,6 +31044,58 @@
    "origin": "EWR",
    "dest": "HND",
    "cabin": "BUSINESS",
+   "date": "2026-11-26",
+   "price_usd": 2353.0,
+   "nonstop_price_usd": 4737.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:16:11Z",
+   "offers": [
+    [
+     2353.0,
+     2,
+     "AC,PR,PR"
+    ],
+    [
+     4500.0,
+     1,
+     "AA,JL"
+    ],
+    [
+     4500.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     4513.0,
+     1,
+     "AC,AC"
+    ],
+    [
+     4527.0,
+     1,
+     "UA,AC"
+    ],
+    [
+     4737.0,
+     0,
+     "UA"
+    ],
+    [
+     4741.0,
+     1,
+     "UA,NH"
+    ],
+    [
+     5450.0,
+     1,
+     "DL,DL"
+    ]
+   ]
+  },
+  {
+   "origin": "EWR",
+   "dest": "HND",
+   "cabin": "BUSINESS",
    "date": "2027-01-20",
    "price_usd": 2326.0,
    "nonstop_price_usd": 2326.0,
@@ -29704,15 +32092,30 @@
    "dest": "IST",
    "cabin": "BUSINESS",
    "date": "2026-09-23",
-   "price_usd": 2269.0,
+   "price_usd": 2757.0,
    "nonstop_price_usd": 5743.0,
    "provider": "fast-flights",
-   "fetched_at": "2026-09-16T23:57:53Z",
+   "fetched_at": "2026-09-19T14:16:16Z",
    "offers": [
     [
-     2269.0,
+     2757.0,
      1,
      "MS,MS"
+    ],
+    [
+     3885.0,
+     2,
+     "AC,EK,EK"
+    ],
+    [
+     3896.0,
+     2,
+     "LO,LO,LO"
+    ],
+    [
+     3896.0,
+     2,
+     "LO,LO,LO"
     ],
     [
      4148.0,
@@ -29720,12 +32123,22 @@
      "FI,FI,TK"
     ],
     [
-     5212.0,
+     4584.0,
      1,
-     "MS,TK"
+     "LO,LO"
+    ],
+    [
+     5204.0,
+     1,
+     "LO,TK"
     ],
     [
      5452.0,
+     1,
+     "TP,TK"
+    ],
+    [
+     5461.0,
      1,
      "TP,TK"
     ],
@@ -29735,24 +32148,19 @@
      "TK"
     ],
     [
-     6016.0,
-     2,
-     "AF,AF,KL"
+     6846.0,
+     1,
+     "MS,TK"
     ],
     [
-     6016.0,
-     2,
-     "AF,AF,KL"
-    ],
-    [
-     8837.0,
+     8850.0,
      1,
      "UA,TK"
     ],
     [
-     14354.0,
+     10123.0,
      1,
-     "LH,LH"
+     "EK,A3"
     ]
    ]
   },
@@ -29764,7 +32172,7 @@
    "price_usd": 2755.0,
    "nonstop_price_usd": 5063.0,
    "provider": "fast-flights",
-   "fetched_at": "2026-09-16T23:58:14Z",
+   "fetched_at": "2026-09-19T14:16:19Z",
    "offers": [
     [
      2755.0,
@@ -29772,29 +32180,39 @@
      "MS,MS"
     ],
     [
-     3265.0,
+     3264.0,
      1,
      "LO,LO"
     ],
     [
-     3302.0,
-     2,
-     "FI,FI,TK"
-    ],
-    [
-     3308.0,
-     2,
-     "FI,FI,TK"
-    ],
-    [
-     3823.0,
+     3832.0,
      1,
      "TP,TK"
+    ],
+    [
+     3845.0,
+     2,
+     "TP,TP,TK"
+    ],
+    [
+     4195.0,
+     2,
+     "FI,FI,TK"
+    ],
+    [
+     4200.0,
+     2,
+     "FI,FI,TK"
     ],
     [
      5063.0,
      0,
      "TK"
+    ],
+    [
+     5452.0,
+     1,
+     "TP,TK"
     ],
     [
      8722.0,
@@ -29811,7 +32229,7 @@
    "price_usd": 2643.0,
    "nonstop_price_usd": 5063.0,
    "provider": "fast-flights",
-   "fetched_at": "2026-09-16T23:58:32Z",
+   "fetched_at": "2026-09-19T14:16:22Z",
    "offers": [
     [
      2643.0,
@@ -29829,14 +32247,24 @@
      "LO,LO,LO"
     ],
     [
+     3305.0,
+     2,
+     "LO,LO,LO"
+    ],
+    [
+     3305.0,
+     2,
+     "LO,LO,LO"
+    ],
+    [
+     3305.0,
+     2,
+     "LO,LO,LO"
+    ],
+    [
      3823.0,
      1,
      "TP,TK"
-    ],
-    [
-     3846.0,
-     2,
-     "TP,TP,TK"
     ],
     [
      5063.0,
@@ -29844,7 +32272,7 @@
      "TK"
     ],
     [
-     6584.0,
+     8722.0,
      1,
      "LH,LH"
     ]
@@ -29894,6 +32322,73 @@
      6084.0,
      1,
      "UA,TK"
+    ]
+   ]
+  },
+  {
+   "origin": "EWR",
+   "dest": "IST",
+   "cabin": "BUSINESS",
+   "date": "2026-11-14",
+   "price_usd": 1901.0,
+   "nonstop_price_usd": 3586.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:16:58Z",
+   "offers": [
+    [
+     1901.0,
+     1,
+     "MS,MS"
+    ],
+    [
+     1903.0,
+     1,
+     "MS,MS"
+    ],
+    [
+     2611.0,
+     2,
+     "FI,FI,TK"
+    ],
+    [
+     2611.0,
+     2,
+     "FI,FI,TK"
+    ],
+    [
+     2615.0,
+     2,
+     "FI,FI,TK"
+    ],
+    [
+     3586.0,
+     0,
+     "TK"
+    ],
+    [
+     3823.0,
+     1,
+     "TP,TK"
+    ],
+    [
+     3832.0,
+     1,
+     "TP,TK"
+    ],
+    [
+     4349.0,
+     1,
+     "EK,A3"
+    ],
+    [
+     6584.0,
+     1,
+     "UA,TK"
+    ],
+    [
+     6684.0,
+     1,
+     "LH,TK"
     ]
    ]
   },
@@ -32542,9 +35037,9 @@
    "cabin": "ECONOMY",
    "date": "2026-09-27",
    "price_usd": 883.0,
-   "nonstop_price_usd": 1574.0,
+   "nonstop_price_usd": 1584.0,
    "provider": "fast-flights",
-   "fetched_at": "2026-09-17T00:00:15Z",
+   "fetched_at": "2026-09-19T14:17:10Z",
    "offers": [
     [
      883.0,
@@ -32552,29 +35047,49 @@
      "ET,ET,ET"
     ],
     [
-     1284.0,
+     1397.0,
      2,
      "AA,QR,QR"
     ],
     [
-     1295.0,
+     1408.0,
      2,
      "AA,QR,QR"
     ],
     [
-     1500.0,
-     2,
-     "ET,KP,ET"
-    ],
-    [
-     1574.0,
+     1584.0,
      0,
      "UA"
     ],
     [
-     1578.0,
+     1588.0,
      1,
      "DL,DL"
+    ],
+    [
+     1598.0,
+     1,
+     "AF,AF"
+    ],
+    [
+     1613.0,
+     1,
+     "LX,LX"
+    ],
+    [
+     1681.0,
+     2,
+     "UA,ET,ET"
+    ],
+    [
+     2008.0,
+     2,
+     "EK,EK,EK"
+    ],
+    [
+     2075.0,
+     1,
+     "TK,TK"
     ],
     [
      6159.0,
@@ -32588,20 +35103,15 @@
    "dest": "JNB",
    "cabin": "ECONOMY",
    "date": "2026-10-05",
-   "price_usd": 801.0,
+   "price_usd": 904.0,
    "nonstop_price_usd": 1264.0,
    "provider": "fast-flights",
-   "fetched_at": "2026-09-17T00:00:17Z",
+   "fetched_at": "2026-09-19T14:17:10Z",
    "offers": [
     [
-     801.0,
+     904.0,
      1,
      "MS,MS"
-    ],
-    [
-     1172.0,
-     2,
-     "EK,EK,EK"
     ],
     [
      1264.0,
@@ -32612,6 +35122,36 @@
      1268.0,
      1,
      "DL,DL"
+    ],
+    [
+     1278.0,
+     1,
+     "AF,AF"
+    ],
+    [
+     1291.0,
+     1,
+     "LX,LX"
+    ],
+    [
+     1398.0,
+     2,
+     "EK,EK,EK"
+    ],
+    [
+     1605.0,
+     2,
+     "AC,ET,ET"
+    ],
+    [
+     1681.0,
+     2,
+     "UA,ET,ET"
+    ],
+    [
+     2075.0,
+     1,
+     "TK,TK"
     ]
    ]
   },
@@ -32623,7 +35163,7 @@
    "price_usd": 715.0,
    "nonstop_price_usd": 1264.0,
    "provider": "fast-flights",
-   "fetched_at": "2026-09-17T00:00:18Z",
+   "fetched_at": "2026-09-19T14:17:11Z",
    "offers": [
     [
      715.0,
@@ -32631,14 +35171,19 @@
      "MS,MS"
     ],
     [
-     1035.0,
+     1198.0,
      2,
-     "AC,EK,EK"
+     "AA,QR,QR"
     ],
     [
      1222.0,
      2,
      "EK,EK,EK"
+    ],
+    [
+     1257.0,
+     2,
+     "AC,EK,EK"
     ],
     [
      1264.0,
@@ -32649,6 +35194,26 @@
      1268.0,
      1,
      "DL,DL"
+    ],
+    [
+     1273.0,
+     2,
+     "AC,EK,EK"
+    ],
+    [
+     1291.0,
+     1,
+     "LX,LX"
+    ],
+    [
+     1675.0,
+     2,
+     "AC,ET,ET"
+    ],
+    [
+     1681.0,
+     2,
+     "UA,ET,ET"
     ]
    ]
   },
@@ -35965,6 +38530,110 @@
    "origin": "EWR",
    "dest": "LIS",
    "cabin": "BUSINESS",
+   "date": "2026-11-27",
+   "price_usd": 1616.0,
+   "nonstop_price_usd": 3040.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:17:40Z",
+   "offers": [
+    [
+     1616.0,
+     1,
+     "FI,FI"
+    ],
+    [
+     1854.0,
+     2,
+     "AC,S4,S4"
+    ],
+    [
+     2369.0,
+     2,
+     "FI,FI,TP"
+    ],
+    [
+     3040.0,
+     0,
+     "TP"
+    ],
+    [
+     3040.0,
+     0,
+     "TP"
+    ],
+    [
+     3056.0,
+     1,
+     "TP,TP"
+    ],
+    [
+     4023.0,
+     0,
+     "UA"
+    ],
+    [
+     4040.0,
+     1,
+     "LX,LX"
+    ]
+   ]
+  },
+  {
+   "origin": "EWR",
+   "dest": "LIS",
+   "cabin": "BUSINESS",
+   "date": "2026-12-31",
+   "price_usd": 2369.0,
+   "nonstop_price_usd": 3040.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:17:42Z",
+   "offers": [
+    [
+     2369.0,
+     2,
+     "FI,FI,TP"
+    ],
+    [
+     2559.0,
+     2,
+     "FI,FI,SK"
+    ],
+    [
+     3040.0,
+     0,
+     "TP"
+    ],
+    [
+     3040.0,
+     0,
+     "TP"
+    ],
+    [
+     3056.0,
+     1,
+     "TP,TP"
+    ],
+    [
+     3694.0,
+     0,
+     "UA"
+    ],
+    [
+     3711.0,
+     1,
+     "LX,LX"
+    ],
+    [
+     3910.0,
+     1,
+     "UA,TP"
+    ]
+   ]
+  },
+  {
+   "origin": "EWR",
+   "dest": "LIS",
+   "cabin": "BUSINESS",
    "date": "2027-01-18",
    "price_usd": 1829.0,
    "nonstop_price_usd": 3040.0,
@@ -36233,6 +38902,58 @@
      3717.0,
      1,
      "LH,LH"
+    ]
+   ]
+  },
+  {
+   "origin": "EWR",
+   "dest": "LIS",
+   "cabin": "BUSINESS",
+   "date": "2027-04-06",
+   "price_usd": 1566.0,
+   "nonstop_price_usd": 3040.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:17:41Z",
+   "offers": [
+    [
+     1566.0,
+     1,
+     "FI,FI"
+    ],
+    [
+     2336.0,
+     2,
+     "FI,FI,TP"
+    ],
+    [
+     2373.0,
+     2,
+     "FI,FI,TP"
+    ],
+    [
+     3040.0,
+     0,
+     "TP"
+    ],
+    [
+     3040.0,
+     0,
+     "TP"
+    ],
+    [
+     3056.0,
+     1,
+     "TP,TP"
+    ],
+    [
+     3444.0,
+     0,
+     "UA"
+    ],
+    [
+     3458.0,
+     1,
+     "IB,IB"
     ]
    ]
   },
@@ -36969,6 +39690,264 @@
   {
    "origin": "EWR",
    "dest": "MBJ",
+   "cabin": "BUSINESS",
+   "date": "2026-12-01",
+   "price_usd": 454.0,
+   "nonstop_price_usd": 454.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:16:45Z",
+   "offers": [
+    [
+     454.0,
+     0,
+     "UA"
+    ],
+    [
+     508.0,
+     2,
+     "AA,AA,AA"
+    ],
+    [
+     552.0,
+     0,
+     "UA"
+    ],
+    [
+     565.0,
+     2,
+     "AA,AA,AA"
+    ],
+    [
+     630.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     700.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     777.0,
+     1,
+     "DL,DL"
+    ],
+    [
+     1485.0,
+     1,
+     "UA,UA"
+    ],
+    [
+     1549.0,
+     1,
+     "AA,AA"
+    ]
+   ]
+  },
+  {
+   "origin": "EWR",
+   "dest": "MBJ",
+   "cabin": "BUSINESS",
+   "date": "2026-12-12",
+   "price_usd": 459.0,
+   "nonstop_price_usd": 621.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:16:46Z",
+   "offers": [
+    [
+     459.0,
+     1,
+     "F9,F9"
+    ],
+    [
+     491.0,
+     2,
+     "AA,AA,AA"
+    ],
+    [
+     534.0,
+     1,
+     "UA,UA"
+    ],
+    [
+     541.0,
+     1,
+     "UA,UA"
+    ],
+    [
+     556.0,
+     1,
+     "UA,UA"
+    ],
+    [
+     621.0,
+     0,
+     "UA"
+    ],
+    [
+     630.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     823.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     1084.0,
+     1,
+     "DL,DL"
+    ],
+    [
+     1308.0,
+     0,
+     "UA"
+    ]
+   ]
+  },
+  {
+   "origin": "EWR",
+   "dest": "MBJ",
+   "cabin": "BUSINESS",
+   "date": "2027-01-01",
+   "price_usd": 359.0,
+   "nonstop_price_usd": 359.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:16:47Z",
+   "offers": [
+    [
+     359.0,
+     0,
+     "UA"
+    ],
+    [
+     359.0,
+     0,
+     "UA"
+    ],
+    [
+     537.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     540.0,
+     1,
+     "F9,F9"
+    ],
+    [
+     571.0,
+     1,
+     "UA,UA"
+    ],
+    [
+     587.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     594.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     622.0,
+     1,
+     "UA,UA"
+    ],
+    [
+     625.0,
+     1,
+     "UA,UA"
+    ],
+    [
+     777.0,
+     1,
+     "DL,DL"
+    ],
+    [
+     1084.0,
+     1,
+     "DL,DL"
+    ],
+    [
+     1084.0,
+     1,
+     "DL,DL"
+    ]
+   ]
+  },
+  {
+   "origin": "EWR",
+   "dest": "MBJ",
+   "cabin": "BUSINESS",
+   "date": "2027-01-18",
+   "price_usd": 359.0,
+   "nonstop_price_usd": 359.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:16:48Z",
+   "offers": [
+    [
+     359.0,
+     0,
+     "UA"
+    ],
+    [
+     403.0,
+     1,
+     "UA,UA"
+    ],
+    [
+     485.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     491.0,
+     2,
+     "AA,AA,AA"
+    ],
+    [
+     515.0,
+     0,
+     "UA"
+    ],
+    [
+     517.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     606.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     777.0,
+     1,
+     "DL,DL"
+    ],
+    [
+     1607.0,
+     2,
+     "UA,UA,UA"
+    ],
+    [
+     2355.0,
+     1,
+     "AC,AC"
+    ],
+    [
+     2649.0,
+     2,
+     "UA,CM,CM"
+    ]
+   ]
+  },
+  {
+   "origin": "EWR",
+   "dest": "MBJ",
    "cabin": "ECONOMY",
    "date": "2026-09-20",
    "price_usd": 251.0,
@@ -37285,38 +40264,38 @@
    "dest": "MUC",
    "cabin": "BUSINESS",
    "date": "2026-09-28",
-   "price_usd": 1912.0,
+   "price_usd": 2158.0,
    "nonstop_price_usd": 7922.0,
    "provider": "fast-flights",
-   "fetched_at": "2026-09-17T03:24:24Z",
+   "fetched_at": "2026-09-19T14:17:37Z",
    "offers": [
     [
-     1912.0,
+     2158.0,
      1,
      "FI,FI"
     ],
     [
-     2575.0,
+     2588.0,
      1,
      "FI,FI"
     ],
     [
-     3318.0,
-     1,
-     "TP,LH"
+     3334.0,
+     2,
+     "TP,TP,LH"
     ],
     [
-     3323.0,
-     1,
-     "TP,TP"
+     3339.0,
+     2,
+     "TP,TP,TP"
     ],
     [
-     3497.0,
+     3496.0,
      1,
      "LO,LO"
     ],
     [
-     3533.0,
+     3532.0,
      1,
      "LO,LH"
     ],
@@ -37336,14 +40315,19 @@
      "LH"
     ],
     [
-     7942.0,
+     7941.0,
+     1,
+     "UA,LH"
+    ],
+    [
+     7941.0,
      1,
      "LX,LX"
     ],
     [
-     7952.0,
+     8651.0,
      1,
-     "UA,LH"
+     "SK,SK"
     ]
    ]
   },
@@ -37422,7 +40406,7 @@
    "price_usd": 2447.0,
    "nonstop_price_usd": 6397.0,
    "provider": "fast-flights",
-   "fetched_at": "2026-09-17T03:24:30Z",
+   "fetched_at": "2026-09-19T14:17:37Z",
    "offers": [
     [
      2447.0,
@@ -37430,12 +40414,17 @@
      "TP,TP"
     ],
     [
-     2929.0,
+     2600.0,
      1,
-     "EK,A3"
+     "FI,FI"
     ],
     [
-     3218.0,
+     3009.0,
+     1,
+     "EK,LH"
+    ],
+    [
+     3230.0,
      1,
      "FI,FI"
     ],
@@ -37450,24 +40439,9 @@
      "TP,TP"
     ],
     [
-     3533.0,
-     1,
-     "LO,LH"
-    ],
-    [
-     5467.0,
-     1,
-     "AC,AC"
-    ],
-    [
      6351.0,
      1,
      "AA,AA"
-    ],
-    [
-     6367.0,
-     1,
-     "BA,BA"
     ],
     [
      6397.0,
@@ -37488,16 +40462,6 @@
      6427.0,
      1,
      "UA,LH"
-    ],
-    [
-     6442.0,
-     1,
-     "LH,LH"
-    ],
-    [
-     6451.0,
-     1,
-     "DL,DL"
     ]
    ]
   },
@@ -38812,6 +41776,68 @@
      13529.0,
      1,
      "LX,LX"
+    ]
+   ]
+  },
+  {
+   "origin": "EWR",
+   "dest": "MXP",
+   "cabin": "BUSINESS",
+   "date": "2026-10-19",
+   "price_usd": 2179.0,
+   "nonstop_price_usd": 2179.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:17:04Z",
+   "offers": [
+    [
+     2179.0,
+     0,
+     "B0"
+    ],
+    [
+     2311.0,
+     1,
+     "TP,TP"
+    ],
+    [
+     3187.0,
+     1,
+     "TP,TP"
+    ],
+    [
+     3203.0,
+     2,
+     "TP,TP,TP"
+    ],
+    [
+     3424.0,
+     1,
+     "LO,LO"
+    ],
+    [
+     4039.0,
+     0,
+     "UA"
+    ],
+    [
+     4056.0,
+     1,
+     "LX,LX"
+    ],
+    [
+     4058.0,
+     1,
+     "BA,BA"
+    ],
+    [
+     4084.0,
+     1,
+     "LH,LH"
+    ],
+    [
+     4933.0,
+     1,
+     "TK,TK"
     ]
    ]
   },
@@ -40380,6 +43406,73 @@
    "origin": "EWR",
    "dest": "OSL",
    "cabin": "BUSINESS",
+   "date": "2026-10-20",
+   "price_usd": 1782.0,
+   "nonstop_price_usd": null,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:17:59Z",
+   "offers": [
+    [
+     1782.0,
+     1,
+     "FI,FI"
+    ],
+    [
+     2867.0,
+     1,
+     "FI,FI"
+    ],
+    [
+     3138.0,
+     1,
+     "TP,TP"
+    ],
+    [
+     3441.0,
+     1,
+     "LO,LO"
+    ],
+    [
+     4329.0,
+     1,
+     "TK,TK"
+    ],
+    [
+     4444.0,
+     1,
+     "LO,LO"
+    ],
+    [
+     5406.0,
+     1,
+     "UA,LX"
+    ],
+    [
+     5408.0,
+     1,
+     "BA,BA"
+    ],
+    [
+     5412.0,
+     1,
+     "UA,LH"
+    ],
+    [
+     5434.0,
+     1,
+     "LH,LH"
+    ],
+    [
+     8259.0,
+     1,
+     "SK,SK"
+    ]
+   ]
+  },
+  {
+   "origin": "EWR",
+   "dest": "OSL",
+   "cabin": "BUSINESS",
    "date": "2026-11-03",
    "price_usd": 2002.0,
    "nonstop_price_usd": null,
@@ -40945,6 +44038,177 @@
      5144.0,
      0,
      "SK"
+    ]
+   ]
+  },
+  {
+   "origin": "EWR",
+   "dest": "OSL",
+   "cabin": "BUSINESS",
+   "date": "2027-04-27",
+   "price_usd": 1546.0,
+   "nonstop_price_usd": null,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:17:52Z",
+   "offers": [
+    [
+     1546.0,
+     1,
+     "FI,FI"
+    ],
+    [
+     1782.0,
+     1,
+     "TP,TP"
+    ],
+    [
+     3006.0,
+     1,
+     "UA,LX"
+    ],
+    [
+     3010.0,
+     1,
+     "BA,BA"
+    ],
+    [
+     3010.0,
+     1,
+     "BA,BA"
+    ],
+    [
+     3012.0,
+     1,
+     "UA,LH"
+    ],
+    [
+     3016.0,
+     1,
+     "OS,OS"
+    ],
+    [
+     3035.0,
+     1,
+     "LH,LH"
+    ],
+    [
+     8259.0,
+     1,
+     "SK,SK"
+    ]
+   ]
+  },
+  {
+   "origin": "EWR",
+   "dest": "OSL",
+   "cabin": "BUSINESS",
+   "date": "2027-05-15",
+   "price_usd": 1820.0,
+   "nonstop_price_usd": 5394.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:17:53Z",
+   "offers": [
+    [
+     1820.0,
+     1,
+     "FI,FI"
+    ],
+    [
+     2262.0,
+     1,
+     "TP,TP"
+    ],
+    [
+     2262.0,
+     1,
+     "TP,TP"
+    ],
+    [
+     3425.0,
+     1,
+     "LO,LO"
+    ],
+    [
+     3766.0,
+     1,
+     "OS,OS"
+    ],
+    [
+     3785.0,
+     1,
+     "LH,LH"
+    ],
+    [
+     4303.0,
+     1,
+     "UA,SK"
+    ],
+    [
+     5394.0,
+     0,
+     "SK"
+    ]
+   ]
+  },
+  {
+   "origin": "EWR",
+   "dest": "OSL",
+   "cabin": "BUSINESS",
+   "date": "2027-05-25",
+   "price_usd": 1814.0,
+   "nonstop_price_usd": null,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:17:54Z",
+   "offers": [
+    [
+     1814.0,
+     1,
+     "FI,FI"
+    ],
+    [
+     2262.0,
+     1,
+     "TP,TP"
+    ],
+    [
+     3425.0,
+     1,
+     "LO,LO"
+    ],
+    [
+     3510.0,
+     1,
+     "BA,BA"
+    ],
+    [
+     3512.0,
+     1,
+     "LH,LH"
+    ],
+    [
+     3516.0,
+     1,
+     "OS,OS"
+    ],
+    [
+     3535.0,
+     1,
+     "LH,LH"
+    ],
+    [
+     3638.0,
+     1,
+     "AF,AF"
+    ],
+    [
+     5063.0,
+     1,
+     "AF,AF"
+    ],
+    [
+     8259.0,
+     1,
+     "SK,SK"
     ]
    ]
   },
@@ -41892,9 +45156,9 @@
    "cabin": "ECONOMY",
    "date": "2026-09-27",
    "price_usd": 535.0,
-   "nonstop_price_usd": 1696.0,
+   "nonstop_price_usd": 1137.0,
    "provider": "fast-flights",
-   "fetched_at": "2026-09-16T23:58:09Z",
+   "fetched_at": "2026-09-19T14:16:18Z",
    "offers": [
     [
      535.0,
@@ -41902,29 +45166,39 @@
      "TP,TP,AZ"
     ],
     [
-     683.0,
-     1,
-     "BA,BA"
-    ],
-    [
-     728.0,
+     535.0,
      2,
      "TP,TP,AZ"
     ],
     [
-     1648.0,
+     682.0,
      1,
-     "UA,AZ"
+     "BA,BA"
     ],
     [
-     1696.0,
+     1137.0,
      0,
      "UA"
     ],
     [
-     4544.0,
+     1160.0,
      1,
-     "UA,LX"
+     "UA,LH"
+    ],
+    [
+     1160.0,
+     1,
+     "LH,LH"
+    ],
+    [
+     1278.0,
+     1,
+     "UA,AZ"
+    ],
+    [
+     1278.0,
+     1,
+     "UA,AZ"
     ]
    ]
   },
@@ -41934,9 +45208,9 @@
    "cabin": "ECONOMY",
    "date": "2026-10-07",
    "price_usd": 577.0,
-   "nonstop_price_usd": 1321.0,
+   "nonstop_price_usd": 949.0,
    "provider": "fast-flights",
-   "fetched_at": "2026-09-16T23:58:28Z",
+   "fetched_at": "2026-09-19T14:16:21Z",
    "offers": [
     [
      577.0,
@@ -41944,39 +45218,49 @@
      "TK,TK"
     ],
     [
-     757.0,
-     1,
-     "BA,BA"
-    ],
-    [
      804.0,
      2,
      "IB,VY,VY"
     ],
     [
-     1294.0,
+     899.0,
      1,
-     "UA,AZ"
+     "BA,BA"
     ],
     [
-     1321.0,
+     949.0,
      0,
      "UA"
     ],
     [
-     1338.0,
+     966.0,
      1,
      "UA,LX"
     ],
     [
-     1342.0,
+     972.0,
+     1,
+     "UA,LH"
+    ],
+    [
+     972.0,
+     1,
+     "LH,LH"
+    ],
+    [
+     993.0,
+     2,
+     "UA,LX,LX"
+    ],
+    [
+     1090.0,
      1,
      "UA,AZ"
     ],
     [
-     1344.0,
+     1090.0,
      1,
-     "UA,LH"
+     "UA,AZ"
     ]
    ]
   },
@@ -41988,7 +45272,7 @@
    "price_usd": 489.0,
    "nonstop_price_usd": 489.0,
    "provider": "fast-flights",
-   "fetched_at": "2026-09-16T23:58:47Z",
+   "fetched_at": "2026-09-19T14:16:24Z",
    "offers": [
     [
      489.0,
@@ -42016,17 +45300,22 @@
      "LH,LH"
     ],
     [
-     611.0,
+     533.0,
+     2,
+     "UA,LX,LX"
+    ],
+    [
+     630.0,
      1,
      "UA,AZ"
     ],
     [
-     611.0,
+     654.0,
      1,
-     "UA,AZ"
+     "BA,BA"
     ],
     [
-     620.0,
+     735.0,
      1,
      "UA,AZ"
     ]
@@ -46353,7 +49642,7 @@
    "price_usd": 605.0,
    "nonstop_price_usd": null,
    "provider": "fast-flights",
-   "fetched_at": "2026-09-17T01:10:23Z",
+   "fetched_at": "2026-09-19T14:16:21Z",
    "offers": [
     [
      605.0,
@@ -46361,19 +49650,19 @@
      "TK,TK"
     ],
     [
+     662.0,
+     1,
+     "TP,TP"
+    ],
+    [
      763.0,
      1,
      "TP,TP"
     ],
     [
-     905.0,
-     2,
-     "TP,TP,TP"
-    ],
-    [
-     905.0,
-     2,
-     "TP,TP,TP"
+     867.0,
+     1,
+     "EK,A3"
     ],
     [
      1030.0,
@@ -46381,27 +49670,17 @@
      "TP,TP"
     ],
     [
-     1171.0,
+     1169.0,
      1,
      "PD,TS"
     ],
     [
-     1453.0,
-     2,
-     "LX,LX,LX"
-    ],
-    [
-     1453.0,
-     2,
-     "LX,LX,LX"
-    ],
-    [
-     1483.0,
+     1862.0,
      1,
-     "OS,OS"
+     "AF,AF"
     ],
     [
-     1487.0,
+     1862.0,
      1,
      "AF,AF"
     ],
@@ -46420,7 +49699,7 @@
    "price_usd": 565.0,
    "nonstop_price_usd": null,
    "provider": "fast-flights",
-   "fetched_at": "2026-09-17T01:10:25Z",
+   "fetched_at": "2026-09-19T14:16:24Z",
    "offers": [
     [
      565.0,
@@ -46428,6 +49707,11 @@
      "TK,TK"
     ],
     [
+     605.0,
+     1,
+     "EK,A3"
+    ],
+    [
      635.0,
      1,
      "TP,TP"
@@ -46438,39 +49722,29 @@
      "TP,TP"
     ],
     [
-     651.0,
-     2,
-     "TP,TP,TP"
-    ],
-    [
-     651.0,
-     2,
-     "TP,TP,TP"
-    ],
-    [
-     1358.0,
+     1367.0,
      1,
      "LX,WK"
     ],
     [
-     1421.0,
+     1427.0,
      1,
-     "LH,4Y"
+     "AF,AF"
     ],
     [
-     1423.0,
+     1427.0,
+     1,
+     "AF,AF"
+    ],
+    [
+     1433.0,
      1,
      "OS,OS"
     ],
     [
-     1427.0,
+     1451.0,
      1,
-     "AF,AF"
-    ],
-    [
-     1427.0,
-     1,
-     "AF,AF"
+     "LH,4Y"
     ],
     [
      1911.0,
@@ -46487,7 +49761,7 @@
    "price_usd": 520.0,
    "nonstop_price_usd": null,
    "provider": "fast-flights",
-   "fetched_at": "2026-09-17T01:10:27Z",
+   "fetched_at": "2026-09-19T14:16:32Z",
    "offers": [
     [
      520.0,
@@ -46495,7 +49769,7 @@
      "AF,AF"
     ],
     [
-     565.0,
+     613.0,
      1,
      "TK,TK"
     ],
@@ -46510,34 +49784,34 @@
      "TP,TP"
     ],
     [
-     651.0,
+     758.0,
      2,
      "TP,TP,TP"
     ],
     [
-     879.0,
+     878.0,
      1,
      "LH,4Y"
     ],
     [
-     1412.0,
+     893.0,
+     1,
+     "UA,4Y"
+    ],
+    [
+     1793.0,
      1,
      "BA,BA"
     ],
     [
-     1424.0,
+     3662.0,
+     2,
+     "EI,EI,IB"
+    ],
+    [
+     5480.0,
      1,
-     "BA,BA"
-    ],
-    [
-     4978.0,
-     2,
-     "UA,TP,TP"
-    ],
-    [
-     4978.0,
-     2,
-     "UA,TP,TP"
+     "UA,BA"
     ]
    ]
   },
@@ -47351,6 +50625,68 @@
   },
   {
    "origin": "EWR",
+   "dest": "SDQ",
+   "cabin": "ECONOMY",
+   "date": "2026-12-07",
+   "price_usd": 162.0,
+   "nonstop_price_usd": 238.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:16:44Z",
+   "offers": [
+    [
+     162.0,
+     1,
+     "B6,B6"
+    ],
+    [
+     199.0,
+     1,
+     "B6,B6"
+    ],
+    [
+     238.0,
+     0,
+     "UA"
+    ],
+    [
+     242.0,
+     1,
+     "B6,B6"
+    ],
+    [
+     242.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     242.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     290.0,
+     0,
+     "DM"
+    ],
+    [
+     291.0,
+     0,
+     "UA"
+    ],
+    [
+     291.0,
+     0,
+     "UA"
+    ],
+    [
+     330.0,
+     0,
+     "DM"
+    ]
+   ]
+  },
+  {
+   "origin": "EWR",
    "dest": "SIN",
    "cabin": "BUSINESS",
    "date": "2026-10-22",
@@ -47463,6 +50799,73 @@
     ],
     [
      16706.0,
+     1,
+     "UA,SQ"
+    ]
+   ]
+  },
+  {
+   "origin": "EWR",
+   "dest": "SIN",
+   "cabin": "BUSINESS",
+   "date": "2027-01-17",
+   "price_usd": 3184.0,
+   "nonstop_price_usd": null,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:17:21Z",
+   "offers": [
+    [
+     3184.0,
+     2,
+     "AC,PR,PR"
+    ],
+    [
+     3800.0,
+     2,
+     "AC,PR,PR"
+    ],
+    [
+     3980.0,
+     1,
+     "AC,AC"
+    ],
+    [
+     4276.0,
+     1,
+     "UA,UA"
+    ],
+    [
+     4284.0,
+     1,
+     "UA,NH"
+    ],
+    [
+     4297.0,
+     1,
+     "UA,SQ"
+    ],
+    [
+     5202.0,
+     2,
+     "EK,EK,EK"
+    ],
+    [
+     5613.0,
+     1,
+     "LH,SQ"
+    ],
+    [
+     6006.0,
+     1,
+     "UA,UA"
+    ],
+    [
+     12397.0,
+     1,
+     "UA,SQ"
+    ],
+    [
+     16709.0,
      1,
      "UA,SQ"
     ]
@@ -48857,18 +52260,18 @@
    "dest": "SJO",
    "cabin": "BUSINESS",
    "date": "2026-09-29",
-   "price_usd": 671.0,
-   "nonstop_price_usd": 671.0,
+   "price_usd": 612.0,
+   "nonstop_price_usd": 612.0,
    "provider": "fast-flights",
-   "fetched_at": "2026-09-17T01:09:55Z",
+   "fetched_at": "2026-09-19T14:17:05Z",
    "offers": [
     [
-     671.0,
+     612.0,
      0,
      "UA"
     ],
     [
-     743.0,
+     686.0,
      2,
      "AA,AA,AA"
     ],
@@ -48876,11 +52279,6 @@
      743.0,
      2,
      "AA,AA,AA"
-    ],
-    [
-     871.0,
-     1,
-     "AA,AA"
     ],
     [
      873.0,
@@ -48890,20 +52288,10 @@
     [
      911.0,
      1,
-     "AM,AM"
-    ],
-    [
-     911.0,
-     1,
      "AA,AA"
     ],
     [
-     1039.0,
-     1,
-     "AA,AA"
-    ],
-    [
-     1144.0,
+     1134.0,
      1,
      "DL,DL"
     ],
@@ -48916,6 +52304,21 @@
      1970.0,
      1,
      "UA,CM"
+    ],
+    [
+     2044.0,
+     2,
+     "UA,CM,CM"
+    ],
+    [
+     2044.0,
+     2,
+     "UA,CM,CM"
+    ],
+    [
+     3893.0,
+     1,
+     "UA,AV"
     ]
    ]
   },
@@ -49035,6 +52438,115 @@
      426.0,
      1,
      "UA,9K"
+    ]
+   ]
+  },
+  {
+   "origin": "EWR",
+   "dest": "SJU",
+   "cabin": "ECONOMY",
+   "date": "2026-12-11",
+   "price_usd": 174.0,
+   "nonstop_price_usd": 233.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:16:33Z",
+   "offers": [
+    [
+     174.0,
+     1,
+     "F9,F9"
+    ],
+    [
+     224.0,
+     1,
+     "F9,F9"
+    ],
+    [
+     233.0,
+     0,
+     "B6"
+    ],
+    [
+     257.0,
+     0,
+     "UA"
+    ],
+    [
+     257.0,
+     0,
+     "UA"
+    ],
+    [
+     285.0,
+     0,
+     "UA"
+    ],
+    [
+     305.0,
+     0,
+     "UA"
+    ],
+    [
+     411.0,
+     1,
+     "UA,9K"
+    ],
+    [
+     464.0,
+     0,
+     "B6"
+    ]
+   ]
+  },
+  {
+   "origin": "EWR",
+   "dest": "SJU",
+   "cabin": "ECONOMY",
+   "date": "2026-12-31",
+   "price_usd": 174.0,
+   "nonstop_price_usd": 174.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:16:41Z",
+   "offers": [
+    [
+     174.0,
+     0,
+     "B6"
+    ],
+    [
+     181.0,
+     0,
+     "F9"
+    ],
+    [
+     197.0,
+     0,
+     "UA"
+    ],
+    [
+     204.0,
+     0,
+     "UA"
+    ],
+    [
+     204.0,
+     0,
+     "UA"
+    ],
+    [
+     204.0,
+     0,
+     "UA"
+    ],
+    [
+     236.0,
+     1,
+     "UA,UA"
+    ],
+    [
+     314.0,
+     0,
+     "B6"
     ]
    ]
   },
@@ -50421,6 +53933,98 @@
    "origin": "EWR",
    "dest": "TPE",
    "cabin": "BUSINESS",
+   "date": "2027-04-10",
+   "price_usd": 2585.0,
+   "nonstop_price_usd": null,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:16:52Z",
+   "offers": [
+    [
+     2585.0,
+     2,
+     "AC,PR,PR"
+    ],
+    [
+     2610.0,
+     2,
+     "UA,PR,PR"
+    ],
+    [
+     2610.0,
+     2,
+     "AC,PR,PR"
+    ],
+    [
+     3723.0,
+     2,
+     "AC,CX,CX"
+    ],
+    [
+     3877.0,
+     2,
+     "UA,AC,CI"
+    ],
+    [
+     3877.0,
+     2,
+     "AC,AC,CI"
+    ],
+    [
+     4078.0,
+     1,
+     "AS,CI"
+    ],
+    [
+     4241.0,
+     1,
+     "AS,BR"
+    ],
+    [
+     4468.0,
+     2,
+     "UA,UA,UA"
+    ],
+    [
+     4534.0,
+     1,
+     "AS,CI"
+    ],
+    [
+     5331.0,
+     1,
+     "TK,TK"
+    ],
+    [
+     5452.0,
+     1,
+     "UA,BR"
+    ],
+    [
+     5511.0,
+     2,
+     "DL,DL,DL"
+    ],
+    [
+     5697.0,
+     1,
+     "UA,UA"
+    ],
+    [
+     7434.0,
+     2,
+     "DL,DL,DL"
+    ],
+    [
+     10566.0,
+     2,
+     "UA,NH,BR"
+    ]
+   ]
+  },
+  {
+   "origin": "EWR",
+   "dest": "TPE",
+   "cabin": "BUSINESS",
    "date": "2027-05-05",
    "price_usd": 2828.0,
    "nonstop_price_usd": null,
@@ -50779,6 +54383,78 @@
    "origin": "EWR",
    "dest": "TPE",
    "cabin": "BUSINESS",
+   "date": "2027-07-05",
+   "price_usd": 2586.0,
+   "nonstop_price_usd": null,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:16:52Z",
+   "offers": [
+    [
+     2586.0,
+     2,
+     "AC,PR,PR"
+    ],
+    [
+     3423.0,
+     2,
+     "AC,CX,CX"
+    ],
+    [
+     3832.0,
+     1,
+     "UA,UA"
+    ],
+    [
+     3832.0,
+     1,
+     "UA,UA"
+    ],
+    [
+     3847.0,
+     2,
+     "UA,AC,BR"
+    ],
+    [
+     3847.0,
+     2,
+     "AC,AC,BR"
+    ],
+    [
+     3851.0,
+     2,
+     "AA,AA,JL"
+    ],
+    [
+     3877.0,
+     2,
+     "AC,AC,CI"
+    ],
+    [
+     4032.0,
+     2,
+     "DL,DL,DL"
+    ],
+    [
+     4345.0,
+     1,
+     "AS,BR"
+    ],
+    [
+     5452.0,
+     1,
+     "UA,BR"
+    ],
+    [
+     7474.0,
+     2,
+     "DL,DL,CI"
+    ]
+   ]
+  },
+  {
+   "origin": "EWR",
+   "dest": "TPE",
+   "cabin": "BUSINESS",
    "date": "2027-07-14",
    "price_usd": 3008.0,
    "nonstop_price_usd": null,
@@ -50960,6 +54636,68 @@
    "provider": "fast-flights",
    "fetched_at": "2026-09-18T14:52:52Z",
    "offers": []
+  },
+  {
+   "origin": "EWR",
+   "dest": "UVF",
+   "cabin": "ECONOMY",
+   "date": "2026-12-30",
+   "price_usd": 169.0,
+   "nonstop_price_usd": 169.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:16:43Z",
+   "offers": [
+    [
+     169.0,
+     0,
+     "UA"
+    ],
+    [
+     249.0,
+     2,
+     "AA,AA,AA"
+    ],
+    [
+     249.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     254.0,
+     2,
+     "AA,AA,AA"
+    ],
+    [
+     272.0,
+     1,
+     "AC,AC"
+    ],
+    [
+     277.0,
+     1,
+     "UA,AC"
+    ],
+    [
+     277.0,
+     1,
+     "UA,AC"
+    ],
+    [
+     309.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     327.0,
+     1,
+     "AC,AC"
+    ],
+    [
+     369.0,
+     1,
+     "AA,AA"
+    ]
+   ]
   },
   {
    "origin": "EWR",
@@ -52364,18 +56102,18 @@
    "dest": "ZRH",
    "cabin": "BUSINESS",
    "date": "2026-10-06",
-   "price_usd": 1651.0,
+   "price_usd": 1866.0,
    "nonstop_price_usd": 8669.0,
    "provider": "fast-flights",
-   "fetched_at": "2026-09-16T18:48:49Z",
+   "fetched_at": "2026-09-19T14:17:35Z",
    "offers": [
     [
-     1651.0,
+     1866.0,
      1,
      "FI,FI"
     ],
     [
-     2939.0,
+     2951.0,
      1,
      "FI,FI"
     ],
@@ -52390,14 +56128,19 @@
      "TP,TP"
     ],
     [
-     3425.0,
+     3424.0,
      1,
      "LO,LO"
     ],
     [
-     4481.0,
+     4480.0,
      1,
      "LO,LX"
+    ],
+    [
+     5734.0,
+     1,
+     "TP,TP"
     ],
     [
      8669.0,
@@ -52421,13 +56164,13 @@
    "dest": "ZRH",
    "cabin": "BUSINESS",
    "date": "2026-10-18",
-   "price_usd": 1696.0,
+   "price_usd": 1916.0,
    "nonstop_price_usd": 6744.0,
    "provider": "fast-flights",
-   "fetched_at": "2026-09-17T03:24:16Z",
+   "fetched_at": "2026-09-19T14:17:36Z",
    "offers": [
     [
-     1696.0,
+     1916.0,
      1,
      "FI,FI"
     ],
@@ -52437,7 +56180,7 @@
      "TP,TP"
     ],
     [
-     2989.0,
+     3001.0,
      1,
      "FI,FI"
     ],
@@ -52450,6 +56193,11 @@
      3458.0,
      2,
      "LO,LO,LO"
+    ],
+    [
+     6663.0,
+     1,
+     "BA,BA"
     ],
     [
      6744.0,
@@ -52470,6 +56218,11 @@
      6767.0,
      1,
      "LH,LX"
+    ],
+    [
+     6771.0,
+     1,
+     "UA,LX"
     ]
    ]
   },
@@ -54279,6 +58032,197 @@
     ],
     [
      10594.0,
+     0,
+     "DL"
+    ]
+   ]
+  },
+  {
+   "origin": "JFK",
+   "dest": "AMS",
+   "cabin": "BUSINESS",
+   "date": "2026-10-11",
+   "price_usd": 1729.0,
+   "nonstop_price_usd": 9069.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:17:39Z",
+   "offers": [
+    [
+     1729.0,
+     1,
+     "FI,FI"
+    ],
+    [
+     2202.0,
+     1,
+     "UX,UX"
+    ],
+    [
+     2834.0,
+     1,
+     "FI,FI"
+    ],
+    [
+     2854.0,
+     1,
+     "AT,AT"
+    ],
+    [
+     3197.0,
+     1,
+     "TP,TP"
+    ],
+    [
+     3340.0,
+     1,
+     "DE,LH"
+    ],
+    [
+     3424.0,
+     1,
+     "LO,LO"
+    ],
+    [
+     4793.0,
+     1,
+     "B6,B6"
+    ],
+    [
+     9069.0,
+     0,
+     "KL"
+    ],
+    [
+     9069.0,
+     0,
+     "DL"
+    ],
+    [
+     9069.0,
+     0,
+     "KL"
+    ],
+    [
+     9069.0,
+     0,
+     "KL"
+    ]
+   ]
+  },
+  {
+   "origin": "JFK",
+   "dest": "AMS",
+   "cabin": "BUSINESS",
+   "date": "2026-10-26",
+   "price_usd": 1729.0,
+   "nonstop_price_usd": 5969.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:18:14Z",
+   "offers": [
+    [
+     1729.0,
+     1,
+     "FI,FI"
+    ],
+    [
+     2353.0,
+     1,
+     "AT,AT"
+    ],
+    [
+     2825.0,
+     2,
+     "B6,TP,TP"
+    ],
+    [
+     3340.0,
+     1,
+     "DE,LH"
+    ],
+    [
+     3424.0,
+     1,
+     "LO,LO"
+    ],
+    [
+     5969.0,
+     0,
+     "KL"
+    ],
+    [
+     5969.0,
+     0,
+     "KL"
+    ],
+    [
+     6069.0,
+     0,
+     "DL"
+    ],
+    [
+     6069.0,
+     0,
+     "DL"
+    ]
+   ]
+  },
+  {
+   "origin": "JFK",
+   "dest": "AMS",
+   "cabin": "BUSINESS",
+   "date": "2026-11-23",
+   "price_usd": 1546.0,
+   "nonstop_price_usd": 4169.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:18:02Z",
+   "offers": [
+    [
+     1546.0,
+     1,
+     "FI,FI"
+    ],
+    [
+     1841.0,
+     1,
+     "TP,TP"
+    ],
+    [
+     1897.0,
+     2,
+     "FI,FI,AY"
+    ],
+    [
+     2353.0,
+     1,
+     "AT,AT"
+    ],
+    [
+     4169.0,
+     0,
+     "KL"
+    ],
+    [
+     4169.0,
+     0,
+     "KL"
+    ],
+    [
+     4188.0,
+     1,
+     "AF,AF"
+    ],
+    [
+     4188.0,
+     1,
+     "BA,BA"
+    ],
+    [
+     4319.0,
+     0,
+     "DL"
+    ],
+    [
+     8104.0,
      0,
      "DL"
     ]
@@ -56356,35 +60300,45 @@
    "dest": "ANU",
    "cabin": "ECONOMY",
    "date": "2026-10-05",
-   "price_usd": 313.0,
+   "price_usd": 303.0,
    "nonstop_price_usd": null,
    "provider": "fast-flights",
-   "fetched_at": "2026-09-16T23:54:15Z",
+   "fetched_at": "2026-09-19T14:16:31Z",
    "offers": [
     [
-     313.0,
+     303.0,
      1,
      "AA,AA"
     ],
     [
-     313.0,
+     303.0,
      1,
      "AA,AA"
     ],
     [
-     313.0,
+     303.0,
      1,
      "AA,AA"
     ],
     [
-     363.0,
+     353.0,
      1,
      "BW,BW"
     ],
     [
-     468.0,
+     458.0,
      1,
      "B6,WM"
+    ],
+    [
+     1748.0,
+     2,
+     "AA,AA,AA"
+    ],
+    [
+     1785.0,
+     2,
+     "AA,AA,AA"
     ]
    ]
   },
@@ -56393,33 +60347,48 @@
    "dest": "ANU",
    "cabin": "ECONOMY",
    "date": "2026-10-13",
-   "price_usd": 274.0,
+   "price_usd": 264.0,
    "nonstop_price_usd": null,
    "provider": "fast-flights",
-   "fetched_at": "2026-09-16T23:54:15Z",
+   "fetched_at": "2026-09-19T14:16:28Z",
    "offers": [
     [
-     274.0,
+     264.0,
      1,
      "AA,AA"
     ],
     [
-     274.0,
+     264.0,
      1,
      "AA,AA"
     ],
     [
-     274.0,
+     270.0,
+     2,
+     "AA,AA,AA"
+    ],
+    [
+     270.0,
+     2,
+     "AA,AA,AA"
+    ],
+    [
+     282.0,
      1,
      "AA,AA"
     ],
     [
-     359.0,
+     309.0,
+     2,
+     "AA,AA,AA"
+    ],
+    [
+     349.0,
      1,
      "B6,WM"
     ],
     [
-     363.0,
+     353.0,
      1,
      "BW,BW"
     ]
@@ -57280,33 +61249,38 @@
    "dest": "ARN",
    "cabin": "BUSINESS",
    "date": "2026-10-05",
-   "price_usd": 1491.0,
-   "nonstop_price_usd": 9069.0,
+   "price_usd": 1233.0,
+   "nonstop_price_usd": 10944.0,
    "provider": "fast-flights",
-   "fetched_at": "2026-09-16T22:15:31Z",
+   "fetched_at": "2026-09-19T14:17:48Z",
    "offers": [
     [
-     1491.0,
+     1233.0,
      2,
      "S4,S4,TP"
     ],
     [
-     1491.0,
+     1233.0,
      2,
      "S4,S4,TP"
     ],
     [
-     1491.0,
+     1233.0,
      2,
      "S4,S4,TP"
     ],
     [
-     1756.0,
+     1768.0,
      1,
      "FI,FI"
     ],
     [
-     2861.0,
+     2065.0,
+     1,
+     "JU,JU"
+    ],
+    [
+     2223.0,
      1,
      "FI,FI"
     ],
@@ -57316,9 +61290,9 @@
      "TP,TP"
     ],
     [
-     4281.0,
+     3349.0,
      1,
-     "TK,TK"
+     "LO,LO"
     ],
     [
      8241.0,
@@ -57331,19 +61305,14 @@
      "SK,SK"
     ],
     [
-     9069.0,
-     0,
-     "DL"
-    ],
-    [
-     9077.0,
-     1,
-     "AY,AY"
-    ],
-    [
-     9100.0,
+     9099.0,
      1,
      "KL,KL"
+    ],
+    [
+     10944.0,
+     0,
+     "DL"
     ]
    ]
   },
@@ -58729,6 +62698,73 @@
    "origin": "JFK",
    "dest": "ATH",
    "cabin": "BUSINESS",
+   "date": "2026-10-10",
+   "price_usd": 2815.0,
+   "nonstop_price_usd": 11169.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:17:01Z",
+   "offers": [
+    [
+     2815.0,
+     2,
+     "FI,FI,AZ"
+    ],
+    [
+     2815.0,
+     2,
+     "FI,FI,AZ"
+    ],
+    [
+     3367.0,
+     1,
+     "LO,LO"
+    ],
+    [
+     3465.0,
+     1,
+     "TP,TP"
+    ],
+    [
+     3576.0,
+     1,
+     "RJ,RJ"
+    ],
+    [
+     3717.0,
+     1,
+     "LO,A3"
+    ],
+    [
+     5177.0,
+     1,
+     "TK,TK"
+    ],
+    [
+     5177.0,
+     1,
+     "TK,TK"
+    ],
+    [
+     5177.0,
+     1,
+     "TK,TK"
+    ],
+    [
+     11169.0,
+     0,
+     "DL"
+    ],
+    [
+     13776.0,
+     1,
+     "LX,A3"
+    ]
+   ]
+  },
+  {
+   "origin": "JFK",
+   "dest": "ATH",
+   "cabin": "BUSINESS",
    "date": "2026-11-16",
    "price_usd": 1375.0,
    "nonstop_price_usd": 4644.0,
@@ -59326,6 +63362,63 @@
    "origin": "JFK",
    "dest": "AUA",
    "cabin": "ECONOMY",
+   "date": "2026-11-16",
+   "price_usd": 132.0,
+   "nonstop_price_usd": 167.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:16:48Z",
+   "offers": [
+    [
+     132.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     132.0,
+     2,
+     "AA,AA,AA"
+    ],
+    [
+     132.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     137.0,
+     1,
+     "B6,B6"
+    ],
+    [
+     167.0,
+     0,
+     "DL"
+    ],
+    [
+     167.0,
+     0,
+     "B6"
+    ],
+    [
+     167.0,
+     0,
+     "B6"
+    ],
+    [
+     274.0,
+     0,
+     "B6"
+    ],
+    [
+     431.0,
+     1,
+     "CM,CM"
+    ]
+   ]
+  },
+  {
+   "origin": "JFK",
+   "dest": "AUA",
+   "cabin": "ECONOMY",
    "date": "2026-12-07",
    "price_usd": 132.0,
    "nonstop_price_usd": 132.0,
@@ -59421,6 +63514,68 @@
     ],
     [
      13961.0,
+     0,
+     "DL"
+    ]
+   ]
+  },
+  {
+   "origin": "JFK",
+   "dest": "BCN",
+   "cabin": "BUSINESS",
+   "date": "2026-11-02",
+   "price_usd": 2012.0,
+   "nonstop_price_usd": 4689.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:18:13Z",
+   "offers": [
+    [
+     2012.0,
+     1,
+     "AT,AT"
+    ],
+    [
+     2362.0,
+     2,
+     "FI,FI,SK"
+    ],
+    [
+     3238.0,
+     1,
+     "TP,TP"
+    ],
+    [
+     3900.0,
+     1,
+     "AZ,AZ"
+    ],
+    [
+     3900.0,
+     1,
+     "AZ,AZ"
+    ],
+    [
+     4689.0,
+     0,
+     "AA"
+    ],
+    [
+     4706.0,
+     1,
+     "LX,LX"
+    ],
+    [
+     4706.0,
+     1,
+     "LX,LX"
+    ],
+    [
+     4708.0,
+     1,
+     "AF,AF"
+    ],
+    [
+     8429.0,
      0,
      "DL"
     ]
@@ -61195,26 +65350,113 @@
    "origin": "JFK",
    "dest": "BGI",
    "cabin": "ECONOMY",
-   "date": "2026-10-03",
-   "price_usd": 223.0,
-   "nonstop_price_usd": 232.0,
+   "date": "2026-09-23",
+   "price_usd": 309.0,
+   "nonstop_price_usd": 312.0,
    "provider": "fast-flights",
-   "fetched_at": "2026-09-16T23:54:09Z",
+   "fetched_at": "2026-09-19T14:16:42Z",
    "offers": [
     [
-     223.0,
+     309.0,
+     2,
+     "BW,BW,BW"
+    ],
+    [
+     312.0,
+     0,
+     "B6"
+    ],
+    [
+     312.0,
+     0,
+     "B6"
+    ],
+    [
+     322.0,
      1,
      "AA,AA"
     ],
     [
-     232.0,
-     0,
-     "B6"
+     328.0,
+     2,
+     "AA,AA,AA"
+    ],
+    [
+     344.0,
+     2,
+     "BW,BW,BW"
+    ],
+    [
+     371.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     515.0,
+     1,
+     "BW,BW"
+    ],
+    [
+     597.0,
+     1,
+     "CM,CM"
+    ],
+    [
+     1238.0,
+     1,
+     "CM,CM"
+    ]
+   ]
+  },
+  {
+   "origin": "JFK",
+   "dest": "BGI",
+   "cabin": "ECONOMY",
+   "date": "2026-10-03",
+   "price_usd": 213.0,
+   "nonstop_price_usd": 380.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:16:33Z",
+   "offers": [
+    [
+     213.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     219.0,
+     2,
+     "AA,AA,AA"
+    ],
+    [
+     229.0,
+     1,
+     "AA,AA"
     ],
     [
      309.0,
      3,
      "BW,BW,BW,BW"
+    ],
+    [
+     314.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     320.0,
+     2,
+     "AA,AA,AA"
+    ],
+    [
+     320.0,
+     2,
+     "AA,AA,AA"
+    ],
+    [
+     380.0,
+     0,
+     "B6"
     ],
     [
      547.0,
@@ -61233,15 +65475,35 @@
    "dest": "BGI",
    "cabin": "ECONOMY",
    "date": "2026-10-13",
-   "price_usd": 166.0,
+   "price_usd": 156.0,
    "nonstop_price_usd": 280.0,
    "provider": "fast-flights",
-   "fetched_at": "2026-09-16T23:54:10Z",
+   "fetched_at": "2026-09-19T14:16:34Z",
    "offers": [
     [
-     166.0,
+     156.0,
      1,
      "AA,AA"
+    ],
+    [
+     170.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     236.0,
+     2,
+     "AA,AA,AA"
+    ],
+    [
+     279.0,
+     2,
+     "BW,BW,BW"
+    ],
+    [
+     279.0,
+     1,
+     "BW,BW"
     ],
     [
      279.0,
@@ -61257,6 +65519,11 @@
      309.0,
      1,
      "BW,BW"
+    ],
+    [
+     540.0,
+     1,
+     "CM,CM"
     ]
    ]
   },
@@ -63398,13 +67665,13 @@
    "dest": "CAI",
    "cabin": "BUSINESS",
    "date": "2026-10-06",
-   "price_usd": 2890.0,
-   "nonstop_price_usd": 3203.0,
+   "price_usd": 2880.0,
+   "nonstop_price_usd": 4222.0,
    "provider": "fast-flights",
-   "fetched_at": "2026-09-16T18:48:28Z",
+   "fetched_at": "2026-09-19T14:16:56Z",
    "offers": [
     [
-     2890.0,
+     2880.0,
      1,
      "DE,DE"
     ],
@@ -63419,12 +67686,12 @@
      "RJ,RJ"
     ],
     [
-     3203.0,
-     0,
-     "MS"
+     3479.0,
+     1,
+     "LO,LO"
     ],
     [
-     3870.0,
+     3860.0,
      1,
      "DE,LH"
     ],
@@ -63432,6 +67699,16 @@
      4158.0,
      1,
      "LX,LX"
+    ],
+    [
+     4186.0,
+     1,
+     "LH,LH"
+    ],
+    [
+     4222.0,
+     0,
+     "MS"
     ],
     [
      5344.0,
@@ -63445,25 +67722,30 @@
    "dest": "CAI",
    "cabin": "BUSINESS",
    "date": "2026-10-14",
-   "price_usd": 2272.0,
+   "price_usd": 2804.0,
    "nonstop_price_usd": 3203.0,
    "provider": "fast-flights",
-   "fetched_at": "2026-09-16T18:45:44Z",
+   "fetched_at": "2026-09-19T14:16:54Z",
    "offers": [
-    [
-     2272.0,
-     1,
-     "AT,AT"
-    ],
     [
      2804.0,
      1,
      "GF,GF"
     ],
     [
-     2890.0,
+     2880.0,
      1,
      "DE,DE"
+    ],
+    [
+     3057.0,
+     1,
+     "AT,AT"
+    ],
+    [
+     3166.0,
+     2,
+     "ET,ET,ET"
     ],
     [
      3203.0,
@@ -63471,24 +67753,24 @@
      "MS"
     ],
     [
-     3358.0,
-     1,
-     "LX,LX"
-    ],
-    [
-     3358.0,
+     3356.0,
      1,
      "AT,AT"
     ],
     [
-     3386.0,
+     4158.0,
      1,
-     "LH,LH"
+     "LX,LX"
     ],
     [
      4460.0,
      1,
      "AZ,AZ"
+    ],
+    [
+     4668.0,
+     1,
+     "BA,BA"
     ],
     [
      5344.0,
@@ -63727,6 +68009,98 @@
      4552.0,
      1,
      "KL,HV"
+    ]
+   ]
+  },
+  {
+   "origin": "JFK",
+   "dest": "CAI",
+   "cabin": "BUSINESS",
+   "date": "2026-12-23",
+   "price_usd": 3365.0,
+   "nonstop_price_usd": 5993.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:17:29Z",
+   "offers": [
+    [
+     3365.0,
+     1,
+     "LH,LH"
+    ],
+    [
+     3380.0,
+     1,
+     "LX,LX"
+    ],
+    [
+     3390.0,
+     2,
+     "LX,LH,LH"
+    ],
+    [
+     3391.0,
+     2,
+     "LH,OS,OS"
+    ],
+    [
+     3397.0,
+     2,
+     "LH,LH,LH"
+    ],
+    [
+     3431.0,
+     1,
+     "AT,AT"
+    ],
+    [
+     3479.0,
+     1,
+     "LO,LO"
+    ],
+    [
+     3581.0,
+     1,
+     "EK,EK"
+    ],
+    [
+     3581.0,
+     1,
+     "EK,EK"
+    ],
+    [
+     3735.0,
+     1,
+     "GF,GF"
+    ],
+    [
+     4668.0,
+     1,
+     "AA,BA"
+    ],
+    [
+     4805.0,
+     1,
+     "EY,EY"
+    ],
+    [
+     5344.0,
+     1,
+     "TK,TK"
+    ],
+    [
+     5993.0,
+     0,
+     "MS"
+    ],
+    [
+     8560.0,
+     1,
+     "AZ,AZ"
+    ],
+    [
+     9868.0,
+     1,
+     "BA,BA"
     ]
    ]
   },
@@ -66333,28 +70707,28 @@
    "dest": "CMN",
    "cabin": "BUSINESS",
    "date": "2026-10-12",
-   "price_usd": 1503.0,
+   "price_usd": 1502.0,
    "nonstop_price_usd": null,
    "provider": "fast-flights",
-   "fetched_at": "2026-09-16T23:41:00Z",
+   "fetched_at": "2026-09-19T14:16:30Z",
    "offers": [
     [
-     1503.0,
+     1502.0,
      2,
      "S4,S4,TP"
     ],
     [
-     1503.0,
+     1502.0,
      2,
      "S4,S4,TP"
     ],
     [
-     1503.0,
+     1502.0,
      2,
      "S4,S4,TP"
     ],
     [
-     3680.0,
+     2804.0,
      1,
      "TP,TP"
     ],
@@ -66364,7 +70738,12 @@
      "TK,TK"
     ],
     [
-     4428.0,
+     4385.0,
+     1,
+     "TK,AT"
+    ],
+    [
+     4947.0,
      2,
      "AA,AA,AT"
     ],
@@ -66377,6 +70756,11 @@
      8572.0,
      1,
      "IB,IB"
+    ],
+    [
+     8587.0,
+     2,
+     "AA,IB,IB"
     ]
    ]
   },
@@ -67475,14 +71859,19 @@
    "cabin": "ECONOMY",
    "date": "2026-09-22",
    "price_usd": 518.0,
-   "nonstop_price_usd": 755.0,
+   "nonstop_price_usd": 656.0,
    "provider": "fast-flights",
-   "fetched_at": "2026-09-16T23:58:30Z",
+   "fetched_at": "2026-09-19T14:16:09Z",
    "offers": [
     [
      518.0,
      1,
      "TP,TP"
+    ],
+    [
+     536.0,
+     1,
+     "AF,AF"
     ],
     [
      536.0,
@@ -67505,17 +71894,17 @@
      "AF,AF"
     ],
     [
-     536.0,
+     635.0,
      1,
      "AF,AF"
     ],
     [
-     755.0,
+     656.0,
      0,
      "AT"
     ],
     [
-     2456.0,
+     3512.0,
      1,
      "IB,IB"
     ]
@@ -67529,7 +71918,7 @@
    "price_usd": 538.0,
    "nonstop_price_usd": 656.0,
    "provider": "fast-flights",
-   "fetched_at": "2026-09-16T23:58:49Z",
+   "fetched_at": "2026-09-19T14:16:15Z",
    "offers": [
     [
      538.0,
@@ -67572,7 +71961,7 @@
      "AT"
     ],
     [
-     2568.0,
+     2343.0,
      1,
      "IB,IB"
     ]
@@ -67586,7 +71975,7 @@
    "price_usd": 545.0,
    "nonstop_price_usd": 656.0,
    "provider": "fast-flights",
-   "fetched_at": "2026-09-17T01:08:42Z",
+   "fetched_at": "2026-09-19T14:16:18Z",
    "offers": [
     [
      545.0,
@@ -67599,37 +71988,32 @@
      "TK,TK"
     ],
     [
-     580.0,
-     1,
-     "AF,AF"
-    ],
-    [
-     580.0,
+     595.0,
      1,
      "KL,HV"
     ],
     [
-     580.0,
+     595.0,
      1,
      "DL,HV"
     ],
     [
-     580.0,
-     1,
-     "DL,AF"
-    ],
-    [
-     580.0,
+     596.0,
      1,
      "AF,AF"
     ],
     [
-     580.0,
+     596.0,
      1,
      "DL,AF"
     ],
     [
-     580.0,
+     596.0,
+     1,
+     "AF,AF"
+    ],
+    [
+     596.0,
      1,
      "AF,AF"
     ],
@@ -67644,7 +72028,7 @@
      "AT"
     ],
     [
-     1500.0,
+     1786.0,
      1,
      "IB,IB"
     ]
@@ -68319,25 +72703,20 @@
    "dest": "CPH",
    "cabin": "BUSINESS",
    "date": "2026-10-06",
-   "price_usd": 1677.0,
+   "price_usd": 1676.0,
    "nonstop_price_usd": 8246.0,
    "provider": "fast-flights",
-   "fetched_at": "2026-09-16T22:15:40Z",
+   "fetched_at": "2026-09-19T14:17:50Z",
    "offers": [
     [
-     1677.0,
+     1676.0,
      1,
      "FI,FI"
     ],
     [
-     1677.0,
+     2131.0,
      1,
      "FI,FI"
-    ],
-    [
-     2856.0,
-     1,
-     "UX,SK"
     ],
     [
      3430.0,
@@ -68345,17 +72724,17 @@
      "DE,LH"
     ],
     [
-     3858.0,
+     3455.0,
+     1,
+     "UX,SK"
+    ],
+    [
+     3854.0,
      1,
      "LO,SK"
     ],
     [
-     3858.0,
-     1,
-     "LO,SK"
-    ],
-    [
-     4310.0,
+     4309.0,
      1,
      "LO,LO"
     ],
@@ -68376,13 +72755,13 @@
    "dest": "CPH",
    "cabin": "BUSINESS",
    "date": "2026-10-14",
-   "price_usd": 2132.0,
-   "nonstop_price_usd": 6644.0,
+   "price_usd": 2131.0,
+   "nonstop_price_usd": 8246.0,
    "provider": "fast-flights",
-   "fetched_at": "2026-09-16T22:15:40Z",
+   "fetched_at": "2026-09-19T14:17:49Z",
    "offers": [
     [
-     2132.0,
+     2131.0,
      1,
      "FI,FI"
     ],
@@ -68392,34 +72771,34 @@
      "DE,LH"
     ],
     [
-     3858.0,
+     3854.0,
      1,
      "LO,SK"
     ],
     [
-     3858.0,
+     3854.0,
      1,
      "LO,SK"
     ],
     [
-     6644.0,
-     0,
-     "DL"
-    ],
-    [
-     6663.0,
+     4309.0,
      1,
-     "AF,AF"
+     "LO,LO"
     ],
     [
-     6675.0,
+     4911.0,
      1,
-     "KL,KL"
+     "TK,TK"
     ],
     [
-     8104.0,
+     8246.0,
      0,
      "SK"
+    ],
+    [
+     8819.0,
+     0,
+     "DL"
     ]
    ]
   },
@@ -69193,6 +73572,63 @@
    "origin": "JFK",
    "dest": "CPH",
    "cabin": "BUSINESS",
+   "date": "2027-04-13",
+   "price_usd": 1546.0,
+   "nonstop_price_usd": 3469.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:17:51Z",
+   "offers": [
+    [
+     1546.0,
+     1,
+     "FI,FI"
+    ],
+    [
+     1546.0,
+     1,
+     "FI,FI"
+    ],
+    [
+     1846.0,
+     1,
+     "TP,TP"
+    ],
+    [
+     3025.0,
+     1,
+     "B6,BA"
+    ],
+    [
+     3469.0,
+     0,
+     "DL"
+    ],
+    [
+     3477.0,
+     1,
+     "AY,AY"
+    ],
+    [
+     3480.0,
+     1,
+     "DL,SK"
+    ],
+    [
+     3488.0,
+     1,
+     "AF,AF"
+    ],
+    [
+     3490.0,
+     1,
+     "BA,BA"
+    ]
+   ]
+  },
+  {
+   "origin": "JFK",
+   "dest": "CPH",
+   "cabin": "BUSINESS",
    "date": "2027-06-01",
    "price_usd": 1470.0,
    "nonstop_price_usd": 5144.0,
@@ -69717,7 +74153,7 @@
    "price_usd": 556.0,
    "nonstop_price_usd": 1399.0,
    "provider": "fast-flights",
-   "fetched_at": "2026-09-16T22:16:01Z",
+   "fetched_at": "2026-09-19T14:17:40Z",
    "offers": [
     [
      556.0,
@@ -69725,37 +74161,37 @@
      "TK,TK"
     ],
     [
-     558.0,
-     2,
-     "S4,S4,TP"
-    ],
-    [
      628.0,
      1,
      "TK,TK"
     ],
     [
-     639.0,
+     638.0,
+     2,
+     "S4,S4,TP"
+    ],
+    [
+     638.0,
      1,
      "LL,VY"
     ],
     [
-     683.0,
+     682.0,
      1,
      "LX,LX"
     ],
     [
-     683.0,
+     682.0,
      1,
      "LX,LX"
     ],
     [
-     694.0,
+     684.0,
      1,
      "FI,FI"
     ],
     [
-     694.0,
+     684.0,
      1,
      "FI,FI"
     ],
@@ -69780,7 +74216,7 @@
      "DL"
     ],
     [
-     1709.0,
+     1719.0,
      0,
      "SK"
     ]
@@ -69791,13 +74227,18 @@
    "dest": "CPH",
    "cabin": "ECONOMY",
    "date": "2026-10-05",
-   "price_usd": 245.0,
+   "price_usd": 244.0,
    "nonstop_price_usd": 1024.0,
    "provider": "fast-flights",
-   "fetched_at": "2026-09-16T19:08:01Z",
+   "fetched_at": "2026-09-19T14:17:15Z",
    "offers": [
     [
-     245.0,
+     244.0,
+     1,
+     "FI,FI"
+    ],
+    [
+     244.0,
      1,
      "FI,FI"
     ],
@@ -69812,19 +74253,19 @@
      "JU,JU"
     ],
     [
+     676.0,
+     1,
+     "FI,FI"
+    ],
+    [
      680.0,
      1,
      "LX,LX"
     ],
     [
-     687.0,
+     680.0,
      1,
-     "FI,FI"
-    ],
-    [
-     687.0,
-     1,
-     "FI,FI"
+     "LX,LX"
     ],
     [
      1024.0,
@@ -69832,7 +74273,7 @@
      "DL"
     ],
     [
-     1334.0,
+     1344.0,
      0,
      "SK"
     ]
@@ -69843,18 +74284,18 @@
    "dest": "CPH",
    "cabin": "ECONOMY",
    "date": "2026-10-13",
-   "price_usd": 245.0,
+   "price_usd": 244.0,
    "nonstop_price_usd": 869.0,
    "provider": "fast-flights",
-   "fetched_at": "2026-09-16T22:16:01Z",
+   "fetched_at": "2026-09-19T14:17:38Z",
    "offers": [
     [
-     245.0,
+     244.0,
      1,
      "FI,FI"
     ],
     [
-     245.0,
+     244.0,
      1,
      "FI,FI"
     ],
@@ -69874,14 +74315,19 @@
      "LX,LX"
     ],
     [
-     656.0,
+     650.0,
      1,
-     "LH,LH"
+     "LX,LX"
     ],
     [
      660.0,
      1,
      "SN,SN"
+    ],
+    [
+     676.0,
+     1,
+     "FI,FI"
     ],
     [
      869.0,
@@ -72560,6 +77006,17 @@
   },
   {
    "origin": "JFK",
+   "dest": "CPT",
+   "cabin": "BUSINESS",
+   "date": "2027-08-15",
+   "price_usd": null,
+   "nonstop_price_usd": null,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:17:20Z",
+   "offers": []
+  },
+  {
+   "origin": "JFK",
    "dest": "CTA",
    "cabin": "BUSINESS",
    "date": "2027-01-07",
@@ -72831,18 +77288,13 @@
    "dest": "CTA",
    "cabin": "ECONOMY",
    "date": "2026-10-03",
-   "price_usd": 494.0,
+   "price_usd": 488.0,
    "nonstop_price_usd": 1009.0,
    "provider": "fast-flights",
-   "fetched_at": "2026-09-16T23:40:59Z",
+   "fetched_at": "2026-09-19T14:16:09Z",
    "offers": [
     [
-     494.0,
-     1,
-     "AT,AT"
-    ],
-    [
-     600.0,
+     488.0,
      1,
      "AT,AT"
     ],
@@ -72857,19 +77309,34 @@
      "BA,BA"
     ],
     [
+     679.0,
+     1,
+     "AT,AT"
+    ],
+    [
      704.0,
      1,
      "IB,IB"
     ],
     [
-     704.0,
+     748.0,
      1,
-     "AA,IB"
+     "AZ,AZ"
     ],
     [
-     795.0,
+     748.0,
      1,
-     "LL,VY"
+     "AZ,AZ"
+    ],
+    [
+     748.0,
+     1,
+     "AZ,AZ"
+    ],
+    [
+     836.0,
+     1,
+     "AA,AZ"
     ],
     [
      1009.0,
@@ -72877,24 +77344,14 @@
      "DL"
     ],
     [
-     1030.0,
-     1,
-     "DL,AZ"
-    ],
-    [
-     1040.0,
-     1,
-     "KL,KL"
-    ],
-    [
-     1040.0,
+     1039.0,
      1,
      "DL,KL"
     ],
     [
-     1404.0,
+     1054.0,
      1,
-     "LH,VL"
+     "LH,LH"
     ]
    ]
   },
@@ -72903,18 +77360,18 @@
    "dest": "CTA",
    "cabin": "ECONOMY",
    "date": "2026-10-17",
-   "price_usd": 494.0,
+   "price_usd": 488.0,
    "nonstop_price_usd": 539.0,
    "provider": "fast-flights",
-   "fetched_at": "2026-09-16T23:41:09Z",
+   "fetched_at": "2026-09-19T14:16:15Z",
    "offers": [
     [
-     494.0,
+     488.0,
      1,
      "AT,AT"
     ],
     [
-     518.0,
+     516.0,
      1,
      "AT,AT"
     ],
@@ -72929,14 +77386,19 @@
      "DL,AZ"
     ],
     [
-     653.0,
+     596.0,
      1,
-     "DL,KL"
+     "AZ,AZ"
     ],
     [
-     653.0,
+     596.0,
      1,
-     "KL,KL"
+     "AZ,AZ"
+    ],
+    [
+     652.0,
+     1,
+     "DL,KL"
     ],
     [
      666.0,
@@ -72947,11 +77409,6 @@
      702.0,
      1,
      "LH,LH"
-    ],
-    [
-     834.0,
-     1,
-     "LH,VL"
     ]
    ]
   },
@@ -73653,6 +78110,58 @@
      1060.0,
      1,
      "CM,CM"
+    ]
+   ]
+  },
+  {
+   "origin": "JFK",
+   "dest": "CTG",
+   "cabin": "ECONOMY",
+   "date": "2026-10-24",
+   "price_usd": 223.0,
+   "nonstop_price_usd": 229.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:16:12Z",
+   "offers": [
+    [
+     223.0,
+     1,
+     "B6,B6"
+    ],
+    [
+     223.0,
+     1,
+     "DL,DL"
+    ],
+    [
+     226.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     229.0,
+     0,
+     "B6"
+    ],
+    [
+     330.0,
+     1,
+     "LA,LA"
+    ],
+    [
+     378.0,
+     1,
+     "CM,CM"
+    ],
+    [
+     418.0,
+     1,
+     "CM,CM"
+    ],
+    [
+     682.0,
+     1,
+     "AA,AA"
     ]
    ]
   },
@@ -78810,6 +83319,28 @@
   },
   {
    "origin": "JFK",
+   "dest": "DOH",
+   "cabin": "BUSINESS",
+   "date": "2027-08-13",
+   "price_usd": null,
+   "nonstop_price_usd": null,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:16:55Z",
+   "offers": []
+  },
+  {
+   "origin": "JFK",
+   "dest": "DOH",
+   "cabin": "BUSINESS",
+   "date": "2027-08-14",
+   "price_usd": null,
+   "nonstop_price_usd": null,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:16:55Z",
+   "offers": []
+  },
+  {
+   "origin": "JFK",
    "dest": "DUB",
    "cabin": "BUSINESS",
    "date": "2026-09-22",
@@ -78855,13 +83386,13 @@
    "dest": "DUB",
    "cabin": "BUSINESS",
    "date": "2026-10-05",
-   "price_usd": 1677.0,
-   "nonstop_price_usd": 3259.0,
+   "price_usd": 1676.0,
+   "nonstop_price_usd": 4859.0,
    "provider": "fast-flights",
-   "fetched_at": "2026-09-16T19:07:15Z",
+   "fetched_at": "2026-09-19T14:16:57Z",
    "offers": [
     [
-     1677.0,
+     1676.0,
      1,
      "FI,FI"
     ],
@@ -78876,7 +83407,7 @@
      "TP,TP"
     ],
     [
-     3259.0,
+     4859.0,
      0,
      "B6"
     ],
@@ -80059,48 +84590,6 @@
      4408.0,
      0,
      "DL"
-    ]
-   ]
-  },
-  {
-   "origin": "JFK",
-   "dest": "DUB",
-   "cabin": "ECONOMY",
-   "date": "2026-09-18",
-   "price_usd": 475.0,
-   "nonstop_price_usd": 475.0,
-   "provider": "fast-flights",
-   "fetched_at": "2026-09-16T18:46:11Z",
-   "offers": [
-    [
-     475.0,
-     0,
-     "DL"
-    ],
-    [
-     479.0,
-     1,
-     "BA,BA"
-    ],
-    [
-     487.0,
-     0,
-     "EI"
-    ],
-    [
-     487.0,
-     0,
-     "EI"
-    ],
-    [
-     487.0,
-     0,
-     "EI"
-    ],
-    [
-     509.0,
-     0,
-     "B6"
     ]
    ]
   },
@@ -82178,6 +86667,545 @@
   },
   {
    "origin": "JFK",
+   "dest": "DXB",
+   "cabin": "BUSINESS",
+   "date": "2027-08-15",
+   "price_usd": null,
+   "nonstop_price_usd": null,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:16:54Z",
+   "offers": []
+  },
+  {
+   "origin": "JFK",
+   "dest": "EDI",
+   "cabin": "BUSINESS",
+   "date": "2026-10-01",
+   "price_usd": 2775.0,
+   "nonstop_price_usd": 6089.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:17:46Z",
+   "offers": [
+    [
+     2775.0,
+     1,
+     "FI,FI"
+    ],
+    [
+     4906.0,
+     1,
+     "TK,TK"
+    ],
+    [
+     4926.0,
+     1,
+     "LX,WK"
+    ],
+    [
+     4954.0,
+     1,
+     "LH,LH"
+    ],
+    [
+     4954.0,
+     1,
+     "LH,LH"
+    ],
+    [
+     6009.0,
+     1,
+     "AF,AF"
+    ],
+    [
+     6009.0,
+     1,
+     "AF,AF"
+    ],
+    [
+     6089.0,
+     0,
+     "AA"
+    ]
+   ]
+  },
+  {
+   "origin": "JFK",
+   "dest": "EDI",
+   "cabin": "BUSINESS",
+   "date": "2026-10-12",
+   "price_usd": 1620.0,
+   "nonstop_price_usd": 1999.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:17:46Z",
+   "offers": [
+    [
+     1620.0,
+     1,
+     "FI,FI"
+    ],
+    [
+     1853.0,
+     1,
+     "B6,B6"
+    ],
+    [
+     1999.0,
+     0,
+     "DL"
+    ],
+    [
+     2003.0,
+     1,
+     "DL,DL"
+    ],
+    [
+     2019.0,
+     1,
+     "AF,AF"
+    ],
+    [
+     2049.0,
+     0,
+     "AA"
+    ],
+    [
+     2060.0,
+     1,
+     "BA,BA"
+    ],
+    [
+     2094.0,
+     1,
+     "LH,LH"
+    ],
+    [
+     4409.0,
+     0,
+     "B6"
+    ]
+   ]
+  },
+  {
+   "origin": "JFK",
+   "dest": "EDI",
+   "cabin": "BUSINESS",
+   "date": "2026-10-20",
+   "price_usd": 1849.0,
+   "nonstop_price_usd": 1849.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:17:29Z",
+   "offers": [
+    [
+     1849.0,
+     0,
+     "B6"
+    ],
+    [
+     1999.0,
+     0,
+     "DL"
+    ],
+    [
+     2003.0,
+     1,
+     "DL,DL"
+    ],
+    [
+     2049.0,
+     0,
+     "AA"
+    ],
+    [
+     2060.0,
+     1,
+     "BA,BA"
+    ],
+    [
+     2060.0,
+     1,
+     "BA,BA"
+    ],
+    [
+     2060.0,
+     1,
+     "BA,BA"
+    ],
+    [
+     2094.0,
+     1,
+     "LH,LH"
+    ]
+   ]
+  },
+  {
+   "origin": "JFK",
+   "dest": "EDI",
+   "cabin": "BUSINESS",
+   "date": "2026-10-31",
+   "price_usd": 2775.0,
+   "nonstop_price_usd": 7339.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:17:20Z",
+   "offers": [
+    [
+     2775.0,
+     1,
+     "FI,FI"
+    ],
+    [
+     3386.0,
+     1,
+     "SN,SN"
+    ],
+    [
+     3470.0,
+     1,
+     "BA,BA"
+    ],
+    [
+     3470.0,
+     1,
+     "BA,BA"
+    ],
+    [
+     3470.0,
+     1,
+     "BA,BA"
+    ],
+    [
+     3479.0,
+     1,
+     "AF,AF"
+    ],
+    [
+     3576.0,
+     1,
+     "LX,WK"
+    ],
+    [
+     7339.0,
+     0,
+     "DL"
+    ]
+   ]
+  },
+  {
+   "origin": "JFK",
+   "dest": "EDI",
+   "cabin": "BUSINESS",
+   "date": "2026-11-08",
+   "price_usd": 1640.0,
+   "nonstop_price_usd": 3759.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:17:58Z",
+   "offers": [
+    [
+     1640.0,
+     1,
+     "FI,FI"
+    ],
+    [
+     3480.0,
+     1,
+     "DE,LH"
+    ],
+    [
+     3686.0,
+     1,
+     "SN,SN"
+    ],
+    [
+     3704.0,
+     1,
+     "LH,LH"
+    ],
+    [
+     3759.0,
+     0,
+     "DL"
+    ],
+    [
+     3770.0,
+     1,
+     "BA,BA"
+    ],
+    [
+     3779.0,
+     1,
+     "AF,AF"
+    ],
+    [
+     3789.0,
+     1,
+     "DL,KL"
+    ]
+   ]
+  },
+  {
+   "origin": "JFK",
+   "dest": "EDI",
+   "cabin": "BUSINESS",
+   "date": "2026-11-16",
+   "price_usd": 1620.0,
+   "nonstop_price_usd": null,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:17:00Z",
+   "offers": [
+    [
+     1620.0,
+     1,
+     "FI,FI"
+    ],
+    [
+     3480.0,
+     1,
+     "DE,LH"
+    ],
+    [
+     3704.0,
+     1,
+     "LH,LH"
+    ],
+    [
+     3722.0,
+     2,
+     "LH,SN,SN"
+    ],
+    [
+     3722.0,
+     2,
+     "LH,SN,SN"
+    ],
+    [
+     3762.0,
+     1,
+     "EI,EI"
+    ],
+    [
+     3770.0,
+     1,
+     "BA,BA"
+    ],
+    [
+     3770.0,
+     1,
+     "BA,BA"
+    ],
+    [
+     3770.0,
+     1,
+     "BA,BA"
+    ],
+    [
+     3770.0,
+     1,
+     "BA,BA"
+    ],
+    [
+     3789.0,
+     1,
+     "KL,KL"
+    ],
+    [
+     3789.0,
+     1,
+     "KL,KL"
+    ]
+   ]
+  },
+  {
+   "origin": "JFK",
+   "dest": "EDI",
+   "cabin": "BUSINESS",
+   "date": "2026-11-27",
+   "price_usd": 1690.0,
+   "nonstop_price_usd": null,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:17:14Z",
+   "offers": [
+    [
+     1690.0,
+     1,
+     "FI,FI"
+    ],
+    [
+     3383.0,
+     1,
+     "LH,VL"
+    ],
+    [
+     3404.0,
+     1,
+     "LH,LH"
+    ],
+    [
+     3422.0,
+     2,
+     "LH,SN,SN"
+    ],
+    [
+     3422.0,
+     2,
+     "LH,SN,SN"
+    ],
+    [
+     3462.0,
+     1,
+     "EI,EI"
+    ],
+    [
+     3470.0,
+     1,
+     "BA,BA"
+    ],
+    [
+     3470.0,
+     1,
+     "AA,BA"
+    ],
+    [
+     3470.0,
+     1,
+     "AA,BA"
+    ],
+    [
+     3470.0,
+     1,
+     "BA,BA"
+    ],
+    [
+     4299.0,
+     1,
+     "KL,KL"
+    ]
+   ]
+  },
+  {
+   "origin": "JFK",
+   "dest": "EDI",
+   "cabin": "BUSINESS",
+   "date": "2026-12-07",
+   "price_usd": 1620.0,
+   "nonstop_price_usd": null,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:17:47Z",
+   "offers": [
+    [
+     1620.0,
+     1,
+     "FI,FI"
+    ],
+    [
+     3404.0,
+     1,
+     "LH,LH"
+    ],
+    [
+     3463.0,
+     2,
+     "AA,AA,AA"
+    ],
+    [
+     3470.0,
+     1,
+     "BA,BA"
+    ],
+    [
+     3470.0,
+     1,
+     "BA,BA"
+    ],
+    [
+     3470.0,
+     1,
+     "AA,BA"
+    ],
+    [
+     3470.0,
+     1,
+     "BA,BA"
+    ],
+    [
+     3470.0,
+     1,
+     "AA,BA"
+    ],
+    [
+     3470.0,
+     1,
+     "BA,BA"
+    ],
+    [
+     3479.0,
+     1,
+     "AF,AF"
+    ],
+    [
+     12977.0,
+     1,
+     "EI,EI"
+    ]
+   ]
+  },
+  {
+   "origin": "JFK",
+   "dest": "EDI",
+   "cabin": "BUSINESS",
+   "date": "2026-12-19",
+   "price_usd": 2444.0,
+   "nonstop_price_usd": 7339.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:17:47Z",
+   "offers": [
+    [
+     2444.0,
+     1,
+     "FI,FI"
+    ],
+    [
+     3094.0,
+     1,
+     "FI,FI"
+    ],
+    [
+     3376.0,
+     1,
+     "SN,SN"
+    ],
+    [
+     3460.0,
+     1,
+     "BA,BA"
+    ],
+    [
+     4180.0,
+     1,
+     "BA,BA"
+    ],
+    [
+     4180.0,
+     1,
+     "BA,BA"
+    ],
+    [
+     4180.0,
+     1,
+     "BA,BA"
+    ],
+    [
+     4180.0,
+     1,
+     "BA,BA"
+    ],
+    [
+     7339.0,
+     0,
+     "DL"
+    ]
+   ]
+  },
+  {
+   "origin": "JFK",
    "dest": "EDI",
    "cabin": "BUSINESS",
    "date": "2026-12-29",
@@ -82205,6 +87233,913 @@
      3230.0,
      1,
      "KL,KL"
+    ]
+   ]
+  },
+  {
+   "origin": "JFK",
+   "dest": "EDI",
+   "cabin": "BUSINESS",
+   "date": "2027-01-06",
+   "price_usd": 1620.0,
+   "nonstop_price_usd": 3199.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:17:30Z",
+   "offers": [
+    [
+     1620.0,
+     1,
+     "FI,FI"
+    ],
+    [
+     3199.0,
+     0,
+     "DL"
+    ],
+    [
+     3202.0,
+     1,
+     "EI,EI"
+    ],
+    [
+     3212.0,
+     1,
+     "BA,BA"
+    ],
+    [
+     3212.0,
+     1,
+     "BA,BA"
+    ],
+    [
+     3212.0,
+     1,
+     "AA,BA"
+    ],
+    [
+     3219.0,
+     1,
+     "AF,AF"
+    ],
+    [
+     3229.0,
+     1,
+     "DL,KL"
+    ]
+   ]
+  },
+  {
+   "origin": "JFK",
+   "dest": "EDI",
+   "cabin": "BUSINESS",
+   "date": "2027-01-14",
+   "price_usd": 3395.0,
+   "nonstop_price_usd": null,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:17:06Z",
+   "offers": [
+    [
+     3395.0,
+     1,
+     "LH,LH"
+    ],
+    [
+     3409.0,
+     2,
+     "OS,OS,LH"
+    ],
+    [
+     3409.0,
+     2,
+     "OS,OS,LH"
+    ],
+    [
+     3409.0,
+     2,
+     "OS,OS,LH"
+    ],
+    [
+     3452.0,
+     1,
+     "EI,EI"
+    ],
+    [
+     3462.0,
+     1,
+     "BA,BA"
+    ],
+    [
+     3462.0,
+     1,
+     "BA,BA"
+    ],
+    [
+     3462.0,
+     1,
+     "AA,BA"
+    ],
+    [
+     3462.0,
+     1,
+     "BA,BA"
+    ],
+    [
+     3462.0,
+     1,
+     "BA,BA"
+    ],
+    [
+     3469.0,
+     1,
+     "AF,AF"
+    ]
+   ]
+  },
+  {
+   "origin": "JFK",
+   "dest": "EDI",
+   "cabin": "BUSINESS",
+   "date": "2027-01-26",
+   "price_usd": 1640.0,
+   "nonstop_price_usd": null,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:17:07Z",
+   "offers": [
+    [
+     1640.0,
+     1,
+     "FI,FI"
+    ],
+    [
+     3202.0,
+     1,
+     "EI,EI"
+    ],
+    [
+     3212.0,
+     1,
+     "BA,BA"
+    ],
+    [
+     3212.0,
+     1,
+     "BA,BA"
+    ],
+    [
+     3212.0,
+     1,
+     "AA,BA"
+    ],
+    [
+     3212.0,
+     1,
+     "BA,BA"
+    ],
+    [
+     3212.0,
+     1,
+     "BA,BA"
+    ],
+    [
+     3219.0,
+     1,
+     "AF,AF"
+    ]
+   ]
+  },
+  {
+   "origin": "JFK",
+   "dest": "EDI",
+   "cabin": "BUSINESS",
+   "date": "2027-02-06",
+   "price_usd": 1670.0,
+   "nonstop_price_usd": null,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:17:07Z",
+   "offers": [
+    [
+     1670.0,
+     1,
+     "FI,FI"
+    ],
+    [
+     3395.0,
+     1,
+     "LH,LH"
+    ],
+    [
+     3452.0,
+     1,
+     "EI,EI"
+    ],
+    [
+     3462.0,
+     1,
+     "BA,BA"
+    ],
+    [
+     3462.0,
+     1,
+     "BA,BA"
+    ],
+    [
+     3462.0,
+     1,
+     "BA,BA"
+    ],
+    [
+     3462.0,
+     1,
+     "AA,BA"
+    ],
+    [
+     3462.0,
+     1,
+     "BA,BA"
+    ],
+    [
+     3469.0,
+     1,
+     "AF,AF"
+    ]
+   ]
+  },
+  {
+   "origin": "JFK",
+   "dest": "EDI",
+   "cabin": "BUSINESS",
+   "date": "2027-02-16",
+   "price_usd": 1640.0,
+   "nonstop_price_usd": null,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:17:08Z",
+   "offers": [
+    [
+     1640.0,
+     1,
+     "FI,FI"
+    ],
+    [
+     3202.0,
+     1,
+     "EI,EI"
+    ],
+    [
+     3212.0,
+     1,
+     "BA,BA"
+    ],
+    [
+     3212.0,
+     1,
+     "AA,BA"
+    ],
+    [
+     3212.0,
+     1,
+     "BA,BA"
+    ],
+    [
+     3212.0,
+     1,
+     "AA,BA"
+    ],
+    [
+     3212.0,
+     1,
+     "BA,BA"
+    ],
+    [
+     3212.0,
+     1,
+     "BA,BA"
+    ],
+    [
+     3219.0,
+     1,
+     "AF,AF"
+    ],
+    [
+     3219.0,
+     1,
+     "DL,AF"
+    ],
+    [
+     3229.0,
+     1,
+     "KL,KL"
+    ],
+    [
+     3229.0,
+     1,
+     "DL,KL"
+    ]
+   ]
+  },
+  {
+   "origin": "JFK",
+   "dest": "EDI",
+   "cabin": "BUSINESS",
+   "date": "2027-03-01",
+   "price_usd": 1620.0,
+   "nonstop_price_usd": null,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:17:09Z",
+   "offers": [
+    [
+     1620.0,
+     1,
+     "FI,FI"
+    ],
+    [
+     3395.0,
+     1,
+     "LH,LH"
+    ],
+    [
+     3412.0,
+     2,
+     "LH,SN,SN"
+    ],
+    [
+     3412.0,
+     2,
+     "LH,SN,SN"
+    ],
+    [
+     3452.0,
+     1,
+     "EI,EI"
+    ],
+    [
+     3462.0,
+     1,
+     "BA,BA"
+    ],
+    [
+     3462.0,
+     1,
+     "BA,BA"
+    ],
+    [
+     3462.0,
+     1,
+     "BA,BA"
+    ],
+    [
+     3462.0,
+     1,
+     "BA,BA"
+    ],
+    [
+     3479.0,
+     1,
+     "KL,KL"
+    ],
+    [
+     3479.0,
+     1,
+     "KL,KL"
+    ]
+   ]
+  },
+  {
+   "origin": "JFK",
+   "dest": "EDI",
+   "cabin": "BUSINESS",
+   "date": "2027-03-16",
+   "price_usd": 1640.0,
+   "nonstop_price_usd": 3199.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:17:11Z",
+   "offers": [
+    [
+     1640.0,
+     1,
+     "FI,FI"
+    ],
+    [
+     3199.0,
+     0,
+     "DL"
+    ],
+    [
+     3202.0,
+     1,
+     "EI,EI"
+    ],
+    [
+     3212.0,
+     1,
+     "BA,BA"
+    ],
+    [
+     3212.0,
+     1,
+     "AA,BA"
+    ],
+    [
+     3212.0,
+     1,
+     "AA,BA"
+    ],
+    [
+     3212.0,
+     1,
+     "BA,BA"
+    ],
+    [
+     3229.0,
+     1,
+     "DL,KL"
+    ]
+   ]
+  },
+  {
+   "origin": "JFK",
+   "dest": "EDI",
+   "cabin": "BUSINESS",
+   "date": "2027-03-29",
+   "price_usd": 1620.0,
+   "nonstop_price_usd": 3449.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:17:12Z",
+   "offers": [
+    [
+     1620.0,
+     1,
+     "FI,FI"
+    ],
+    [
+     3449.0,
+     0,
+     "AA"
+    ],
+    [
+     3449.0,
+     0,
+     "DL"
+    ],
+    [
+     3462.0,
+     1,
+     "BA,BA"
+    ],
+    [
+     3462.0,
+     1,
+     "BA,BA"
+    ],
+    [
+     3462.0,
+     1,
+     "VS,BA"
+    ],
+    [
+     3469.0,
+     1,
+     "AF,AF"
+    ],
+    [
+     3469.0,
+     1,
+     "AF,AF"
+    ]
+   ]
+  },
+  {
+   "origin": "JFK",
+   "dest": "EDI",
+   "cabin": "BUSINESS",
+   "date": "2027-04-07",
+   "price_usd": 1620.0,
+   "nonstop_price_usd": 3199.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:17:30Z",
+   "offers": [
+    [
+     1620.0,
+     1,
+     "FI,FI"
+    ],
+    [
+     3199.0,
+     0,
+     "AA"
+    ],
+    [
+     3212.0,
+     1,
+     "BA,BA"
+    ],
+    [
+     3212.0,
+     1,
+     "BA,BA"
+    ],
+    [
+     3212.0,
+     1,
+     "BA,BA"
+    ],
+    [
+     3219.0,
+     1,
+     "AF,AF"
+    ],
+    [
+     3219.0,
+     1,
+     "AF,AF"
+    ],
+    [
+     3245.0,
+     1,
+     "LH,LH"
+    ],
+    [
+     6989.0,
+     0,
+     "DL"
+    ]
+   ]
+  },
+  {
+   "origin": "JFK",
+   "dest": "EDI",
+   "cabin": "BUSINESS",
+   "date": "2027-04-16",
+   "price_usd": 1690.0,
+   "nonstop_price_usd": 3449.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:17:09Z",
+   "offers": [
+    [
+     1690.0,
+     1,
+     "FI,FI"
+    ],
+    [
+     3449.0,
+     0,
+     "AA"
+    ],
+    [
+     3462.0,
+     1,
+     "BA,BA"
+    ],
+    [
+     3462.0,
+     1,
+     "BA,BA"
+    ],
+    [
+     3462.0,
+     1,
+     "BA,BA"
+    ],
+    [
+     3462.0,
+     1,
+     "VS,BA"
+    ],
+    [
+     4269.0,
+     0,
+     "DL"
+    ],
+    [
+     4289.0,
+     1,
+     "AF,AF"
+    ]
+   ]
+  },
+  {
+   "origin": "JFK",
+   "dest": "EDI",
+   "cabin": "BUSINESS",
+   "date": "2027-04-26",
+   "price_usd": 1620.0,
+   "nonstop_price_usd": 3449.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:17:31Z",
+   "offers": [
+    [
+     1620.0,
+     1,
+     "FI,FI"
+    ],
+    [
+     3353.0,
+     1,
+     "B6,B6"
+    ],
+    [
+     3449.0,
+     0,
+     "AA"
+    ],
+    [
+     3462.0,
+     1,
+     "BA,BA"
+    ],
+    [
+     3462.0,
+     1,
+     "BA,BA"
+    ],
+    [
+     3462.0,
+     1,
+     "BA,BA"
+    ],
+    [
+     3469.0,
+     1,
+     "AF,AF"
+    ],
+    [
+     4269.0,
+     0,
+     "DL"
+    ]
+   ]
+  },
+  {
+   "origin": "JFK",
+   "dest": "EDI",
+   "cabin": "BUSINESS",
+   "date": "2027-05-10",
+   "price_usd": 1628.0,
+   "nonstop_price_usd": 3649.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:17:32Z",
+   "offers": [
+    [
+     1628.0,
+     1,
+     "FI,FI"
+    ],
+    [
+     3649.0,
+     0,
+     "B6"
+    ],
+    [
+     3654.0,
+     0,
+     "AA"
+    ],
+    [
+     3667.0,
+     1,
+     "BA,BA"
+    ],
+    [
+     3667.0,
+     1,
+     "BA,BA"
+    ],
+    [
+     3667.0,
+     1,
+     "BA,BA"
+    ],
+    [
+     3674.0,
+     1,
+     "AF,AF"
+    ],
+    [
+     5394.0,
+     0,
+     "DL"
+    ]
+   ]
+  },
+  {
+   "origin": "JFK",
+   "dest": "EDI",
+   "cabin": "BUSINESS",
+   "date": "2027-05-24",
+   "price_usd": 3052.0,
+   "nonstop_price_usd": 3649.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:17:32Z",
+   "offers": [
+    [
+     3052.0,
+     1,
+     "FI,FI"
+    ],
+    [
+     3649.0,
+     0,
+     "B6"
+    ],
+    [
+     3654.0,
+     0,
+     "AA"
+    ],
+    [
+     3654.0,
+     0,
+     "DL"
+    ],
+    [
+     3658.0,
+     1,
+     "DL,DL"
+    ],
+    [
+     3667.0,
+     1,
+     "BA,BA"
+    ],
+    [
+     3667.0,
+     1,
+     "BA,BA"
+    ],
+    [
+     3674.0,
+     1,
+     "AF,AF"
+    ]
+   ]
+  },
+  {
+   "origin": "JFK",
+   "dest": "EDI",
+   "cabin": "BUSINESS",
+   "date": "2027-06-01",
+   "price_usd": 1972.0,
+   "nonstop_price_usd": 3404.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:17:33Z",
+   "offers": [
+    [
+     1972.0,
+     1,
+     "FI,FI"
+    ],
+    [
+     3404.0,
+     0,
+     "AA"
+    ],
+    [
+     3404.0,
+     0,
+     "B6"
+    ],
+    [
+     3417.0,
+     1,
+     "BA,BA"
+    ],
+    [
+     3417.0,
+     1,
+     "BA,BA"
+    ],
+    [
+     3417.0,
+     1,
+     "VS,BA"
+    ],
+    [
+     3450.0,
+     1,
+     "LH,LH"
+    ],
+    [
+     5044.0,
+     0,
+     "DL"
+    ]
+   ]
+  },
+  {
+   "origin": "JFK",
+   "dest": "EDI",
+   "cabin": "BUSINESS",
+   "date": "2027-06-14",
+   "price_usd": 3654.0,
+   "nonstop_price_usd": 3654.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:17:33Z",
+   "offers": [
+    [
+     3654.0,
+     0,
+     "AA"
+    ],
+    [
+     3667.0,
+     1,
+     "BA,BA"
+    ],
+    [
+     3667.0,
+     1,
+     "BA,BA"
+    ],
+    [
+     3667.0,
+     1,
+     "BA,BA"
+    ],
+    [
+     3700.0,
+     1,
+     "LH,LH"
+    ],
+    [
+     3874.0,
+     1,
+     "AF,AF"
+    ],
+    [
+     3874.0,
+     1,
+     "AF,AF"
+    ],
+    [
+     4419.0,
+     0,
+     "DL"
+    ],
+    [
+     7129.0,
+     0,
+     "B6"
+    ]
+   ]
+  },
+  {
+   "origin": "JFK",
+   "dest": "EDI",
+   "cabin": "BUSINESS",
+   "date": "2027-06-22",
+   "price_usd": 2414.0,
+   "nonstop_price_usd": 3404.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:17:34Z",
+   "offers": [
+    [
+     2414.0,
+     1,
+     "FI,FI"
+    ],
+    [
+     3404.0,
+     0,
+     "AA"
+    ],
+    [
+     3417.0,
+     1,
+     "BA,BA"
+    ],
+    [
+     3417.0,
+     1,
+     "BA,BA"
+    ],
+    [
+     3450.0,
+     1,
+     "LH,LH"
+    ],
+    [
+     3624.0,
+     1,
+     "AF,AF"
+    ],
+    [
+     3624.0,
+     1,
+     "AF,AF"
+    ],
+    [
+     3635.0,
+     1,
+     "KL,KL"
+    ],
+    [
+     6979.0,
+     0,
+     "B6"
+    ],
+    [
+     8104.0,
+     0,
+     "DL"
     ]
    ]
   },
@@ -82324,6 +88259,58 @@
      3639.0,
      1,
      "AF,AF"
+    ]
+   ]
+  },
+  {
+   "origin": "JFK",
+   "dest": "EDI",
+   "cabin": "BUSINESS",
+   "date": "2027-08-02",
+   "price_usd": 1628.0,
+   "nonstop_price_usd": 3449.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:17:34Z",
+   "offers": [
+    [
+     1628.0,
+     1,
+     "FI,FI"
+    ],
+    [
+     3449.0,
+     0,
+     "AA"
+    ],
+    [
+     3449.0,
+     0,
+     "DL"
+    ],
+    [
+     3462.0,
+     1,
+     "BA,BA"
+    ],
+    [
+     3462.0,
+     1,
+     "BA,BA"
+    ],
+    [
+     3469.0,
+     1,
+     "AF,AF"
+    ],
+    [
+     3469.0,
+     1,
+     "AF,AF"
+    ],
+    [
+     5289.0,
+     0,
+     "B6"
     ]
    ]
   },
@@ -84499,11 +90486,93 @@
    "origin": "JFK",
    "dest": "FCO",
    "cabin": "BUSINESS",
+   "date": "2026-09-22",
+   "price_usd": 2740.0,
+   "nonstop_price_usd": null,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:16:59Z",
+   "offers": [
+    [
+     2740.0,
+     1,
+     "UX,UX"
+    ],
+    [
+     3011.0,
+     1,
+     "FI,FI"
+    ],
+    [
+     3243.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     3258.0,
+     1,
+     "LX,LX"
+    ],
+    [
+     3258.0,
+     1,
+     "AF,AF"
+    ],
+    [
+     3258.0,
+     1,
+     "AF,AF"
+    ],
+    [
+     3258.0,
+     1,
+     "AF,AF"
+    ],
+    [
+     3258.0,
+     1,
+     "LX,LX"
+    ],
+    [
+     3262.0,
+     1,
+     "LH,LH"
+    ],
+    [
+     3262.0,
+     1,
+     "LH,VL"
+    ],
+    [
+     3277.0,
+     1,
+     "TP,TP"
+    ],
+    [
+     3284.0,
+     1,
+     "LH,LH"
+    ],
+    [
+     3472.0,
+     1,
+     "LX,AZ"
+    ],
+    [
+     3789.0,
+     1,
+     "AY,AY"
+    ]
+   ]
+  },
+  {
+   "origin": "JFK",
+   "dest": "FCO",
+   "cabin": "BUSINESS",
    "date": "2026-10-05",
    "price_usd": 1363.0,
-   "nonstop_price_usd": 3806.0,
+   "nonstop_price_usd": 3489.0,
    "provider": "fast-flights",
-   "fetched_at": "2026-09-16T22:15:44Z",
+   "fetched_at": "2026-09-19T14:17:45Z",
    "offers": [
     [
      1363.0,
@@ -84536,9 +90605,19 @@
      "TP,TP"
     ],
     [
-     3425.0,
+     3424.0,
      1,
      "LO,LO"
+    ],
+    [
+     3489.0,
+     0,
+     "AA"
+    ],
+    [
+     3503.0,
+     1,
+     "IB,IB"
     ],
     [
      3503.0,
@@ -84556,9 +90635,9 @@
      "LX,LX"
     ],
     [
-     3509.0,
+     3508.0,
      1,
-     "AA,BA"
+     "AF,AF"
     ],
     [
      3512.0,
@@ -84566,32 +90645,17 @@
      "LH,LH"
     ],
     [
+     3519.0,
+     1,
+     "KL,KL"
+    ],
+    [
      3534.0,
      1,
      "LH,LH"
     ],
     [
-     3715.0,
-     1,
-     "AY,AY"
-    ],
-    [
-     3806.0,
-     0,
-     "AA"
-    ],
-    [
-     3820.0,
-     1,
-     "IB,IB"
-    ],
-    [
-     3826.0,
-     1,
-     "BA,BA"
-    ],
-    [
-     3826.0,
+     3825.0,
      1,
      "BA,BA"
     ],
@@ -84599,36 +90663,21 @@
      3925.0,
      1,
      "AF,AF"
-    ],
-    [
-     3925.0,
-     1,
-     "AF,AF"
-    ],
-    [
-     3925.0,
-     1,
-     "AF,AF"
-    ],
-    [
-     3937.0,
-     1,
-     "KL,KL"
-    ],
-    [
-     4973.0,
-     0,
-     "AZ"
-    ],
-    [
-     4973.0,
-     0,
-     "AZ"
     ],
     [
      9294.0,
      0,
      "DL"
+    ],
+    [
+     9294.0,
+     0,
+     "DL"
+    ],
+    [
+     14186.0,
+     0,
+     "AZ"
     ]
    ]
   },
@@ -84640,7 +90689,7 @@
    "price_usd": 1350.0,
    "nonstop_price_usd": 3556.0,
    "provider": "fast-flights",
-   "fetched_at": "2026-09-16T22:15:52Z",
+   "fetched_at": "2026-09-19T14:17:45Z",
    "offers": [
     [
      1350.0,
@@ -84648,14 +90697,9 @@
      "DE,DE"
     ],
     [
-     2342.0,
+     2355.0,
      1,
      "FI,FI"
-    ],
-    [
-     2401.0,
-     1,
-     "TP,TP"
     ],
     [
      2740.0,
@@ -84663,14 +90707,9 @@
      "UX,UX"
     ],
     [
-     2794.0,
+     2791.0,
      1,
      "AT,AT"
-    ],
-    [
-     2991.0,
-     1,
-     "FI,FI"
     ],
     [
      3256.0,
@@ -84678,12 +90717,22 @@
      "LX,LX"
     ],
     [
+     3256.0,
+     1,
+     "LX,LX"
+    ],
+    [
+     3277.0,
+     1,
+     "TP,TP"
+    ],
+    [
      3556.0,
      0,
      "AA"
     ],
     [
-     4648.0,
+     4683.0,
      0,
      "AZ"
     ],
@@ -88272,35 +94321,35 @@
    "dest": "FRA",
    "cabin": "ECONOMY",
    "date": "2026-09-26",
-   "price_usd": 300.0,
-   "nonstop_price_usd": 300.0,
+   "price_usd": 290.0,
+   "nonstop_price_usd": 320.0,
    "provider": "fast-flights",
-   "fetched_at": "2026-09-16T22:15:54Z",
+   "fetched_at": "2026-09-19T14:16:35Z",
    "offers": [
     [
-     300.0,
-     0,
-     "DE"
-    ],
-    [
-     320.0,
+     290.0,
      1,
      "B6,DE"
     ],
     [
-     514.0,
-     1,
-     "JU,JU"
+     320.0,
+     0,
+     "DE"
     ],
     [
-     551.0,
+     413.0,
      1,
-     "EI,EI"
+     "UX,UX"
     ],
     [
      559.0,
      0,
      "SQ"
+    ],
+    [
+     604.0,
+     1,
+     "EI,EI"
     ],
     [
      648.0,
@@ -88318,9 +94367,9 @@
      "DL"
     ],
     [
-     884.0,
+     865.0,
      1,
-     "AF,AF"
+     "LO,LO"
     ]
    ]
   },
@@ -88329,13 +94378,13 @@
    "dest": "FRA",
    "cabin": "ECONOMY",
    "date": "2026-10-04",
-   "price_usd": 380.0,
-   "nonstop_price_usd": 380.0,
+   "price_usd": 310.0,
+   "nonstop_price_usd": 310.0,
    "provider": "fast-flights",
-   "fetched_at": "2026-09-16T22:15:54Z",
+   "fetched_at": "2026-09-19T14:16:37Z",
    "offers": [
     [
-     380.0,
+     310.0,
      0,
      "DE"
     ],
@@ -88345,14 +94394,9 @@
      "TP,TP"
     ],
     [
-     414.0,
+     405.0,
      1,
      "UX,UX"
-    ],
-    [
-     472.0,
-     0,
-     "SQ"
     ],
     [
      505.0,
@@ -88360,14 +94404,14 @@
      "DL"
     ],
     [
-     524.0,
-     1,
-     "AF,AF"
-    ],
-    [
-     536.0,
+     535.0,
      1,
      "KL,KL"
+    ],
+    [
+     559.0,
+     0,
+     "SQ"
     ],
     [
      648.0,
@@ -88386,13 +94430,13 @@
    "dest": "FRA",
    "cabin": "ECONOMY",
    "date": "2026-10-13",
-   "price_usd": 242.0,
+   "price_usd": 254.0,
    "nonstop_price_usd": 380.0,
    "provider": "fast-flights",
-   "fetched_at": "2026-09-16T22:15:54Z",
+   "fetched_at": "2026-09-19T14:16:36Z",
    "offers": [
     [
-     242.0,
+     254.0,
      1,
      "FI,FI"
     ],
@@ -88404,6 +94448,11 @@
     [
      381.0,
      1,
+     "TP,TP"
+    ],
+    [
+     406.0,
+     1,
      "EI,EI"
     ],
     [
@@ -88412,7 +94461,7 @@
      "SQ"
     ],
     [
-     503.0,
+     502.0,
      1,
      "BA,BA"
     ],
@@ -88420,11 +94469,6 @@
      505.0,
      0,
      "DL"
-    ],
-    [
-     536.0,
-     1,
-     "KL,KL"
     ],
     [
      648.0,
@@ -89277,11 +95321,63 @@
    "origin": "JFK",
    "dest": "GCM",
    "cabin": "ECONOMY",
+   "date": "2026-09-26",
+   "price_usd": 255.0,
+   "nonstop_price_usd": null,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:16:44Z",
+   "offers": [
+    [
+     255.0,
+     1,
+     "DL,DL"
+    ],
+    [
+     364.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     364.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     364.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     370.0,
+     2,
+     "AA,AA,AA"
+    ],
+    [
+     370.0,
+     2,
+     "AA,AA,AA"
+    ],
+    [
+     387.0,
+     1,
+     "DL,DL"
+    ],
+    [
+     1506.0,
+     2,
+     "AA,AA,AA"
+    ]
+   ]
+  },
+  {
+   "origin": "JFK",
+   "dest": "GCM",
+   "cabin": "ECONOMY",
    "date": "2026-10-05",
    "price_usd": 195.0,
    "nonstop_price_usd": 240.0,
    "provider": "fast-flights",
-   "fetched_at": "2026-09-16T23:54:01Z",
+   "fetched_at": "2026-09-19T14:16:19Z",
    "offers": [
     [
      195.0,
@@ -89304,14 +95400,24 @@
      "AA,AA"
     ],
     [
+     235.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     235.0,
+     1,
+     "AA,AA"
+    ],
+    [
      240.0,
      0,
      "KX"
     ],
     [
-     305.0,
+     1584.0,
      1,
-     "AA,AA"
+     "BW,KX"
     ]
    ]
   },
@@ -89320,15 +95426,35 @@
    "dest": "GCM",
    "cabin": "ECONOMY",
    "date": "2026-10-13",
-   "price_usd": 175.0,
+   "price_usd": 235.0,
    "nonstop_price_usd": null,
    "provider": "fast-flights",
-   "fetched_at": "2026-09-16T23:54:00Z",
+   "fetched_at": "2026-09-19T14:16:16Z",
    "offers": [
     [
-     175.0,
+     235.0,
      1,
      "AA,AA"
+    ],
+    [
+     241.0,
+     2,
+     "AA,AA,AA"
+    ],
+    [
+     241.0,
+     2,
+     "AA,AA,AA"
+    ],
+    [
+     241.0,
+     2,
+     "AA,AA,AA"
+    ],
+    [
+     241.0,
+     2,
+     "AA,AA,AA"
     ],
     [
      305.0,
@@ -89953,6 +96079,58 @@
      510.0,
      0,
      "B6"
+    ]
+   ]
+  },
+  {
+   "origin": "JFK",
+   "dest": "GCM",
+   "cabin": "ECONOMY",
+   "date": "2027-02-26",
+   "price_usd": 235.0,
+   "nonstop_price_usd": 285.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:16:31Z",
+   "offers": [
+    [
+     235.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     235.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     235.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     235.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     235.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     243.0,
+     1,
+     "DL,DL"
+    ],
+    [
+     285.0,
+     0,
+     "B6"
+    ],
+    [
+     586.0,
+     1,
+     "DL,DL"
     ]
    ]
   },
@@ -90678,6 +96856,73 @@
      819.0,
      2,
      "CM,CM,BW"
+    ]
+   ]
+  },
+  {
+   "origin": "JFK",
+   "dest": "GRU",
+   "cabin": "BUSINESS",
+   "date": "2026-09-24",
+   "price_usd": 1191.0,
+   "nonstop_price_usd": 4009.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:17:13Z",
+   "offers": [
+    [
+     1191.0,
+     1,
+     "CM,CM"
+    ],
+    [
+     2531.0,
+     1,
+     "AV,AV"
+    ],
+    [
+     2531.0,
+     1,
+     "AV,AV"
+    ],
+    [
+     3431.0,
+     1,
+     "AV,AV"
+    ],
+    [
+     3911.0,
+     2,
+     "AV,AV,G3"
+    ],
+    [
+     4009.0,
+     0,
+     "AA"
+    ],
+    [
+     4013.0,
+     1,
+     "DL,LA"
+    ],
+    [
+     4013.0,
+     1,
+     "DL,LA"
+    ],
+    [
+     4013.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     5009.0,
+     0,
+     "LA"
+    ],
+    [
+     5009.0,
+     0,
+     "DL"
     ]
    ]
   },
@@ -91512,15 +97757,15 @@
    "dest": "GRU",
    "cabin": "ECONOMY",
    "date": "2026-10-06",
-   "price_usd": 594.0,
-   "nonstop_price_usd": 594.0,
+   "price_usd": 632.0,
+   "nonstop_price_usd": 668.0,
    "provider": "fast-flights",
-   "fetched_at": "2026-09-17T01:27:15Z",
+   "fetched_at": "2026-09-19T14:17:42Z",
    "offers": [
     [
-     594.0,
-     0,
-     "LA"
+     632.0,
+     1,
+     "CM,CM"
     ],
     [
      632.0,
@@ -91535,12 +97780,22 @@
     [
      668.0,
      0,
+     "LA"
+    ],
+    [
+     668.0,
+     0,
      "AA"
     ],
     [
      668.0,
      0,
      "DL"
+    ],
+    [
+     668.0,
+     1,
+     "LA,LA"
     ],
     [
      672.0,
@@ -91551,6 +97806,11 @@
      672.0,
      1,
      "AA,AA"
+    ],
+    [
+     689.0,
+     1,
+     "CM,CM"
     ]
    ]
   },
@@ -93636,7 +99896,7 @@
    "price_usd": 530.0,
    "nonstop_price_usd": 942.0,
    "provider": "fast-flights",
-   "fetched_at": "2026-09-17T01:08:38Z",
+   "fetched_at": "2026-09-19T14:16:06Z",
    "offers": [
     [
      530.0,
@@ -93649,22 +99909,22 @@
      "DL,DL"
     ],
     [
-     622.0,
+     535.0,
      1,
-     "AA,CX"
+     "NH,NH"
     ],
     [
-     643.0,
+     535.0,
      1,
-     "CI,CI"
+     "NH,NH"
     ],
     [
      698.0,
      1,
-     "EY,EY"
+     "CI,CI"
     ],
     [
-     721.0,
+     720.0,
      1,
      "BR,BR"
     ],
@@ -93672,6 +99932,11 @@
      723.0,
      1,
      "OZ,OZ"
+    ],
+    [
+     723.0,
+     1,
+     "EY,EY"
     ],
     [
      942.0,
@@ -93698,7 +99963,7 @@
    "price_usd": 491.0,
    "nonstop_price_usd": 942.0,
    "provider": "fast-flights",
-   "fetched_at": "2026-09-17T01:08:48Z",
+   "fetched_at": "2026-09-19T14:16:13Z",
    "offers": [
     [
      491.0,
@@ -93716,27 +99981,22 @@
      "AA,JL"
     ],
     [
-     613.0,
-     2,
-     "DL,KE,KE"
-    ],
-    [
-     643.0,
-     1,
-     "CI,CI"
-    ],
-    [
-     658.0,
-     1,
-     "EY,EY"
-    ],
-    [
      675.0,
      1,
      "TK,TK"
     ],
     [
-     761.0,
+     698.0,
+     1,
+     "CI,CI"
+    ],
+    [
+     723.0,
+     1,
+     "OZ,OZ"
+    ],
+    [
+     723.0,
      1,
      "OZ,OZ"
     ],
@@ -95192,6 +101452,68 @@
      5242.0,
      0,
      "JL"
+    ]
+   ]
+  },
+  {
+   "origin": "JFK",
+   "dest": "HND",
+   "cabin": "BUSINESS",
+   "date": "2027-08-15",
+   "price_usd": 3153.0,
+   "nonstop_price_usd": 4932.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:16:50Z",
+   "offers": [
+    [
+     3153.0,
+     1,
+     "PR,PR"
+    ],
+    [
+     4282.0,
+     1,
+     "BR,BR"
+    ],
+    [
+     4322.0,
+     1,
+     "CX,CX"
+    ],
+    [
+     4347.0,
+     1,
+     "QR,QR"
+    ],
+    [
+     4932.0,
+     0,
+     "AA"
+    ],
+    [
+     5112.0,
+     0,
+     "JL"
+    ],
+    [
+     5112.0,
+     0,
+     "JL"
+    ],
+    [
+     5471.0,
+     0,
+     "NH"
+    ],
+    [
+     5471.0,
+     0,
+     "NH"
+    ],
+    [
+     5675.0,
+     1,
+     "DL,DL"
     ]
    ]
   },
@@ -97464,13 +103786,839 @@
   },
   {
    "origin": "JFK",
+   "dest": "ICN",
+   "cabin": "ECONOMY",
+   "date": "2027-01-11",
+   "price_usd": 557.0,
+   "nonstop_price_usd": 673.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:17:27Z",
+   "offers": [
+    [
+     557.0,
+     1,
+     "CX,CX"
+    ],
+    [
+     603.0,
+     1,
+     "CX,CX"
+    ],
+    [
+     603.0,
+     1,
+     "CX,CX"
+    ],
+    [
+     673.0,
+     0,
+     "OZ"
+    ],
+    [
+     673.0,
+     0,
+     "OZ"
+    ],
+    [
+     722.0,
+     1,
+     "TK,TK"
+    ],
+    [
+     851.0,
+     0,
+     "KE"
+    ],
+    [
+     851.0,
+     0,
+     "KE"
+    ]
+   ]
+  },
+  {
+   "origin": "JFK",
+   "dest": "ICN",
+   "cabin": "ECONOMY",
+   "date": "2027-01-19",
+   "price_usd": 557.0,
+   "nonstop_price_usd": 673.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:17:22Z",
+   "offers": [
+    [
+     557.0,
+     1,
+     "CX,CX"
+    ],
+    [
+     603.0,
+     1,
+     "CX,CX"
+    ],
+    [
+     603.0,
+     1,
+     "CX,CX"
+    ],
+    [
+     629.0,
+     1,
+     "PR,PR"
+    ],
+    [
+     673.0,
+     0,
+     "OZ"
+    ],
+    [
+     673.0,
+     0,
+     "OZ"
+    ],
+    [
+     851.0,
+     0,
+     "KE"
+    ],
+    [
+     851.0,
+     0,
+     "KE"
+    ]
+   ]
+  },
+  {
+   "origin": "JFK",
+   "dest": "ICN",
+   "cabin": "ECONOMY",
+   "date": "2027-02-02",
+   "price_usd": 673.0,
+   "nonstop_price_usd": 673.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:17:22Z",
+   "offers": [
+    [
+     673.0,
+     0,
+     "OZ"
+    ],
+    [
+     673.0,
+     0,
+     "OZ"
+    ],
+    [
+     713.0,
+     1,
+     "PR,PR"
+    ],
+    [
+     722.0,
+     1,
+     "TK,TK"
+    ],
+    [
+     841.0,
+     1,
+     "CX,CX"
+    ],
+    [
+     841.0,
+     1,
+     "CX,CX"
+    ],
+    [
+     851.0,
+     0,
+     "KE"
+    ],
+    [
+     851.0,
+     0,
+     "KE"
+    ],
+    [
+     855.0,
+     1,
+     "DL,DL"
+    ],
+    [
+     855.0,
+     1,
+     "DL,DL"
+    ]
+   ]
+  },
+  {
+   "origin": "JFK",
+   "dest": "ICN",
+   "cabin": "ECONOMY",
+   "date": "2027-02-14",
+   "price_usd": 617.0,
+   "nonstop_price_usd": 673.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:17:23Z",
+   "offers": [
+    [
+     617.0,
+     1,
+     "CX,CX"
+    ],
+    [
+     663.0,
+     1,
+     "CX,CX"
+    ],
+    [
+     663.0,
+     1,
+     "CX,CX"
+    ],
+    [
+     673.0,
+     0,
+     "OZ"
+    ],
+    [
+     673.0,
+     0,
+     "OZ"
+    ],
+    [
+     772.0,
+     1,
+     "CI,CI"
+    ],
+    [
+     901.0,
+     0,
+     "KE"
+    ],
+    [
+     901.0,
+     0,
+     "KE"
+    ]
+   ]
+  },
+  {
+   "origin": "JFK",
+   "dest": "ICN",
+   "cabin": "ECONOMY",
+   "date": "2027-02-28",
+   "price_usd": 617.0,
+   "nonstop_price_usd": 673.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:17:24Z",
+   "offers": [
+    [
+     617.0,
+     1,
+     "CX,CX"
+    ],
+    [
+     663.0,
+     1,
+     "CX,CX"
+    ],
+    [
+     663.0,
+     1,
+     "CX,CX"
+    ],
+    [
+     673.0,
+     0,
+     "OZ"
+    ],
+    [
+     673.0,
+     0,
+     "OZ"
+    ],
+    [
+     700.0,
+     1,
+     "BR,BR"
+    ],
+    [
+     772.0,
+     1,
+     "CI,CI"
+    ],
+    [
+     901.0,
+     0,
+     "KE"
+    ],
+    [
+     901.0,
+     0,
+     "KE"
+    ]
+   ]
+  },
+  {
+   "origin": "JFK",
+   "dest": "ICN",
+   "cabin": "ECONOMY",
+   "date": "2027-03-08",
+   "price_usd": 557.0,
+   "nonstop_price_usd": 673.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:17:28Z",
+   "offers": [
+    [
+     557.0,
+     1,
+     "CX,CX"
+    ],
+    [
+     603.0,
+     1,
+     "CX,CX"
+    ],
+    [
+     603.0,
+     1,
+     "CX,CX"
+    ],
+    [
+     673.0,
+     0,
+     "OZ"
+    ],
+    [
+     673.0,
+     0,
+     "OZ"
+    ],
+    [
+     722.0,
+     2,
+     "AS,CI,CI"
+    ],
+    [
+     851.0,
+     0,
+     "KE"
+    ],
+    [
+     851.0,
+     0,
+     "KE"
+    ],
+    [
+     855.0,
+     1,
+     "DL,DL"
+    ]
+   ]
+  },
+  {
+   "origin": "JFK",
+   "dest": "ICN",
+   "cabin": "ECONOMY",
+   "date": "2027-03-16",
+   "price_usd": 557.0,
+   "nonstop_price_usd": 673.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:17:24Z",
+   "offers": [
+    [
+     557.0,
+     1,
+     "CX,CX"
+    ],
+    [
+     603.0,
+     1,
+     "CX,CX"
+    ],
+    [
+     603.0,
+     1,
+     "CX,CX"
+    ],
+    [
+     629.0,
+     1,
+     "PR,PR"
+    ],
+    [
+     673.0,
+     0,
+     "OZ"
+    ],
+    [
+     673.0,
+     0,
+     "OZ"
+    ],
+    [
+     851.0,
+     0,
+     "KE"
+    ],
+    [
+     851.0,
+     0,
+     "KE"
+    ],
+    [
+     855.0,
+     1,
+     "DL,DL"
+    ]
+   ]
+  },
+  {
+   "origin": "JFK",
+   "dest": "ICN",
+   "cabin": "ECONOMY",
+   "date": "2027-04-17",
+   "price_usd": 617.0,
+   "nonstop_price_usd": 1135.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:17:28Z",
+   "offers": [
+    [
+     617.0,
+     1,
+     "CX,CX"
+    ],
+    [
+     663.0,
+     1,
+     "CX,CX"
+    ],
+    [
+     663.0,
+     1,
+     "CX,CX"
+    ],
+    [
+     722.0,
+     2,
+     "AS,CI,CI"
+    ],
+    [
+     762.0,
+     1,
+     "TK,TK"
+    ],
+    [
+     762.0,
+     1,
+     "TK,TK"
+    ],
+    [
+     791.0,
+     1,
+     "CX,CX"
+    ],
+    [
+     901.0,
+     1,
+     "CX,CX"
+    ],
+    [
+     1000.0,
+     1,
+     "BR,BR"
+    ],
+    [
+     1135.0,
+     0,
+     "OZ"
+    ],
+    [
+     1135.0,
+     0,
+     "OZ"
+    ],
+    [
+     1161.0,
+     0,
+     "KE"
+    ],
+    [
+     1161.0,
+     0,
+     "KE"
+    ]
+   ]
+  },
+  {
+   "origin": "JFK",
+   "dest": "ICN",
+   "cabin": "ECONOMY",
+   "date": "2027-05-01",
+   "price_usd": 700.0,
+   "nonstop_price_usd": 1249.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:17:21Z",
+   "offers": [
+    [
+     700.0,
+     1,
+     "BR,BR"
+    ],
+    [
+     722.0,
+     2,
+     "AS,CI,CI"
+    ],
+    [
+     740.0,
+     1,
+     "BR,BR"
+    ],
+    [
+     762.0,
+     1,
+     "TK,TK"
+    ],
+    [
+     762.0,
+     1,
+     "TK,TK"
+    ],
+    [
+     791.0,
+     1,
+     "CX,CX"
+    ],
+    [
+     901.0,
+     1,
+     "CX,CX"
+    ],
+    [
+     1249.0,
+     0,
+     "OZ"
+    ],
+    [
+     1249.0,
+     0,
+     "KE"
+    ],
+    [
+     1249.0,
+     0,
+     "OZ"
+    ],
+    [
+     1249.0,
+     0,
+     "KE"
+    ]
+   ]
+  },
+  {
+   "origin": "JFK",
+   "dest": "ICN",
+   "cabin": "ECONOMY",
+   "date": "2027-05-09",
+   "price_usd": 617.0,
+   "nonstop_price_usd": 1249.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:17:25Z",
+   "offers": [
+    [
+     617.0,
+     1,
+     "CX,CX"
+    ],
+    [
+     663.0,
+     1,
+     "CX,CX"
+    ],
+    [
+     663.0,
+     1,
+     "CX,CX"
+    ],
+    [
+     700.0,
+     1,
+     "BR,BR"
+    ],
+    [
+     712.0,
+     1,
+     "CX,CX"
+    ],
+    [
+     718.0,
+     1,
+     "CI,CI"
+    ],
+    [
+     722.0,
+     1,
+     "TK,TK"
+    ],
+    [
+     722.0,
+     1,
+     "TK,TK"
+    ],
+    [
+     740.0,
+     1,
+     "BR,BR"
+    ],
+    [
+     1249.0,
+     0,
+     "OZ"
+    ],
+    [
+     1249.0,
+     0,
+     "OZ"
+    ],
+    [
+     1249.0,
+     0,
+     "KE"
+    ],
+    [
+     1249.0,
+     0,
+     "KE"
+    ]
+   ]
+  },
+  {
+   "origin": "JFK",
+   "dest": "ICN",
+   "cabin": "ECONOMY",
+   "date": "2027-05-22",
+   "price_usd": 621.0,
+   "nonstop_price_usd": 1558.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:17:25Z",
+   "offers": [
+    [
+     621.0,
+     1,
+     "CX,CX"
+    ],
+    [
+     796.0,
+     1,
+     "CX,CX"
+    ],
+    [
+     909.0,
+     1,
+     "CX,CX"
+    ],
+    [
+     957.0,
+     2,
+     "ET,ET,ET"
+    ],
+    [
+     1037.0,
+     1,
+     "BR,BR"
+    ],
+    [
+     1046.0,
+     1,
+     "AY,AY"
+    ],
+    [
+     1070.0,
+     1,
+     "CX,CX"
+    ],
+    [
+     1070.0,
+     1,
+     "CX,CX"
+    ],
+    [
+     1097.0,
+     1,
+     "BR,BR"
+    ],
+    [
+     1558.0,
+     0,
+     "OZ"
+    ],
+    [
+     1558.0,
+     0,
+     "OZ"
+    ],
+    [
+     1736.0,
+     0,
+     "KE"
+    ],
+    [
+     1736.0,
+     0,
+     "KE"
+    ]
+   ]
+  },
+  {
+   "origin": "JFK",
+   "dest": "ICN",
+   "cabin": "ECONOMY",
+   "date": "2027-05-30",
+   "price_usd": 621.0,
+   "nonstop_price_usd": 1407.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:17:26Z",
+   "offers": [
+    [
+     621.0,
+     1,
+     "CX,CX"
+    ],
+    [
+     667.0,
+     1,
+     "CX,CX"
+    ],
+    [
+     667.0,
+     1,
+     "CX,CX"
+    ],
+    [
+     716.0,
+     1,
+     "CX,CX"
+    ],
+    [
+     976.0,
+     1,
+     "BR,BR"
+    ],
+    [
+     1004.0,
+     1,
+     "CI,CI"
+    ],
+    [
+     1032.0,
+     1,
+     "BR,BR"
+    ],
+    [
+     1093.0,
+     1,
+     "CI,CI"
+    ],
+    [
+     1407.0,
+     0,
+     "OZ"
+    ],
+    [
+     1558.0,
+     0,
+     "OZ"
+    ],
+    [
+     1736.0,
+     0,
+     "KE"
+    ],
+    [
+     1736.0,
+     0,
+     "KE"
+    ]
+   ]
+  },
+  {
+   "origin": "JFK",
+   "dest": "ICN",
+   "cabin": "ECONOMY",
+   "date": "2027-06-07",
+   "price_usd": 736.0,
+   "nonstop_price_usd": 1407.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:17:27Z",
+   "offers": [
+    [
+     736.0,
+     1,
+     "CX,CX"
+    ],
+    [
+     736.0,
+     1,
+     "CX,CX"
+    ],
+    [
+     736.0,
+     1,
+     "CX,CX"
+    ],
+    [
+     849.0,
+     1,
+     "CX,CX"
+    ],
+    [
+     852.0,
+     2,
+     "ET,ET,ET"
+    ],
+    [
+     965.0,
+     1,
+     "CI,CI"
+    ],
+    [
+     1057.0,
+     1,
+     "BR,BR"
+    ],
+    [
+     1407.0,
+     0,
+     "OZ"
+    ],
+    [
+     1558.0,
+     0,
+     "OZ"
+    ],
+    [
+     1671.0,
+     0,
+     "KE"
+    ],
+    [
+     1671.0,
+     0,
+     "KE"
+    ]
+   ]
+  },
+  {
+   "origin": "JFK",
    "dest": "IST",
    "cabin": "BUSINESS",
    "date": "2026-10-13",
    "price_usd": 1765.0,
    "nonstop_price_usd": 4333.0,
    "provider": "fast-flights",
-   "fetched_at": "2026-09-16T18:49:47Z",
+   "fetched_at": "2026-09-19T14:16:10Z",
    "offers": [
     [
      1765.0,
@@ -97478,37 +104626,27 @@
      "MS,MS"
     ],
     [
-     2870.0,
-     1,
-     "UX,UX"
-    ],
-    [
-     2989.0,
+     2988.0,
      2,
      "FI,FI,TK"
     ],
     [
-     3002.0,
-     2,
-     "FI,FI,TK"
-    ],
-    [
-     3002.0,
+     2999.0,
      1,
      "AT,AT"
     ],
     [
-     3265.0,
+     3264.0,
      1,
      "LO,LO"
     ],
     [
-     3265.0,
+     3264.0,
      1,
      "LO,LO"
     ],
     [
-     3785.0,
+     3781.0,
      1,
      "LO,TK"
     ],
@@ -97533,7 +104671,7 @@
      "TK"
     ],
     [
-     5997.0,
+     5996.0,
      1,
      "KL,KL"
     ],
@@ -99618,12 +106756,124 @@
   {
    "origin": "JFK",
    "dest": "IST",
+   "cabin": "BUSINESS",
+   "date": "2027-08-15",
+   "price_usd": 2003.0,
+   "nonstop_price_usd": 5013.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:17:01Z",
+   "offers": [
+    [
+     2003.0,
+     1,
+     "MS,MS"
+    ],
+    [
+     2330.0,
+     1,
+     "MS,MS"
+    ],
+    [
+     2391.0,
+     2,
+     "FI,FI,TK"
+    ],
+    [
+     2393.0,
+     2,
+     "FI,FI,TK"
+    ],
+    [
+     2398.0,
+     2,
+     "FI,FI,TK"
+    ],
+    [
+     2404.0,
+     2,
+     "FI,FI,TK"
+    ],
+    [
+     2470.0,
+     1,
+     "AT,AT"
+    ],
+    [
+     3265.0,
+     1,
+     "LO,LO"
+    ],
+    [
+     3650.0,
+     1,
+     "DL,AF"
+    ],
+    [
+     3650.0,
+     1,
+     "AF,AF"
+    ],
+    [
+     3677.0,
+     1,
+     "KL,KL"
+    ],
+    [
+     3685.0,
+     1,
+     "LH,LH"
+    ],
+    [
+     3685.0,
+     1,
+     "LH,LH"
+    ],
+    [
+     3870.0,
+     1,
+     "RJ,RJ"
+    ],
+    [
+     3883.0,
+     1,
+     "EK,EK"
+    ],
+    [
+     3994.0,
+     1,
+     "LH,TK"
+    ],
+    [
+     5013.0,
+     0,
+     "TK"
+    ],
+    [
+     5013.0,
+     0,
+     "TK"
+    ],
+    [
+     5013.0,
+     0,
+     "TK"
+    ],
+    [
+     5013.0,
+     0,
+     "TK"
+    ]
+   ]
+  },
+  {
+   "origin": "JFK",
+   "dest": "IST",
    "cabin": "ECONOMY",
    "date": "2026-09-26",
    "price_usd": 509.0,
    "nonstop_price_usd": 606.0,
    "provider": "fast-flights",
-   "fetched_at": "2026-09-17T01:08:43Z",
+   "fetched_at": "2026-09-19T14:16:25Z",
    "offers": [
     [
      509.0,
@@ -99641,9 +106891,14 @@
      "EY,EY"
     ],
     [
-     579.0,
+     572.0,
      1,
      "QR,QR"
+    ],
+    [
+     591.0,
+     1,
+     "MS,MS"
     ],
     [
      606.0,
@@ -99654,11 +106909,6 @@
      612.0,
      1,
      "RJ,RJ"
-    ],
-    [
-     708.0,
-     1,
-     "MS,MS"
     ],
     [
      794.0,
@@ -99676,14 +106926,9 @@
      "TK"
     ],
     [
-     803.0,
+     802.0,
      1,
      "LO,LO"
-    ],
-    [
-     875.0,
-     1,
-     "BA,BA"
     ],
     [
      903.0,
@@ -99691,19 +106936,14 @@
      "TK"
     ],
     [
-     935.0,
-     1,
-     "AT,AT"
-    ],
-    [
-     1150.0,
-     0,
-     "TK"
-    ],
-    [
-     1456.0,
+     1161.0,
      1,
      "KL,KL"
+    ],
+    [
+     1453.0,
+     0,
+     "TK"
     ]
    ]
   },
@@ -99712,13 +106952,13 @@
    "dest": "IST",
    "cabin": "ECONOMY",
    "date": "2026-10-04",
-   "price_usd": 501.0,
+   "price_usd": 504.0,
    "nonstop_price_usd": 566.0,
    "provider": "fast-flights",
-   "fetched_at": "2026-09-17T01:08:53Z",
+   "fetched_at": "2026-09-19T14:16:28Z",
    "offers": [
     [
-     501.0,
+     504.0,
      2,
      "DE,RO,RO"
     ],
@@ -99726,6 +106966,11 @@
      511.0,
      1,
      "EY,EY"
+    ],
+    [
+     532.0,
+     1,
+     "QR,QR"
     ],
     [
      542.0,
@@ -99743,34 +106988,29 @@
      "TK"
     ],
     [
-     566.0,
-     1,
-     "QR,QR"
-    ],
-    [
-     581.0,
-     0,
-     "TK"
-    ],
-    [
      611.0,
      0,
      "TK"
     ],
     [
-     711.0,
+     630.0,
+     0,
+     "TK"
+    ],
+    [
+     709.0,
      1,
      "AT,AT"
     ],
     [
-     769.0,
-     1,
-     "BA,BA"
-    ],
-    [
-     780.0,
+     779.0,
      1,
      "KL,KL"
+    ],
+    [
+     794.0,
+     1,
+     "LH,LH"
     ]
    ]
   },
@@ -99782,7 +107022,7 @@
    "price_usd": 511.0,
    "nonstop_price_usd": 566.0,
    "provider": "fast-flights",
-   "fetched_at": "2026-09-17T01:09:02Z",
+   "fetched_at": "2026-09-19T14:16:30Z",
    "offers": [
     [
      511.0,
@@ -99795,9 +107035,9 @@
      "MS,MS"
     ],
     [
-     545.0,
-     1,
-     "LH,LH"
+     546.0,
+     2,
+     "DE,RO,RO"
     ],
     [
      566.0,
@@ -99815,6 +107055,11 @@
      "TK"
     ],
     [
+     602.0,
+     1,
+     "JU,JU"
+    ],
+    [
      611.0,
      0,
      "TK"
@@ -99825,17 +107070,17 @@
      "RJ,RJ"
     ],
     [
-     625.0,
+     664.0,
      1,
      "KL,KL"
     ],
     [
-     693.0,
+     679.0,
      1,
-     "BA,BA"
+     "LH,LH"
     ],
     [
-     711.0,
+     709.0,
      1,
      "AT,AT"
     ]
@@ -100874,6 +108119,250 @@
    "origin": "JFK",
    "dest": "LHR",
    "cabin": "BUSINESS",
+   "date": "2026-10-11",
+   "price_usd": 1473.0,
+   "nonstop_price_usd": 5509.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:17:57Z",
+   "offers": [
+    [
+     1473.0,
+     2,
+     "S4,S4,TP"
+    ],
+    [
+     1473.0,
+     2,
+     "S4,S4,TP"
+    ],
+    [
+     2001.0,
+     1,
+     "FI,FI"
+    ],
+    [
+     2523.0,
+     1,
+     "AZ,AZ"
+    ],
+    [
+     2523.0,
+     1,
+     "AZ,AZ"
+    ],
+    [
+     5509.0,
+     0,
+     "BA"
+    ],
+    [
+     5509.0,
+     0,
+     "AA"
+    ],
+    [
+     5509.0,
+     0,
+     "BA"
+    ],
+    [
+     5509.0,
+     0,
+     "BA"
+    ],
+    [
+     5509.0,
+     0,
+     "AA"
+    ],
+    [
+     5509.0,
+     0,
+     "BA"
+    ],
+    [
+     5509.0,
+     0,
+     "BA"
+    ],
+    [
+     5509.0,
+     0,
+     "BA"
+    ],
+    [
+     5509.0,
+     0,
+     "BA"
+    ],
+    [
+     5509.0,
+     0,
+     "BA"
+    ],
+    [
+     5709.0,
+     0,
+     "VS"
+    ],
+    [
+     7012.0,
+     0,
+     "B6"
+    ],
+    [
+     7491.0,
+     0,
+     "B6"
+    ],
+    [
+     8919.0,
+     0,
+     "VS"
+    ],
+    [
+     8919.0,
+     0,
+     "VS"
+    ],
+    [
+     8919.0,
+     0,
+     "BA"
+    ],
+    [
+     8919.0,
+     0,
+     "VS"
+    ],
+    [
+     10794.0,
+     0,
+     "DL"
+    ],
+    [
+     10794.0,
+     0,
+     "VS"
+    ],
+    [
+     11804.0,
+     0,
+     "AA"
+    ]
+   ]
+  },
+  {
+   "origin": "JFK",
+   "dest": "LHR",
+   "cabin": "BUSINESS",
+   "date": "2026-10-26",
+   "price_usd": 1546.0,
+   "nonstop_price_usd": 2699.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:17:56Z",
+   "offers": [
+    [
+     1546.0,
+     1,
+     "FI,FI"
+    ],
+    [
+     2319.0,
+     1,
+     "AT,AT"
+    ],
+    [
+     2699.0,
+     0,
+     "BA"
+    ],
+    [
+     2699.0,
+     0,
+     "AA"
+    ],
+    [
+     2699.0,
+     0,
+     "BA"
+    ],
+    [
+     2699.0,
+     0,
+     "BA"
+    ],
+    [
+     2699.0,
+     0,
+     "BA"
+    ],
+    [
+     2699.0,
+     0,
+     "BA"
+    ],
+    [
+     2699.0,
+     0,
+     "BA"
+    ],
+    [
+     2699.0,
+     0,
+     "AA"
+    ],
+    [
+     2699.0,
+     0,
+     "BA"
+    ],
+    [
+     2859.0,
+     0,
+     "B6"
+    ],
+    [
+     4109.0,
+     0,
+     "B6"
+    ],
+    [
+     4759.0,
+     0,
+     "BA"
+    ],
+    [
+     4759.0,
+     0,
+     "BA"
+    ],
+    [
+     4759.0,
+     0,
+     "AA"
+    ],
+    [
+     7691.0,
+     0,
+     "DL"
+    ],
+    [
+     10544.0,
+     0,
+     "DL"
+    ],
+    [
+     14777.0,
+     0,
+     "VS"
+    ]
+   ]
+  },
+  {
+   "origin": "JFK",
+   "dest": "LHR",
+   "cabin": "BUSINESS",
    "date": "2026-11-16",
    "price_usd": 1546.0,
    "nonstop_price_usd": 2699.0,
@@ -101357,6 +108846,230 @@
    "origin": "JFK",
    "dest": "LHR",
    "cabin": "BUSINESS",
+   "date": "2027-01-12",
+   "price_usd": 1546.0,
+   "nonstop_price_usd": 2209.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:17:54Z",
+   "offers": [
+    [
+     1546.0,
+     1,
+     "FI,FI"
+    ],
+    [
+     1732.0,
+     1,
+     "TP,TP"
+    ],
+    [
+     2209.0,
+     0,
+     "B6"
+    ],
+    [
+     2409.0,
+     0,
+     "BA"
+    ],
+    [
+     2409.0,
+     0,
+     "VS"
+    ],
+    [
+     2409.0,
+     0,
+     "BA"
+    ],
+    [
+     2409.0,
+     0,
+     "AA"
+    ],
+    [
+     2409.0,
+     0,
+     "VS"
+    ],
+    [
+     2409.0,
+     0,
+     "BA"
+    ],
+    [
+     2409.0,
+     0,
+     "AA"
+    ],
+    [
+     2409.0,
+     0,
+     "BA"
+    ],
+    [
+     2409.0,
+     0,
+     "VS"
+    ],
+    [
+     2409.0,
+     0,
+     "BA"
+    ],
+    [
+     2409.0,
+     0,
+     "DL"
+    ],
+    [
+     2409.0,
+     0,
+     "BA"
+    ],
+    [
+     2409.0,
+     0,
+     "BA"
+    ],
+    [
+     2409.0,
+     0,
+     "DL"
+    ],
+    [
+     2559.0,
+     0,
+     "B6"
+    ],
+    [
+     4159.0,
+     0,
+     "VS"
+    ]
+   ]
+  },
+  {
+   "origin": "JFK",
+   "dest": "LHR",
+   "cabin": "BUSINESS",
+   "date": "2027-01-25",
+   "price_usd": 1546.0,
+   "nonstop_price_usd": 2359.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:17:55Z",
+   "offers": [
+    [
+     1546.0,
+     1,
+     "FI,FI"
+    ],
+    [
+     1732.0,
+     1,
+     "TP,TP"
+    ],
+    [
+     2319.0,
+     1,
+     "AT,AT"
+    ],
+    [
+     2359.0,
+     0,
+     "B6"
+    ],
+    [
+     2559.0,
+     0,
+     "VS"
+    ],
+    [
+     2559.0,
+     0,
+     "VS"
+    ],
+    [
+     2559.0,
+     0,
+     "VS"
+    ],
+    [
+     2559.0,
+     0,
+     "VS"
+    ],
+    [
+     2659.0,
+     0,
+     "AA"
+    ],
+    [
+     2659.0,
+     0,
+     "BA"
+    ],
+    [
+     2659.0,
+     0,
+     "BA"
+    ],
+    [
+     2659.0,
+     0,
+     "AA"
+    ],
+    [
+     2659.0,
+     0,
+     "BA"
+    ],
+    [
+     2659.0,
+     0,
+     "BA"
+    ],
+    [
+     2659.0,
+     0,
+     "BA"
+    ],
+    [
+     2659.0,
+     0,
+     "BA"
+    ],
+    [
+     2659.0,
+     0,
+     "AA"
+    ],
+    [
+     2659.0,
+     0,
+     "BA"
+    ],
+    [
+     2709.0,
+     0,
+     "B6"
+    ],
+    [
+     4309.0,
+     0,
+     "DL"
+    ],
+    [
+     4309.0,
+     0,
+     "DL"
+    ]
+   ]
+  },
+  {
+   "origin": "JFK",
+   "dest": "LHR",
+   "cabin": "BUSINESS",
    "date": "2027-02-02",
    "price_usd": 1546.0,
    "nonstop_price_usd": 2209.0,
@@ -101460,6 +109173,362 @@
     ],
     [
      2409.0,
+     0,
+     "DL"
+    ]
+   ]
+  },
+  {
+   "origin": "JFK",
+   "dest": "LHR",
+   "cabin": "BUSINESS",
+   "date": "2027-02-15",
+   "price_usd": 1546.0,
+   "nonstop_price_usd": 2559.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:17:52Z",
+   "offers": [
+    [
+     1546.0,
+     1,
+     "FI,FI"
+    ],
+    [
+     1732.0,
+     1,
+     "TP,TP"
+    ],
+    [
+     2319.0,
+     1,
+     "AT,AT"
+    ],
+    [
+     2559.0,
+     0,
+     "DL"
+    ],
+    [
+     2559.0,
+     0,
+     "VS"
+    ],
+    [
+     2559.0,
+     0,
+     "VS"
+    ],
+    [
+     2659.0,
+     0,
+     "BA"
+    ],
+    [
+     2659.0,
+     0,
+     "BA"
+    ],
+    [
+     2659.0,
+     0,
+     "AA"
+    ],
+    [
+     2659.0,
+     0,
+     "BA"
+    ],
+    [
+     2659.0,
+     0,
+     "AA"
+    ],
+    [
+     2659.0,
+     0,
+     "BA"
+    ],
+    [
+     2659.0,
+     0,
+     "BA"
+    ],
+    [
+     2659.0,
+     0,
+     "BA"
+    ],
+    [
+     2659.0,
+     0,
+     "AA"
+    ],
+    [
+     2659.0,
+     0,
+     "BA"
+    ],
+    [
+     2709.0,
+     0,
+     "B6"
+    ],
+    [
+     2709.0,
+     0,
+     "B6"
+    ],
+    [
+     4309.0,
+     0,
+     "VS"
+    ],
+    [
+     4309.0,
+     0,
+     "VS"
+    ],
+    [
+     4309.0,
+     0,
+     "DL"
+    ]
+   ]
+  },
+  {
+   "origin": "JFK",
+   "dest": "LHR",
+   "cabin": "BUSINESS",
+   "date": "2027-03-02",
+   "price_usd": 1546.0,
+   "nonstop_price_usd": 2209.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:17:56Z",
+   "offers": [
+    [
+     1546.0,
+     1,
+     "FI,FI"
+    ],
+    [
+     2209.0,
+     0,
+     "B6"
+    ],
+    [
+     2319.0,
+     1,
+     "AT,AT"
+    ],
+    [
+     2409.0,
+     0,
+     "BA"
+    ],
+    [
+     2409.0,
+     0,
+     "VS"
+    ],
+    [
+     2409.0,
+     0,
+     "BA"
+    ],
+    [
+     2409.0,
+     0,
+     "AA"
+    ],
+    [
+     2409.0,
+     0,
+     "VS"
+    ],
+    [
+     2409.0,
+     0,
+     "BA"
+    ],
+    [
+     2409.0,
+     0,
+     "AA"
+    ],
+    [
+     2409.0,
+     0,
+     "BA"
+    ],
+    [
+     2409.0,
+     0,
+     "VS"
+    ],
+    [
+     2409.0,
+     0,
+     "BA"
+    ],
+    [
+     2409.0,
+     0,
+     "BA"
+    ],
+    [
+     2409.0,
+     0,
+     "VS"
+    ],
+    [
+     2409.0,
+     0,
+     "AA"
+    ],
+    [
+     2409.0,
+     0,
+     "BA"
+    ],
+    [
+     2409.0,
+     0,
+     "DL"
+    ],
+    [
+     2559.0,
+     0,
+     "B6"
+    ],
+    [
+     4159.0,
+     0,
+     "DL"
+    ]
+   ]
+  },
+  {
+   "origin": "JFK",
+   "dest": "LHR",
+   "cabin": "BUSINESS",
+   "date": "2027-03-22",
+   "price_usd": 1546.0,
+   "nonstop_price_usd": 2359.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:17:53Z",
+   "offers": [
+    [
+     1546.0,
+     1,
+     "FI,FI"
+    ],
+    [
+     1546.0,
+     1,
+     "FI,FI"
+    ],
+    [
+     1732.0,
+     1,
+     "TP,TP"
+    ],
+    [
+     2319.0,
+     1,
+     "AT,AT"
+    ],
+    [
+     2359.0,
+     0,
+     "B6"
+    ],
+    [
+     2359.0,
+     0,
+     "B6"
+    ],
+    [
+     2559.0,
+     0,
+     "VS"
+    ],
+    [
+     2559.0,
+     0,
+     "VS"
+    ],
+    [
+     2559.0,
+     0,
+     "DL"
+    ],
+    [
+     2659.0,
+     0,
+     "BA"
+    ],
+    [
+     2659.0,
+     0,
+     "BA"
+    ],
+    [
+     2659.0,
+     0,
+     "AA"
+    ],
+    [
+     2659.0,
+     0,
+     "BA"
+    ],
+    [
+     2659.0,
+     0,
+     "AA"
+    ],
+    [
+     2659.0,
+     0,
+     "BA"
+    ],
+    [
+     2659.0,
+     0,
+     "BA"
+    ],
+    [
+     2659.0,
+     0,
+     "BA"
+    ],
+    [
+     2659.0,
+     0,
+     "BA"
+    ],
+    [
+     2659.0,
+     0,
+     "AA"
+    ],
+    [
+     2659.0,
+     0,
+     "BA"
+    ],
+    [
+     4309.0,
+     0,
+     "VS"
+    ],
+    [
+     4309.0,
+     0,
+     "VS"
+    ],
+    [
+     4309.0,
      0,
      "DL"
     ]
@@ -112468,13 +120537,24 @@
   },
   {
    "origin": "JFK",
+   "dest": "MNL",
+   "cabin": "BUSINESS",
+   "date": "2027-08-15",
+   "price_usd": null,
+   "nonstop_price_usd": null,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:16:50Z",
+   "offers": []
+  },
+  {
+   "origin": "JFK",
    "dest": "MUC",
    "cabin": "BUSINESS",
    "date": "2026-10-05",
    "price_usd": 1423.0,
    "nonstop_price_usd": 7772.0,
    "provider": "fast-flights",
-   "fetched_at": "2026-09-16T19:08:18Z",
+   "fetched_at": "2026-09-19T14:17:44Z",
    "offers": [
     [
      1423.0,
@@ -112487,17 +120567,17 @@
      "S4,S4,TP"
     ],
     [
-     1884.0,
-     1,
-     "FI,FI"
-    ],
-    [
      2037.0,
      1,
      "JU,JU"
     ],
     [
-     2568.0,
+     2127.0,
+     1,
+     "FI,FI"
+    ],
+    [
+     2580.0,
      1,
      "FI,FI"
     ],
@@ -112507,17 +120587,22 @@
      "DE,DE"
     ],
     [
-     7566.0,
+     7466.0,
      1,
-     "AF,AF"
+     "BA,BA"
     ],
     [
-     7578.0,
+     7577.0,
      1,
      "KL,KL"
     ],
     [
-     7578.0,
+     7577.0,
+     1,
+     "KL,KL"
+    ],
+    [
+     7577.0,
      1,
      "KL,KL"
     ],
@@ -114508,9 +122593,9 @@
    "cabin": "BUSINESS",
    "date": "2026-10-05",
    "price_usd": 1491.0,
-   "nonstop_price_usd": 4465.0,
+   "nonstop_price_usd": 6401.0,
    "provider": "fast-flights",
-   "fetched_at": "2026-09-16T19:07:56Z",
+   "fetched_at": "2026-09-19T14:17:13Z",
    "offers": [
     [
      1491.0,
@@ -114523,17 +122608,12 @@
      "S4,S4,TP"
     ],
     [
-     2048.0,
-     1,
-     "B6,B6"
-    ],
-    [
      2086.0,
      1,
      "JU,JU"
     ],
     [
-     3083.0,
+     3082.0,
      1,
      "FI,FI"
     ],
@@ -114543,7 +122623,22 @@
      "TP,TP"
     ],
     [
-     4465.0,
+     3424.0,
+     1,
+     "LO,LO"
+    ],
+    [
+     4788.0,
+     1,
+     "B6,B6"
+    ],
+    [
+     5700.0,
+     1,
+     "DE,DE"
+    ],
+    [
+     6401.0,
      0,
      "EK"
     ],
@@ -114553,12 +122648,17 @@
      "DL"
     ],
     [
-     10809.0,
-     0,
-     "AA"
+     9313.0,
+     1,
+     "AF,AF"
     ],
     [
-     11169.0,
+     13804.0,
+     1,
+     "LH,LH"
+    ],
+    [
+     14436.0,
      0,
      "DL"
     ]
@@ -115500,6 +123600,83 @@
    "origin": "JFK",
    "dest": "MXP",
    "cabin": "BUSINESS",
+   "date": "2027-05-27",
+   "price_usd": 1561.0,
+   "nonstop_price_usd": 3536.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:17:49Z",
+   "offers": [
+    [
+     1561.0,
+     1,
+     "JU,JU"
+    ],
+    [
+     1831.0,
+     1,
+     "TP,TP"
+    ],
+    [
+     1927.0,
+     1,
+     "FI,FI"
+    ],
+    [
+     2302.0,
+     1,
+     "AT,AT"
+    ],
+    [
+     2740.0,
+     1,
+     "UX,UX"
+    ],
+    [
+     3508.0,
+     1,
+     "B6,B6"
+    ],
+    [
+     3536.0,
+     0,
+     "AA"
+    ],
+    [
+     3550.0,
+     1,
+     "IB,IB"
+    ],
+    [
+     3557.0,
+     1,
+     "BA,BA"
+    ],
+    [
+     3636.0,
+     0,
+     "DL"
+    ],
+    [
+     3655.0,
+     1,
+     "AF,AF"
+    ],
+    [
+     4465.0,
+     0,
+     "EK"
+    ],
+    [
+     11169.0,
+     0,
+     "DL"
+    ]
+   ]
+  },
+  {
+   "origin": "JFK",
+   "dest": "MXP",
+   "cabin": "BUSINESS",
    "date": "2027-06-04",
    "price_usd": 1831.0,
    "nonstop_price_usd": 3536.0,
@@ -115905,6 +124082,63 @@
   },
   {
    "origin": "JFK",
+   "dest": "NAS",
+   "cabin": "ECONOMY",
+   "date": "2026-12-13",
+   "price_usd": 123.0,
+   "nonstop_price_usd": 155.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:16:36Z",
+   "offers": [
+    [
+     123.0,
+     1,
+     "B6,B6"
+    ],
+    [
+     123.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     123.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     155.0,
+     0,
+     "DL"
+    ],
+    [
+     155.0,
+     0,
+     "B6"
+    ],
+    [
+     167.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     167.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     291.0,
+     1,
+     "B6,B6"
+    ],
+    [
+     297.0,
+     1,
+     "AA,AA"
+    ]
+   ]
+  },
+  {
+   "origin": "JFK",
    "dest": "NBO",
    "cabin": "BUSINESS",
    "date": "2026-09-21",
@@ -115985,18 +124219,28 @@
    "dest": "NBO",
    "cabin": "BUSINESS",
    "date": "2026-10-06",
-   "price_usd": 4349.0,
+   "price_usd": 3466.0,
    "nonstop_price_usd": 7494.0,
    "provider": "fast-flights",
-   "fetched_at": "2026-09-16T23:57:40Z",
+   "fetched_at": "2026-09-19T14:16:05Z",
    "offers": [
     [
-     4349.0,
-     2,
-     "SN,SN,SN"
+     3466.0,
+     1,
+     "EY,EY"
     ],
     [
-     4353.0,
+     3881.0,
+     1,
+     "QR,QR"
+    ],
+    [
+     3891.0,
+     1,
+     "QR,QR"
+    ],
+    [
+     4352.0,
      1,
      "KL,KL"
     ],
@@ -116006,7 +124250,7 @@
      "AF,AF"
     ],
     [
-     4450.0,
+     4944.0,
      1,
      "BA,BA"
     ],
@@ -116016,9 +124260,9 @@
      "AA,BA"
     ],
     [
-     5368.0,
+     5808.0,
      1,
-     "QR,QR"
+     "TK,TK"
     ],
     [
      5839.0,
@@ -116029,11 +124273,6 @@
      7494.0,
      0,
      "KQ"
-    ],
-    [
-     7501.0,
-     1,
-     "DL,AF"
     ]
    ]
   },
@@ -117467,6 +125706,17 @@
   {
    "origin": "JFK",
    "dest": "NBO",
+   "cabin": "BUSINESS",
+   "date": "2027-08-15",
+   "price_usd": null,
+   "nonstop_price_usd": null,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:16:05Z",
+   "offers": []
+  },
+  {
+   "origin": "JFK",
+   "dest": "NBO",
    "cabin": "ECONOMY",
    "date": "2026-09-20",
    "price_usd": 409.0,
@@ -117531,18 +125781,18 @@
    "dest": "NBO",
    "cabin": "ECONOMY",
    "date": "2026-09-28",
-   "price_usd": 409.0,
-   "nonstop_price_usd": 599.0,
+   "price_usd": 384.0,
+   "nonstop_price_usd": 683.0,
    "provider": "fast-flights",
-   "fetched_at": "2026-09-16T22:24:09Z",
+   "fetched_at": "2026-09-19T14:16:12Z",
    "offers": [
     [
-     409.0,
+     384.0,
      1,
      "EY,EY"
     ],
     [
-     537.0,
+     536.0,
      1,
      "KL,KL"
     ],
@@ -117562,7 +125812,17 @@
      "QR,QR"
     ],
     [
-     599.0,
+     543.0,
+     1,
+     "QR,QR"
+    ],
+    [
+     560.0,
+     1,
+     "SN,SN"
+    ],
+    [
+     683.0,
      0,
      "KQ"
     ],
@@ -117570,11 +125830,6 @@
      974.0,
      1,
      "BA,BA"
-    ],
-    [
-     1020.0,
-     1,
-     "DE,LH"
     ]
    ]
   },
@@ -117583,20 +125838,15 @@
    "dest": "NBO",
    "cabin": "ECONOMY",
    "date": "2026-10-06",
-   "price_usd": 550.0,
-   "nonstop_price_usd": 786.0,
+   "price_usd": 370.0,
+   "nonstop_price_usd": 609.0,
    "provider": "fast-flights",
-   "fetched_at": "2026-09-16T22:24:13Z",
+   "fetched_at": "2026-09-19T14:16:20Z",
    "offers": [
     [
-     550.0,
-     2,
-     "SN,SN,SN"
-    ],
-    [
-     555.0,
+     370.0,
      1,
-     "AF,AF"
+     "EY,EY"
     ],
     [
      555.0,
@@ -117604,29 +125854,39 @@
      "DL,AF"
     ],
     [
-     689.0,
+     555.0,
      1,
      "AF,AF"
     ],
     [
-     783.0,
-     1,
-     "QR,QR"
-    ],
-    [
-     786.0,
+     609.0,
      0,
      "KQ"
     ],
     [
-     807.0,
+     660.0,
      1,
      "KL,KL"
     ],
     [
-     1080.0,
+     662.0,
      1,
-     "DE,LH"
+     "AF,AF"
+    ],
+    [
+     735.0,
+     1,
+     "QR,QR"
+    ],
+    [
+     784.0,
+     1,
+     "TK,TK"
+    ],
+    [
+     974.0,
+     1,
+     "BA,BA"
     ]
    ]
   },
@@ -117635,28 +125895,28 @@
    "dest": "NBO",
    "cabin": "ECONOMY",
    "date": "2026-10-14",
-   "price_usd": 405.0,
+   "price_usd": 370.0,
    "nonstop_price_usd": 993.0,
    "provider": "fast-flights",
-   "fetched_at": "2026-09-16T22:24:11Z",
+   "fetched_at": "2026-09-19T14:16:17Z",
    "offers": [
+    [
+     370.0,
+     1,
+     "EY,EY"
+    ],
     [
      405.0,
      1,
      "GF,GF"
     ],
     [
-     550.0,
-     1,
-     "SN,SN"
-    ],
-    [
-     554.0,
+     553.0,
      1,
      "DL,KL"
     ],
     [
-     554.0,
+     553.0,
      1,
      "KL,KL"
     ],
@@ -117671,12 +125931,12 @@
      "AF,AF"
     ],
     [
-     664.0,
+     560.0,
      1,
-     "EY,EY"
+     "SN,SN"
     ],
     [
-     688.0,
+     660.0,
      1,
      "KL,KL"
     ],
@@ -117686,12 +125946,7 @@
      "TK,TK"
     ],
     [
-     783.0,
-     1,
-     "QR,QR"
-    ],
-    [
-     783.0,
+     735.0,
      1,
      "QR,QR"
     ],
@@ -119152,6 +127407,78 @@
   },
   {
    "origin": "JFK",
+   "dest": "NRT",
+   "cabin": "ECONOMY",
+   "date": "2027-04-15",
+   "price_usd": 557.0,
+   "nonstop_price_usd": null,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:16:11Z",
+   "offers": [
+    [
+     557.0,
+     1,
+     "CX,CX"
+    ],
+    [
+     602.0,
+     1,
+     "CX,CX"
+    ],
+    [
+     651.0,
+     1,
+     "CX,CX"
+    ],
+    [
+     662.0,
+     1,
+     "BR,BR"
+    ],
+    [
+     678.0,
+     1,
+     "AS,AS"
+    ],
+    [
+     695.0,
+     1,
+     "QR,QR"
+    ],
+    [
+     700.0,
+     1,
+     "BR,BR"
+    ],
+    [
+     791.0,
+     1,
+     "OZ,KE"
+    ],
+    [
+     852.0,
+     1,
+     "OZ,OZ"
+    ],
+    [
+     1176.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     1176.0,
+     1,
+     "AA,JL"
+    ],
+    [
+     1276.0,
+     2,
+     "DL,DL,DL"
+    ]
+   ]
+  },
+  {
+   "origin": "JFK",
    "dest": "OSL",
    "cabin": "BUSINESS",
    "date": "2027-01-27",
@@ -120365,6 +128692,48 @@
    "origin": "JFK",
    "dest": "POS",
    "cabin": "ECONOMY",
+   "date": "2027-01-11",
+   "price_usd": 228.0,
+   "nonstop_price_usd": 254.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:16:38Z",
+   "offers": [
+    [
+     228.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     228.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     254.0,
+     0,
+     "B6"
+    ],
+    [
+     354.0,
+     0,
+     "BW"
+    ],
+    [
+     482.0,
+     1,
+     "CM,CM"
+    ],
+    [
+     2342.0,
+     2,
+     "AA,LF,LF"
+    ]
+   ]
+  },
+  {
+   "origin": "JFK",
+   "dest": "POS",
+   "cabin": "ECONOMY",
    "date": "2027-02-22",
    "price_usd": 228.0,
    "nonstop_price_usd": 254.0,
@@ -120462,6 +128831,58 @@
      474.0,
      1,
      "CM,CM"
+    ]
+   ]
+  },
+  {
+   "origin": "JFK",
+   "dest": "POS",
+   "cabin": "ECONOMY",
+   "date": "2027-03-10",
+   "price_usd": 238.0,
+   "nonstop_price_usd": 254.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:16:39Z",
+   "offers": [
+    [
+     238.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     238.0,
+     2,
+     "AA,AA,AA"
+    ],
+    [
+     244.0,
+     2,
+     "AA,AA,AA"
+    ],
+    [
+     254.0,
+     0,
+     "B6"
+    ],
+    [
+     254.0,
+     0,
+     "B6"
+    ],
+    [
+     255.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     259.0,
+     0,
+     "BW"
+    ],
+    [
+     669.0,
+     1,
+     "BW,BW"
     ]
    ]
   },
@@ -120817,68 +129238,11 @@
    "dest": "PTY",
    "cabin": "BUSINESS",
    "date": "2026-10-06",
-   "price_usd": 781.0,
+   "price_usd": 912.0,
    "nonstop_price_usd": 1109.0,
    "provider": "fast-flights",
-   "fetched_at": "2026-09-16T18:48:45Z",
+   "fetched_at": "2026-09-19T14:17:18Z",
    "offers": [
-    [
-     781.0,
-     1,
-     "AA,AA"
-    ],
-    [
-     781.0,
-     1,
-     "AA,AA"
-    ],
-    [
-     912.0,
-     1,
-     "AV,AV"
-    ],
-    [
-     1109.0,
-     0,
-     "CM"
-    ],
-    [
-     1109.0,
-     0,
-     "CM"
-    ],
-    [
-     1109.0,
-     0,
-     "CM"
-    ],
-    [
-     1195.0,
-     1,
-     "AV,AV"
-    ],
-    [
-     1869.0,
-     0,
-     "CM"
-    ]
-   ]
-  },
-  {
-   "origin": "JFK",
-   "dest": "PTY",
-   "cabin": "BUSINESS",
-   "date": "2026-10-18",
-   "price_usd": 811.0,
-   "nonstop_price_usd": 1804.0,
-   "provider": "fast-flights",
-   "fetched_at": "2026-09-16T18:48:44Z",
-   "offers": [
-    [
-     811.0,
-     1,
-     "AA,AA"
-    ],
     [
      912.0,
      1,
@@ -120895,9 +129259,24 @@
      "DL,DL"
     ],
     [
-     1195.0,
+     982.0,
      1,
-     "AV,AV"
+     "AA,AA"
+    ],
+    [
+     1109.0,
+     0,
+     "CM"
+    ],
+    [
+     1109.0,
+     0,
+     "CM"
+    ],
+    [
+     1109.0,
+     0,
+     "CM"
     ],
     [
      1686.0,
@@ -120905,24 +129284,71 @@
      "AV,AV"
     ],
     [
-     1804.0,
+     1869.0,
      0,
      "CM"
     ],
     [
-     1804.0,
+     2381.0,
+     1,
+     "DL,DL"
+    ]
+   ]
+  },
+  {
+   "origin": "JFK",
+   "dest": "PTY",
+   "cabin": "BUSINESS",
+   "date": "2026-10-18",
+   "price_usd": 929.0,
+   "nonstop_price_usd": 1109.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:17:17Z",
+   "offers": [
+    [
+     929.0,
+     1,
+     "AM,AM"
+    ],
+    [
+     943.0,
+     1,
+     "DL,DL"
+    ],
+    [
+     1012.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     1109.0,
      0,
      "CM"
     ],
     [
-     1804.0,
+     1209.0,
      0,
      "CM"
+    ],
+    [
+     1209.0,
+     0,
+     "CM"
+    ],
+    [
+     1686.0,
+     1,
+     "AV,AV"
     ],
     [
      1885.0,
      0,
      "CM"
+    ],
+    [
+     4823.0,
+     1,
+     "AV,AV"
     ]
    ]
   },
@@ -122422,7 +130848,7 @@
    "price_usd": 523.0,
    "nonstop_price_usd": 742.0,
    "provider": "fast-flights",
-   "fetched_at": "2026-09-16T18:48:59Z",
+   "fetched_at": "2026-09-19T14:17:18Z",
    "offers": [
     [
      523.0,
@@ -122433,6 +130859,11 @@
      523.0,
      1,
      "AA,AA"
+    ],
+    [
+     585.0,
+     1,
+     "AM,AM"
     ],
     [
      598.0,
@@ -122557,6 +130988,78 @@
      598.0,
      1,
      "DL,DL"
+    ],
+    [
+     617.0,
+     1,
+     "AV,AV"
+    ],
+    [
+     617.0,
+     1,
+     "AV,AV"
+    ],
+    [
+     617.0,
+     1,
+     "AV,AV"
+    ],
+    [
+     619.0,
+     1,
+     "AV,AV"
+    ],
+    [
+     742.0,
+     0,
+     "CM"
+    ],
+    [
+     742.0,
+     0,
+     "CM"
+    ],
+    [
+     802.0,
+     0,
+     "CM"
+    ],
+    [
+     802.0,
+     0,
+     "CM"
+    ]
+   ]
+  },
+  {
+   "origin": "JFK",
+   "dest": "PTY",
+   "cabin": "ECONOMY",
+   "date": "2026-11-03",
+   "price_usd": 486.0,
+   "nonstop_price_usd": 742.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:17:19Z",
+   "offers": [
+    [
+     486.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     486.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     598.0,
+     1,
+     "DL,DL"
+    ],
+    [
+     607.0,
+     1,
+     "AM,AM"
     ],
     [
      617.0,
@@ -124200,6 +132703,63 @@
    "origin": "JFK",
    "dest": "PUJ",
    "cabin": "BUSINESS",
+   "date": "2027-03-02",
+   "price_usd": 435.0,
+   "nonstop_price_usd": 435.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:16:20Z",
+   "offers": [
+    [
+     435.0,
+     0,
+     "DL"
+    ],
+    [
+     501.0,
+     0,
+     "AA"
+    ],
+    [
+     557.0,
+     0,
+     "DL"
+    ],
+    [
+     566.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     624.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     734.0,
+     1,
+     "DL,DL"
+    ],
+    [
+     841.0,
+     1,
+     "AM,AM"
+    ],
+    [
+     892.0,
+     1,
+     "CM,CM"
+    ],
+    [
+     919.0,
+     1,
+     "AV,AV"
+    ]
+   ]
+  },
+  {
+   "origin": "JFK",
+   "dest": "PUJ",
+   "cabin": "BUSINESS",
    "date": "2027-03-16",
    "price_usd": 435.0,
    "nonstop_price_usd": 435.0,
@@ -125070,6 +133630,63 @@
    "origin": "JFK",
    "dest": "PUJ",
    "cabin": "ECONOMY",
+   "date": "2027-03-02",
+   "price_usd": 195.0,
+   "nonstop_price_usd": 195.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:16:35Z",
+   "offers": [
+    [
+     195.0,
+     0,
+     "AA"
+    ],
+    [
+     195.0,
+     0,
+     "DL"
+    ],
+    [
+     205.0,
+     2,
+     "AA,AA,AA"
+    ],
+    [
+     205.0,
+     2,
+     "AA,AA,AA"
+    ],
+    [
+     241.0,
+     1,
+     "B6,B6"
+    ],
+    [
+     297.0,
+     0,
+     "DL"
+    ],
+    [
+     299.0,
+     0,
+     "B6"
+    ],
+    [
+     299.0,
+     0,
+     "B6"
+    ],
+    [
+     389.0,
+     0,
+     "B6"
+    ]
+   ]
+  },
+  {
+   "origin": "JFK",
+   "dest": "PUJ",
+   "cabin": "ECONOMY",
    "date": "2027-03-22",
    "price_usd": 199.0,
    "nonstop_price_usd": 297.0,
@@ -125187,6 +133804,58 @@
      484.0,
      0,
      "B6"
+    ]
+   ]
+  },
+  {
+   "origin": "JFK",
+   "dest": "PUJ",
+   "cabin": "ECONOMY",
+   "date": "2027-04-30",
+   "price_usd": 199.0,
+   "nonstop_price_usd": 354.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:16:43Z",
+   "offers": [
+    [
+     199.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     274.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     274.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     354.0,
+     0,
+     "B6"
+    ],
+    [
+     354.0,
+     0,
+     "B6"
+    ],
+    [
+     354.0,
+     0,
+     "DL"
+    ],
+    [
+     354.0,
+     0,
+     "B6"
+    ],
+    [
+     383.0,
+     0,
+     "AA"
     ]
    ]
   },
@@ -126149,6 +134818,63 @@
     ],
     [
      5535.0,
+     1,
+     "AF,AF"
+    ]
+   ]
+  },
+  {
+   "origin": "JFK",
+   "dest": "RAK",
+   "cabin": "BUSINESS",
+   "date": "2027-07-29",
+   "price_usd": 2512.0,
+   "nonstop_price_usd": null,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:17:41Z",
+   "offers": [
+    [
+     2512.0,
+     1,
+     "TP,TP"
+    ],
+    [
+     2686.0,
+     1,
+     "UX,UX"
+    ],
+    [
+     2697.0,
+     1,
+     "UX,UX"
+    ],
+    [
+     3811.0,
+     1,
+     "AT,AT"
+    ],
+    [
+     3811.0,
+     1,
+     "AT,AT"
+    ],
+    [
+     3990.0,
+     2,
+     "AT,TP,TP"
+    ],
+    [
+     4178.0,
+     1,
+     "TK,TK"
+    ],
+    [
+     5172.0,
+     1,
+     "IB,IB"
+    ],
+    [
+     5285.0,
      1,
      "AF,AF"
     ]
@@ -130262,6 +138988,118 @@
   },
   {
    "origin": "JFK",
+   "dest": "SIN",
+   "cabin": "BUSINESS",
+   "date": "2027-08-15",
+   "price_usd": 3103.0,
+   "nonstop_price_usd": null,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:16:51Z",
+   "offers": [
+    [
+     3103.0,
+     1,
+     "OZ,OZ"
+    ],
+    [
+     3121.0,
+     1,
+     "PR,PR"
+    ],
+    [
+     3158.0,
+     1,
+     "OZ,KE"
+    ],
+    [
+     3734.0,
+     1,
+     "CX,CX"
+    ],
+    [
+     3758.0,
+     1,
+     "OZ,KE"
+    ],
+    [
+     3874.0,
+     1,
+     "BR,BR"
+    ],
+    [
+     4281.0,
+     1,
+     "NH,NH"
+    ],
+    [
+     4366.0,
+     1,
+     "KE,KE"
+    ],
+    [
+     4837.0,
+     1,
+     "EY,EY"
+    ],
+    [
+     5202.0,
+     1,
+     "EK,EK"
+    ],
+    [
+     5202.0,
+     1,
+     "EK,EK"
+    ],
+    [
+     5361.0,
+     1,
+     "CI,CI"
+    ],
+    [
+     5413.0,
+     1,
+     "NH,NH"
+    ],
+    [
+     5444.0,
+     1,
+     "CX,CX"
+    ],
+    [
+     5444.0,
+     1,
+     "CX,CX"
+    ],
+    [
+     5444.0,
+     1,
+     "CX,CX"
+    ],
+    [
+     5631.0,
+     1,
+     "LX,SQ"
+    ],
+    [
+     5661.0,
+     1,
+     "TK,TK"
+    ],
+    [
+     5661.0,
+     1,
+     "TK,TK"
+    ],
+    [
+     6666.0,
+     1,
+     "QR,QR"
+    ]
+   ]
+  },
+  {
+   "origin": "JFK",
    "dest": "SJO",
    "cabin": "ECONOMY",
    "date": "2026-10-17",
@@ -130410,6 +139248,68 @@
    "origin": "JFK",
    "dest": "SJU",
    "cabin": "ECONOMY",
+   "date": "2026-11-21",
+   "price_usd": 179.0,
+   "nonstop_price_usd": 179.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:16:38Z",
+   "offers": [
+    [
+     179.0,
+     0,
+     "B6"
+    ],
+    [
+     204.0,
+     0,
+     "B6"
+    ],
+    [
+     204.0,
+     0,
+     "DL"
+    ],
+    [
+     204.0,
+     0,
+     "B6"
+    ],
+    [
+     368.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     394.0,
+     0,
+     "B6"
+    ],
+    [
+     454.0,
+     0,
+     "B6"
+    ],
+    [
+     457.0,
+     0,
+     "DL"
+    ],
+    [
+     457.0,
+     0,
+     "DL"
+    ],
+    [
+     515.0,
+     0,
+     "B6"
+    ]
+   ]
+  },
+  {
+   "origin": "JFK",
+   "dest": "SJU",
+   "cabin": "ECONOMY",
    "date": "2026-12-02",
    "price_usd": 174.0,
    "nonstop_price_usd": 179.0,
@@ -130540,6 +139440,88 @@
     ],
     [
      424.0,
+     1,
+     "AA,AA"
+    ]
+   ]
+  },
+  {
+   "origin": "JFK",
+   "dest": "SJU",
+   "cabin": "ECONOMY",
+   "date": "2026-12-31",
+   "price_usd": 174.0,
+   "nonstop_price_usd": 174.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:16:23Z",
+   "offers": [
+    [
+     174.0,
+     0,
+     "B6"
+    ],
+    [
+     174.0,
+     0,
+     "B6"
+    ],
+    [
+     174.0,
+     0,
+     "DL"
+    ],
+    [
+     174.0,
+     0,
+     "B6"
+    ],
+    [
+     174.0,
+     0,
+     "DL"
+    ],
+    [
+     204.0,
+     0,
+     "DL"
+    ],
+    [
+     239.0,
+     0,
+     "B6"
+    ],
+    [
+     239.0,
+     0,
+     "B6"
+    ],
+    [
+     268.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     278.0,
+     0,
+     "B6"
+    ],
+    [
+     278.0,
+     0,
+     "DL"
+    ],
+    [
+     314.0,
+     0,
+     "B6"
+    ],
+    [
+     314.0,
+     0,
+     "B6"
+    ],
+    [
+     414.0,
      1,
      "AA,AA"
     ]
@@ -130757,6 +139739,68 @@
      856.0,
      2,
      "AA,AA,AA"
+    ],
+    [
+     3195.0,
+     2,
+     "AA,AA,9K"
+    ],
+    [
+     3235.0,
+     2,
+     "AA,AA,9K"
+    ]
+   ]
+  },
+  {
+   "origin": "JFK",
+   "dest": "STT",
+   "cabin": "BUSINESS",
+   "date": "2027-04-19",
+   "price_usd": 421.0,
+   "nonstop_price_usd": 421.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:16:14Z",
+   "offers": [
+    [
+     421.0,
+     0,
+     "AA"
+    ],
+    [
+     431.0,
+     2,
+     "AA,AA,AA"
+    ],
+    [
+     431.0,
+     2,
+     "AA,AA,AA"
+    ],
+    [
+     459.0,
+     2,
+     "AA,AA,AA"
+    ],
+    [
+     541.0,
+     2,
+     "AA,AA,AA"
+    ],
+    [
+     636.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     800.0,
+     0,
+     "DL"
+    ],
+    [
+     944.0,
+     1,
+     "AA,AA"
     ],
     [
      3195.0,
@@ -131484,6 +140528,187 @@
   },
   {
    "origin": "JFK",
+   "dest": "STT",
+   "cabin": "ECONOMY",
+   "date": "2027-07-25",
+   "price_usd": 182.0,
+   "nonstop_price_usd": 182.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:16:45Z",
+   "offers": [
+    [
+     182.0,
+     0,
+     "AA"
+    ],
+    [
+     182.0,
+     0,
+     "DL"
+    ],
+    [
+     192.0,
+     2,
+     "AA,AA,AA"
+    ],
+    [
+     192.0,
+     2,
+     "AA,AA,AA"
+    ],
+    [
+     219.0,
+     2,
+     "AA,AA,AA"
+    ],
+    [
+     219.0,
+     2,
+     "AA,AA,AA"
+    ],
+    [
+     307.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     854.0,
+     1,
+     "DL,9K"
+    ],
+    [
+     854.0,
+     1,
+     "DL,9K"
+    ]
+   ]
+  },
+  {
+   "origin": "JFK",
+   "dest": "STT",
+   "cabin": "ECONOMY",
+   "date": "2027-08-02",
+   "price_usd": 182.0,
+   "nonstop_price_usd": 182.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:16:46Z",
+   "offers": [
+    [
+     182.0,
+     0,
+     "AA"
+    ],
+    [
+     192.0,
+     2,
+     "AA,AA,AA"
+    ],
+    [
+     192.0,
+     2,
+     "AA,AA,AA"
+    ],
+    [
+     192.0,
+     2,
+     "AA,AA,AA"
+    ],
+    [
+     265.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     307.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     313.0,
+     2,
+     "AA,AA,AA"
+    ],
+    [
+     342.0,
+     2,
+     "AA,AA,AA"
+    ],
+    [
+     412.0,
+     1,
+     "DL,DL"
+    ],
+    [
+     854.0,
+     1,
+     "DL,9K"
+    ]
+   ]
+  },
+  {
+   "origin": "JFK",
+   "dest": "STT",
+   "cabin": "ECONOMY",
+   "date": "2027-08-10",
+   "price_usd": 182.0,
+   "nonstop_price_usd": 182.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:16:47Z",
+   "offers": [
+    [
+     182.0,
+     0,
+     "AA"
+    ],
+    [
+     186.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     186.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     192.0,
+     2,
+     "AA,AA,AA"
+    ],
+    [
+     205.0,
+     2,
+     "AA,AA,AA"
+    ],
+    [
+     404.0,
+     2,
+     "AA,AA,AA"
+    ],
+    [
+     412.0,
+     1,
+     "DL,DL"
+    ],
+    [
+     546.0,
+     1,
+     "B6,B6"
+    ],
+    [
+     854.0,
+     1,
+     "DL,9K"
+    ],
+    [
+     854.0,
+     1,
+     "DL,9K"
+    ]
+   ]
+  },
+  {
+   "origin": "JFK",
    "dest": "SXM",
    "cabin": "BUSINESS",
    "date": "2026-12-05",
@@ -131999,6 +141224,68 @@
    "origin": "JFK",
    "dest": "SXM",
    "cabin": "ECONOMY",
+   "date": "2026-10-13",
+   "price_usd": 104.0,
+   "nonstop_price_usd": 104.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:16:41Z",
+   "offers": [
+    [
+     104.0,
+     0,
+     "B6"
+    ],
+    [
+     108.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     114.0,
+     2,
+     "AA,AA,AA"
+    ],
+    [
+     114.0,
+     2,
+     "AA,AA,AA"
+    ],
+    [
+     156.0,
+     1,
+     "B6,B6"
+    ],
+    [
+     168.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     230.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     230.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     352.0,
+     1,
+     "CM,CM"
+    ],
+    [
+     393.0,
+     1,
+     "B6,LF"
+    ]
+   ]
+  },
+  {
+   "origin": "JFK",
+   "dest": "SXM",
+   "cabin": "ECONOMY",
    "date": "2026-10-26",
    "price_usd": 74.0,
    "nonstop_price_usd": 104.0,
@@ -132116,6 +141403,68 @@
      352.0,
      1,
      "CM,CM"
+    ]
+   ]
+  },
+  {
+   "origin": "JFK",
+   "dest": "SXM",
+   "cabin": "ECONOMY",
+   "date": "2026-11-17",
+   "price_usd": 74.0,
+   "nonstop_price_usd": 104.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:16:39Z",
+   "offers": [
+    [
+     74.0,
+     1,
+     "B6,B6"
+    ],
+    [
+     104.0,
+     0,
+     "B6"
+    ],
+    [
+     108.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     114.0,
+     2,
+     "AA,AA,AA"
+    ],
+    [
+     127.0,
+     2,
+     "AA,AA,AA"
+    ],
+    [
+     212.0,
+     1,
+     "DL,DL"
+    ],
+    [
+     215.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     271.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     287.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     393.0,
+     1,
+     "B6,LF"
     ]
    ]
   },
@@ -135472,6 +144821,68 @@
    "origin": "JFK",
    "dest": "TPE",
    "cabin": "BUSINESS",
+   "date": "2027-06-11",
+   "price_usd": 3467.0,
+   "nonstop_price_usd": 3909.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:16:53Z",
+   "offers": [
+    [
+     3467.0,
+     1,
+     "PR,PR"
+    ],
+    [
+     3903.0,
+     1,
+     "PR,BR"
+    ],
+    [
+     3909.0,
+     0,
+     "BR"
+    ],
+    [
+     3940.0,
+     1,
+     "OZ,OZ"
+    ],
+    [
+     3995.0,
+     1,
+     "OZ,KE"
+    ],
+    [
+     4528.0,
+     1,
+     "CX,CX"
+    ],
+    [
+     4528.0,
+     1,
+     "CX,CX"
+    ],
+    [
+     4528.0,
+     1,
+     "CX,CX"
+    ],
+    [
+     5331.0,
+     0,
+     "CI"
+    ],
+    [
+     7564.0,
+     1,
+     "DL,DL"
+    ]
+   ]
+  },
+  {
+   "origin": "JFK",
+   "dest": "TPE",
+   "cabin": "BUSINESS",
    "date": "2027-07-26",
    "price_usd": 2971.0,
    "nonstop_price_usd": 3829.0,
@@ -135953,35 +145364,45 @@
    "dest": "UVF",
    "cabin": "ECONOMY",
    "date": "2026-09-25",
-   "price_usd": 303.0,
-   "nonstop_price_usd": 459.0,
+   "price_usd": 307.0,
+   "nonstop_price_usd": 534.0,
    "provider": "fast-flights",
-   "fetched_at": "2026-09-16T23:54:18Z",
+   "fetched_at": "2026-09-19T14:16:40Z",
    "offers": [
     [
-     303.0,
-     1,
-     "AA,AA"
-    ],
-    [
-     303.0,
+     307.0,
      1,
      "DL,DL"
     ],
     [
-     303.0,
+     382.0,
      1,
      "AA,AA"
     ],
     [
-     459.0,
+     382.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     387.0,
+     2,
+     "AA,AA,AA"
+    ],
+    [
+     387.0,
+     2,
+     "AA,AA,AA"
+    ],
+    [
+     463.0,
+     1,
+     "DL,DL"
+    ],
+    [
+     534.0,
      0,
      "B6"
-    ],
-    [
-     563.0,
-     1,
-     "DL,DL"
     ]
    ]
   },
@@ -135993,7 +145414,7 @@
    "price_usd": 199.0,
    "nonstop_price_usd": 199.0,
    "provider": "fast-flights",
-   "fetched_at": "2026-09-16T23:52:05Z",
+   "fetched_at": "2026-09-19T14:16:25Z",
    "offers": [
     [
      199.0,
@@ -136001,17 +145422,22 @@
      "B6"
     ],
     [
-     224.0,
+     204.0,
      1,
      "AA,AA"
     ],
     [
-     224.0,
+     204.0,
      1,
      "DL,DL"
     ],
     [
-     240.0,
+     204.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     261.0,
      1,
      "AA,AA"
     ],
@@ -136021,14 +145447,14 @@
      "AA,AA"
     ],
     [
-     362.0,
-     1,
-     "AA,AA"
-    ],
-    [
-     439.0,
+     463.0,
      1,
      "DL,DL"
+    ],
+    [
+     1474.0,
+     2,
+     "AA,AA,AA"
     ]
    ]
   },
@@ -136040,7 +145466,7 @@
    "price_usd": 169.0,
    "nonstop_price_usd": 169.0,
    "provider": "fast-flights",
-   "fetched_at": "2026-09-16T23:52:05Z",
+   "fetched_at": "2026-09-19T14:16:22Z",
    "offers": [
     [
      169.0,
@@ -136048,24 +145474,34 @@
      "B6"
     ],
     [
-     189.0,
+     174.0,
      1,
      "AA,AA"
     ],
     [
-     189.0,
+     174.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     174.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     184.0,
      1,
      "DL,DL"
     ],
     [
-     189.0,
+     662.0,
      1,
-     "AA,AA"
+     "DL,DL"
     ],
     [
-     189.0,
-     1,
-     "AA,AA"
+     1462.0,
+     2,
+     "AA,AA,AA"
     ]
    ]
   },
@@ -136311,6 +145747,58 @@
     ],
     [
      588.0,
+     1,
+     "DL,DL"
+    ]
+   ]
+  },
+  {
+   "origin": "JFK",
+   "dest": "UVF",
+   "cabin": "ECONOMY",
+   "date": "2027-01-07",
+   "price_usd": 184.0,
+   "nonstop_price_usd": 354.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:16:07Z",
+   "offers": [
+    [
+     184.0,
+     1,
+     "DL,DL"
+    ],
+    [
+     189.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     189.0,
+     2,
+     "AA,AA,AA"
+    ],
+    [
+     189.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     194.0,
+     2,
+     "AA,AA,AA"
+    ],
+    [
+     202.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     354.0,
+     0,
+     "B6"
+    ],
+    [
+     367.0,
      1,
      "DL,DL"
     ]
@@ -136577,6 +146065,63 @@
    "origin": "JFK",
    "dest": "UVF",
    "cabin": "ECONOMY",
+   "date": "2027-03-24",
+   "price_usd": 192.0,
+   "nonstop_price_usd": 264.0,
+   "provider": "fast-flights",
+   "fetched_at": "2026-09-19T14:16:28Z",
+   "offers": [
+    [
+     192.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     192.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     249.0,
+     2,
+     "AA,AA,AA"
+    ],
+    [
+     254.0,
+     2,
+     "AA,AA,AA"
+    ],
+    [
+     264.0,
+     0,
+     "B6"
+    ],
+    [
+     266.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     284.0,
+     1,
+     "AA,AA"
+    ],
+    [
+     422.0,
+     1,
+     "DL,DL"
+    ],
+    [
+     456.0,
+     1,
+     "AA,AA"
+    ]
+   ]
+  },
+  {
+   "origin": "JFK",
+   "dest": "UVF",
+   "cabin": "ECONOMY",
    "date": "2027-04-07",
    "price_usd": 195.0,
    "nonstop_price_usd": 289.0,
@@ -136752,7 +146297,7 @@
    "price_usd": 2205.0,
    "nonstop_price_usd": 7497.0,
    "provider": "fast-flights",
-   "fetched_at": "2026-09-16T19:06:27Z",
+   "fetched_at": "2026-09-19T14:16:57Z",
    "offers": [
     [
      2205.0,
@@ -136760,19 +146305,19 @@
      "JU,JU"
     ],
     [
-     3433.0,
+     3432.0,
      1,
      "LO,LO"
+    ],
+    [
+     3468.0,
+     1,
+     "LO,OS"
     ],
     [
      3930.0,
      1,
      "TP,TP"
-    ],
-    [
-     4789.0,
-     1,
-     "LO,OS"
     ],
     [
      4902.0,
@@ -136785,7 +146330,7 @@
      "DE,DE"
     ],
     [
-     6359.0,
+     7466.0,
      1,
      "BA,BA"
     ],
@@ -136805,7 +146350,7 @@
      "AF,AF"
     ],
     [
-     7578.0,
+     7577.0,
      1,
      "KL,KL"
     ]
@@ -136817,9 +146362,9 @@
    "cabin": "BUSINESS",
    "date": "2026-10-15",
    "price_usd": 1680.0,
-   "nonstop_price_usd": 6647.0,
+   "nonstop_price_usd": 7497.0,
    "provider": "fast-flights",
-   "fetched_at": "2026-09-16T19:06:28Z",
+   "fetched_at": "2026-09-19T14:17:02Z",
    "offers": [
     [
      1680.0,
@@ -136832,22 +146377,32 @@
      "JU,JU"
     ],
     [
-     3433.0,
+     3432.0,
      1,
      "LO,LO"
     ],
     [
-     3469.0,
+     3468.0,
      1,
      "LO,OS"
     ],
     [
-     6647.0,
+     4952.0,
+     1,
+     "TK,TK"
+    ],
+    [
+     7497.0,
      0,
      "OS"
     ],
     [
-     6728.0,
+     7566.0,
+     1,
+     "AF,AF"
+    ],
+    [
+     7577.0,
      1,
      "KL,KL"
     ]
@@ -138714,13 +148269,13 @@
    "dest": "ZRH",
    "cabin": "BUSINESS",
    "date": "2026-10-05",
-   "price_usd": 1635.0,
+   "price_usd": 1848.0,
    "nonstop_price_usd": 8919.0,
    "provider": "fast-flights",
-   "fetched_at": "2026-09-16T18:48:31Z",
+   "fetched_at": "2026-09-19T14:17:58Z",
    "offers": [
     [
-     1635.0,
+     1848.0,
      1,
      "FI,FI"
     ],
@@ -138730,7 +148285,7 @@
      "JU,JU"
     ],
     [
-     2289.0,
+     2301.0,
      1,
      "FI,FI"
     ],
@@ -138745,7 +148300,7 @@
      "TP,TP"
     ],
     [
-     3425.0,
+     3424.0,
      1,
      "LO,LO"
     ],
@@ -138776,18 +148331,13 @@
    "dest": "ZRH",
    "cabin": "BUSINESS",
    "date": "2026-10-14",
-   "price_usd": 2843.0,
-   "nonstop_price_usd": 6394.0,
+   "price_usd": 2951.0,
+   "nonstop_price_usd": 8669.0,
    "provider": "fast-flights",
-   "fetched_at": "2026-09-16T18:48:39Z",
+   "fetched_at": "2026-09-19T14:17:02Z",
    "offers": [
     [
-     2843.0,
-     1,
-     "BA,BA"
-    ],
-    [
-     2939.0,
+     2951.0,
      1,
      "FI,FI"
     ],
@@ -138797,39 +148347,34 @@
      "DE,DE"
     ],
     [
-     3274.0,
+     3424.0,
+     1,
+     "LO,LO"
+    ],
+    [
+     4791.0,
      1,
      "EK,LX"
     ],
     [
-     6394.0,
+     8669.0,
      0,
      "LX"
     ],
     [
-     6394.0,
+     8669.0,
      0,
      "LX"
     ],
     [
-     6394.0,
+     8669.0,
      0,
      "DL"
     ],
     [
-     6425.0,
+     8699.0,
      1,
      "KL,KL"
-    ],
-    [
-     6425.0,
-     1,
-     "KL,KL"
-    ],
-    [
-     6439.0,
-     1,
-     "LH,LH"
     ]
    ]
   },
