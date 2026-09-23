@@ -12,6 +12,11 @@ history before 2026-09-16.
 
 ## Possible improvements
 
+- [ ] **Decide the business-class bar.** 2.0¢/pt is a low hurdle (United miles are
+      worth ~1.3¢), so routine 88k United saver awards fill much of the top 20.
+      Options: raise it to ~2.5¢, or rank by value above each program's own
+      baseline instead of one flat bar per cabin.
+
 - [ ] **Keep `transfer_bonuses.json` current** (current entries end Sep 30 / Oct 15, 2026).
 - [ ] Later: move the watchlist (`scan_config.json`) into the private balances Gist so
       travel plans aren't visible in the public repo.

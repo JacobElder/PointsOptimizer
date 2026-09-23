@@ -11,5 +11,7 @@ requests>=2.32,<3
 # Free Google Flights cash prices (primary provider; SerpApi is the fallback).
 # Pinned: it scrapes Google, so upgrades can change behavior. Needs protobuf>=5.27.
 fast-flights==3.1.0
+# fast-flights' generated protobuf code needs a runtime in this range.
+protobuf>=5.27,<8
 # fast-flights 3.1.0 imports typing_extensions but doesn't declare it.
 typing_extensions>=4.12

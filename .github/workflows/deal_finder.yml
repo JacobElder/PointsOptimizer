@@ -9,7 +9,9 @@ name: Deal Finder
 # optional: miles already held in airline programs, kept out of the public repo).
 on:
   schedule:
-    - cron: "0 11 * * *" # 7am US Eastern (EDT)
+    # GitHub's shared scheduler runs late (3-6h observed), so aim early: this has
+    # been landing 10am-1pm ET. Not a guaranteed time.
+    - cron: "0 8 * * *"
   workflow_dispatch:
     inputs:
       resend:
@@ -29,8 +31,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
           cache: pip

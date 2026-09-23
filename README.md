@@ -12,8 +12,10 @@ The core question: *an award in front of you is worth some cents-per-point (CPP)
 cd ~/Documents/GitHub/PointsOptimizer
 make setup     # creates .venv with everything (once)
 make app       # run the Streamlit app
-make find      # scan seats.aero, price the best awards, email new standouts
+make find         # scan seats.aero, price the best awards, email new standouts
 make find-resend  # same, but email every current deal (to test the email)
+make find-quiet   # same, no email
+make check        # confirm free Google Flights lookups work from this machine
 make test
 ```
 
@@ -52,21 +54,20 @@ For the scheduled Deal Finder, add the same keys as GitHub repo secrets (Setting
 
 ## Deal Finder — how deals are found
 
-`deal_finder.py` runs daily on GitHub Actions (`.github/workflows/deal_finder.yml`, 7am ET) or on demand with `make find`:
+`deal_finder.py` runs daily on GitHub Actions (`.github/workflows/deal_finder.yml`) or on demand with `make find`. The cron asks for 08:00 UTC, but GitHub's shared scheduler runs hours late, so the email usually lands mid-morning US Eastern — it's a daily digest, not a fixed time.
 
 1. **Scan** (`award_scanner.py`) — seats.aero Cached Search across `scan_config.json` routes (plus watchlist destinations), one query per program per cabin, in programs your **active** point pools can transfer to **plus** programs you already hold miles in. ~145,000 awards for ~200 of the 1,000 daily API calls.
-2. **Estimate** (`fare_model.py`) — predicted cash fare with uncertainty for every award (regression on distance, cabin, region; per-route corrections as real fares accumulate), giving the probability it clears the cabin's great-deal bar.
+2. **Estimate** (`fare_model.py`) — predicted cash fare with uncertainty for every award, giving the probability it clears the cabin's great-deal bar.
 3. **Price** (`cash_quotes.py`) — real Google Flights fares for the most promising candidates, highest expected value first. Quotes are saved in `cash_quotes.json` and reused for dates within ±7 days on the same route and cabin.
-4. **Round-trip check** — for deals near the top, also price a 7-night round trip. The award is valued against the **lower** of the one-way fare and half the round trip (one-way fares are often far above half a round trip: EWR–CPT business $5,084 one-way vs $2,519 per direction).
-5. **Rank** — confirmed deals by dollars saved above the bar: `(cash − taxes) − points × bar`. One entry per destination + cabin; other dates, origins and programs listed under it; 5 slots reserved for economy.
-5b. **Flight details** (`award_trips.py`, 1 call per reported deal) — the actual flights, times, connections and a direct booking link. Deals are ranked lower for a **mixed cabin** (e.g. a "business" award with an economy leg), an **airport change** mid-trip (land at DCA, depart IAD), a **very long itinerary**, or award data **older than 5 days**; each is flagged on the card.
-6. **Book now with miles you already hold** — awards fully covered by miles already sitting in a program (e.g. JetBlue, American), listed first. Programs you can't top up from a card (American, Delta) only show awards your balance fully covers.
-7. **Watchlist** — destinations you care about are always reported when they clear their bar, even outside the top 20 (see below).
-8. **Report** — `deal_digest.json` (shown on Deal Radar) and an email of deals not reported in the last 14 days, watchlist hits first.
+4. **Round-trip check** — near-top deals also price a round trip (7 nights, falling back to 4 or 2 so trips near the edge of the booking window still get checked). The award is valued against the **lower** of the one-way fare and half the round trip, because one-way fares run far above half a round trip. A deal that still can't be round-trip priced is flagged and ranked down.
+5. **Verify** (`award_trips.py`, 1 call per reported deal) — the actual flights, times, connections, cabin of each leg, seats left, and a direct booking link. Deals are **dropped** if the award is gone, has repriced above what the scan saw, or shows 0 seats in a program that reports seat counts. Deals are **ranked lower** for a mixed cabin (a "business" award with an economy leg), an airport change mid-trip, a very long itinerary, or award data older than 5 days — each flagged on the card.
+6. **Book now with miles you already hold** — awards fully covered by miles already in a program (e.g. JetBlue, American), listed first. Programs you can't top up from a card only show awards your balance fully covers.
+7. **Watchlist** — destinations you care about are always reported when they clear their bar, even outside the top 20.
+8. **Report** — `deal_digest.json` (shown on Top Deals) and an email of deals not reported in the last 14 days, watchlist hits first. The digest is committed to this public repo, so it deliberately carries **no balances**; the site computes "how to pay" locally.
 
 ### Which cash fare an award is compared against
 
-- **Nonstop award** → cheapest fare with **at most one stop**. Not the cheapest nonstop: one-way nonstop fares on legacy carriers are often several times the one-stop fare (JFK–ZRH Swiss business $8,919 vs $1,468 with one stop) and would produce fake 10¢+ "deals".
+- **Nonstop award** (confirmed from the flight details, never seats.aero's `direct` flag, which only means "one flight number") → cheapest fare with **at most one stop**. Not the cheapest nonstop: one-way nonstop fares on legacy carriers are often several times the one-stop fare (JFK–ZRH Swiss business $8,919 vs $1,468 with one stop) and would produce fake 10¢+ "deals".
 - **Connecting award** → cheapest fare, any stops.
 - **First class** → valued against the **business** fare. Google's "first" results are business or mixed-cabin on most routes.
 - The nonstop fare and the award airline's own fare are shown for context, never used for CPP.
@@ -78,7 +79,7 @@ For the scheduled Deal Finder, add the same keys as GitHub repo secrets (Setting
 | Economy / Premium Economy | 1.5¢ | 1.0¢ |
 | Business / First | 2.0¢ | 1.0¢ |
 
-Defined once in `deal_log.py` (`verdict_for`) and used everywhere: Flight Analyzer, Deal Radar, emails.
+Defined once in `valuation.py` (`verdict_for`) and used everywhere: Top Deals, Flight Search, emails.
 
 ### Changing what gets scanned
 
@@ -108,7 +109,7 @@ Defined once in `deal_log.py` (`verdict_for`) and used everywhere: Flight Analyz
 - **Coverage:** seats.aero covers Aeroplan, Flying Blue, BA, Iberia, JetBlue, Singapore, United, Virgin Atlantic, Qatar, Turkish, Etihad, Qantas, Finnair, Aeromexico and more, but not LifeMiles, Asia Miles, TAP, EVA, Aer Lingus or hotel programs.
 - **Transfer partners** in `cards_data.py` were last verified 2026-09-16; known source conflicts are listed in its header.
 - **Streamlit Cloud storage isn't durable:** `balances.json` / `program_balances.json` reset when the hosted app restarts.
-- **The repo is public:** `deal_digest.json`, `cash_quotes.json` and `deal_log.json` (award and fare data only, no credentials or balances) are visible. `deal_log.json` is the retired alert pipeline's history, kept because its recorded fares train the fare model.
+- **The repo is public:** `deal_digest.json`, `cash_quotes.json` and `deal_log.json` hold award and fare data only — no credentials and no balances. `scan_config.json`'s watchlist does reveal which destinations and seasons you're watching. `deal_log.json` is the retired alert pipeline's history, kept because its recorded fares train the fare model.
 
 ---
 
@@ -133,7 +134,7 @@ CI: `tests.yml` on every push; `cash_price_check.yml` weekly and whenever the pr
 | `flight_search.py` | Google Flights fares (one-way and round-trip): fast-flights, capped SerpApi fallback |
 | `valuation.py` | CPP math, currency conversion, cabin-aware verdict |
 | `funding.py` | How to pay for an award: held miles first, then the best transfer (with active transfer bonuses) |
-| `award_trips.py` | Flight-level detail per award: flights, cabin per leg, airport changes, booking link |
+| `award_trips.py` | Flight-level detail and live re-verification: flights, cabin per leg, stops, seats, current price, airport changes, booking link |
 | `seats_aero.py` | Single-date award search for Flight Search; program name mapping |
 | `cards_data.py` | Cards, point pools, transfer partners |
 | `ledger.py` | Card balances and miles held in programs (secret Gist when GIST_TOKEN is set, else local files) |

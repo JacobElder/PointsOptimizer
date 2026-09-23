@@ -1,8 +1,7 @@
-# Minimal runtime deps for the Deal Radar pricing job (price_pending_deals.py).
-# The pricing path only needs requests + fast-flights -- it never imports streamlit or
-# numpy at module level. Kept separate from requirements.txt so the CI job doesn't
-# install the whole Streamlit stack.
+# Minimal deps for the weekly cash-price source check (cash_price_check.yml):
+# just the Google Flights lookup path, without the Streamlit/NumPy app stack.
 requests>=2.32,<3
 fast-flights==3.1.0
 # fast-flights 3.1.0 imports typing_extensions but doesn't declare it.
 typing_extensions>=4.12
+protobuf>=5.27,<8

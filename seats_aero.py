@@ -43,6 +43,8 @@ SOURCE_TO_PARTNER = {
     "alaska": "Alaska Atmos Rewards",  # added 2026-09-16 (live-verified)
     "american": "American Airlines AAdvantage",  # added 2026-09-16 (live-verified)
     "emirates": "Emirates Skywards",  # added 2026-09-16 (live-verified)
+    "lifemiles": "Avianca LifeMiles",  # added 2026-09-23
+    "smiles": "GOL Smiles",  # added 2026-09-23
     "british": "British Airways Executive Club",
     "delta": "Delta SkyMiles",  # added 2026-09-16 (live-verified); not a transfer partner of your pools
     "etihad": "Etihad Guest",

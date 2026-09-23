@@ -1,7 +1,7 @@
 """
 Deal finder: separates the wheat from the chaff in seats.aero award space.
 
-Pipeline (one run, ~3-5 minutes, ~20 seats.aero calls, 0 SerpApi calls normally):
+Pipeline (one run, ~8 minutes, ~200-300 seats.aero calls of 1,000/day, 0 SerpApi):
   1. SCAN      award_scanner: every fresh award on scan_config.json's routes (plus
                watchlist destinations), in programs your active pools can transfer to.
   2. ESTIMATE  fare_model: estimated cash fare + uncertainty for every candidate,
@@ -622,6 +622,9 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
     fresh = ([(k, d) for k, d in held_pairs if d["new"]] + fresh_watch[:WATCH_EMAIL_MAX]
              + [(k, d) for k, d in top_pairs if d["new"]])
     emailed = 0
+    out_email_failed: list[str] = []
+    if send_email and fresh and not deal_email.is_configured():
+        log("::warning::Gmail isn't configured (GMAIL_ADDRESS / GMAIL_APP_PASSWORD): no digest email sent.")
     if send_email and fresh and deal_email.is_configured():
         held_new = [d for k, d in fresh if k.startswith("held:")]
         watch_new = [d for k, d in fresh if k.startswith("watch:")]
@@ -644,7 +647,8 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
             for k, _ in fresh:
                 reported.setdefault(k, started.isoformat())
         except Exception as e:
-            log(f"Email failed: {e}")
+            log(f"::error::Deal Finder could not send the digest email: {type(e).__name__}: {e}")
+            out_email_failed.append(str(e))
 
     public = {"pay_summary", "held_miles", "top_up_needed", "bookable_now"}  # keep balances private
     out = {
@@ -657,7 +661,7 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
         "watchlist": [{**g, "deals": [{k: v for k, v in d.items() if k not in public} for d in g["deals"]]}
                       for g in watch_out],
         "top": [{k: v for k, v in d.items() if k not in public} for _, d in top_pairs],
-        "emailed_new": emailed,
+        "emailed_new": emailed, "email_failed": out_email_failed,
         "reported": reported,
     }
     # The site recomputes "how to pay" locally from your balances, so the public
@@ -705,6 +709,8 @@ def main(argv: list[str] | None = None) -> int:
     args = ap.parse_args(argv)
     out = run(args.max_lookups, args.top, not args.no_email, args.include_planned, not args.no_round_trip,
               max_watch_lookups=args.max_watch_lookups, resend=args.resend)
+    if out.get("email_failed"):
+        return 1  # fail the scheduled run so GitHub tells you the email didn't go out
     if out["held_miles"]:
         print("\n✅ Book now with miles you already hold:")
         for i, d in enumerate(out["held_miles"], 1):

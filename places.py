@@ -18,6 +18,8 @@ _CITY_OVERRIDES = {
     "HKT": "Phuket", "KIX": "Osaka", "NRT": "Tokyo", "HND": "Tokyo", "PVG": "Shanghai",
     "ICN": "Seoul", "CPT": "Cape Town", "JNB": "Johannesburg", "GRU": "São Paulo",
     "EZE": "Buenos Aires", "MDE": "Medellín", "CTA": "Catania, Sicily", "PMO": "Palermo, Sicily",
+    "MXP": "Milan", "LIN": "Milan", "TLV": "Tel Aviv", "LIR": "Liberia (Guanacaste)",
+    "SJO": "San José", "BGO": "Bergen",
 }
 # Current, short names for carriers that show up in award results (OpenFlights has
 # defunct or awkward names for several, e.g. AZ "Alitalia", 4Y "Airbus France").
