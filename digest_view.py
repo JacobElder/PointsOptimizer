@@ -129,6 +129,13 @@ def _deal_card(d: dict, rank: int | None, bar: float | None, surplus: float | No
         if surplus is not None and cpp is not None:
             st.markdown(safe(f"**${surplus:,.0f} better** than spending these points the usual way "
                              f"(about {baseline:.2f}¢ each; we only flag {program} above {bar:.2f}¢)"))
+        if d.get("history_pct") is not None and d.get("history_days", 0) >= 10:
+            pct, days = d["history_pct"], d["history_days"]
+            st.caption("📉 " + ("Cheapest this route has been in the last "
+                                f"{days} days" if pct >= 0.99 else
+                                f"Cheaper than {pct:.0%} of the last {days} days on this route"
+                                if pct >= 0.5 else
+                                f"Pricier than usual: {1 - pct:.0%} of the last {days} days were cheaper"))
         if d.get("rank_notes"):
             st.caption("⚖️ Ranked lower because " + safe("; ".join(d["rank_notes"])))
         st.caption(safe(f"Cash fare: {d.get('cash_basis') or 'cheapest comparable fare'}"
@@ -171,8 +178,14 @@ def _deal_card(d: dict, rank: int | None, bar: float | None, surplus: float | No
                            + (f" and {len(d['other_dates']) - 12} more" if len(d["other_dates"]) > 12 else "")
                            + (" — on this many dates it's standard pricing, not a flash sale."
                               if len(d["other_dates"]) > 30 else ""))
-            if d.get("points") and (d.get("cabin") in ("BUSINESS", "FIRST") or d["points"] > 30000):
-                st.caption(f"↩️ One way only — a return would cost roughly another {d['points']:,} points.")
+            ret = d.get("return_option")
+            if ret:
+                st.markdown("**↩️ Return**")
+                st.caption(safe(f"{places.nice_date(ret['date'])} for {ret['points']:,} points + "
+                                f"${ret['taxes_usd']:,.0f} — {ret['round_trip_points']:,} points round trip "
+                                f"on {ret['program']}"))
+            elif d.get("points") and (d.get("cabin") in ("BUSINESS", "FIRST") or d["points"] > 30000):
+                st.caption("↩️ One way only — no matching return award turned up in this scan.")
             if d.get("alternatives"):
                 st.markdown("**🔁 Other ways**")
                 st.caption(safe(" · ".join(d["alternatives"])))

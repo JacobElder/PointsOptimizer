@@ -36,6 +36,7 @@ from dataclasses import dataclass, field
 from datetime import date as date_cls
 from datetime import datetime, timedelta, timezone
 
+import award_history
 import award_scanner
 import award_trips
 import cash_quotes
@@ -62,10 +63,11 @@ ROUND_TRIP_FALLBACK_STAYS = (7, 4, 2)  # shorter stays when the 7-night return i
 NO_ROUND_TRIP_PENALTY = 0.6  # a one-way-only valuation is usually too generous
 ROUND_TRIP_CHECK_EXTRA = 15  # also round-trip-check this many runners-up, since leaders can drop out
 WATCH_DEALS_PER_ENTRY = 2
+HOLDOUT_LOOKUPS = 5  # deliberate duplicates near an existing quote, to measure reuse error
 EXPLORE_SHARE = 0.25  # of the live budget, spent on route+cabin cells we haven't priced lately
 EXPLORE_STALE_DAYS = 10
-HISTORY_PATH = os.path.join(_BASE, "award_history.json")
-HISTORY_KEEP_DAYS = 180
+# How much a route's own price history may move a deal up or down the list.
+HISTORY_WEIGHT = 0.3
 FRESH_PRICE_SHORTLIST = True  # re-price reported deals on their own date before publishing
 ESTIMATE_DRIFT_WARN_PCT = 45  # fare model is ~28% median error on unseen routes; well past that is a problem
 MAX_PER_PROGRAM = 6  # one program's routine pricing shouldn't fill the whole list
@@ -143,6 +145,9 @@ class Scored:
     rt_unavailable: bool = False  # couldn't price a round trip (date too far out)
     rt_stay_nights: int = ROUND_TRIP_STAY_DAYS
     trip_unverified: bool = False  # the live re-check failed; not proof the award is gone
+    history_pct: float | None = None  # 1.0 = cheapest this route/cabin/month has been in 90 days
+    history_days: int = 0
+    return_option: dict | None = None  # a return award found in the same scan
     dropped: bool = False  # re-verification says it's gone, repriced, or sold out
 
     @property
@@ -202,6 +207,9 @@ class Scored:
             v *= 0.75
         if (self.age_days or 0) > 5:
             v *= 0.85
+        if self.history_pct is not None:
+            # Nudge by how unusual this price is for this route, not just its size.
+            v *= 1 + HISTORY_WEIGHT * (self.history_pct - 0.5) * 2
         if self.rt_unavailable:
             v *= NO_ROUND_TRIP_PENALTY
         return v
@@ -249,6 +257,8 @@ class Scored:
             "trip": self.trip.as_dict() if self.trip else None, "slow": self.slow,
             "rt_unavailable": self.rt_unavailable, "nonstop": self.nonstop,
             "trip_unverified": self.trip_unverified, "rank_notes": self.rank_notes,
+            "history_pct": round(self.history_pct, 2) if self.history_pct is not None else None,
+            "history_days": self.history_days, "return_option": self.return_option,
             "ranked_value_usd": round(self.rank_value) if self.surplus is not None else None,
             "held_miles": self.held_miles, "bookable_now": self.bookable_now,
             "top_up_needed": max(c.points - self.held_miles, 0) if self.held_miles else None,
@@ -331,6 +341,25 @@ def _pricing_priority(s: Scored) -> float:
     return upside
 
 
+def _warn_on_source_drop(scan: dict, previous: dict, log) -> None:
+    """A program quietly disappearing from the scan is otherwise invisible."""
+    before = (previous.get("scan") or {}).get("per_source") or {}
+    now = scan.get("per_source") or {}
+    for src, was in before.items():
+        if was >= 100 and now.get(src, 0) < was * 0.5:
+            log(f"::warning::{src} returned {now.get(src, 0):,} awards, down from {was:,} yesterday: "
+                "the program may have dropped out of seats.aero or lost availability.")
+
+
+def _warn_on_stale_training(rows: list[dict], log) -> None:
+    """The fare model happily trains on months-old fares if quote collection stops."""
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=14)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    recent = sum(1 for r in rows if (r.get("at") or "") >= cutoff)
+    if recent < 20:
+        log(f"::warning::Only {recent} of {len(rows)} fares used to train the estimates are from the "
+            "last two weeks; cash-price collection may have stopped.")
+
+
 def _warn_on_health(price: dict, scan: dict, budget: int, log) -> None:
     """Loud warnings for the ways a run can look fine and still be useless."""
     live = price.get("live", 0) + price.get("watch_live", 0) + price.get("explore_live", 0)
@@ -345,35 +374,35 @@ def _warn_on_health(price: dict, scan: dict, budget: int, log) -> None:
             "freshness limit: its cache may be lagging.")
 
 
-def record_history(cands: list, path: str = "") -> dict:
-    """Append today's cheapest award per program/route/cabin/travel-month.
+RETURN_MIN_NIGHTS = 3
+RETURN_MAX_NIGHTS = 21
 
-    Costs no API calls (the scan already has the data) and builds the history for
-    "cheapest this route has been in 90 days", which needs no cash fare at all and
-    works beyond the 330-day pricing window.
+
+def attach_return_options(deals: list[Scored], scored: list[Scored]) -> int:
+    """Find each reported one-way a matching return award from the same scan.
+
+    Costs nothing (the awards are already scanned) and answers the obvious
+    question a one-way deal raises: what would the whole trip cost?
     """
-    path = path or HISTORY_PATH
-    try:
-        with open(path) as f:
-            hist = json.load(f)
-    except (OSError, json.JSONDecodeError):
-        hist = {}
-    today = datetime.now(timezone.utc).date().isoformat()
-    cheapest: dict[str, int] = dict(hist.get(today, {}))
-    for c in cands:
-        key = f"{c.source}|{c.origin}|{c.dest}|{c.cabin}|{c.date[:7]}"
-        if key not in cheapest or c.points < cheapest[key]:
-            cheapest[key] = c.points
-    # Store only what changed since the last recorded value: award prices are mostly
-    # static, so a full daily snapshot would add megabytes a week for no information.
-    previous: dict[str, int] = {}
-    for day in sorted(k for k in hist if k < today):
-        previous.update(hist[day])
-    hist[today] = {k: v for k, v in cheapest.items() if previous.get(k) != v}
-    cutoff = (datetime.now(timezone.utc).date() - timedelta(days=HISTORY_KEEP_DAYS)).isoformat()
-    hist = {d: v for d, v in hist.items() if d >= cutoff}
-    _write_json_atomic(path, hist)
-    return hist
+    index: dict[tuple, list[Scored]] = {}
+    for s in scored:
+        if s.c.seats >= 0:
+            index.setdefault((s.c.source, s.c.origin, s.c.dest, s.c.cabin), []).append(s)
+    found = 0
+    for d in deals:
+        out_date = datetime.strptime(d.c.date, "%Y-%m-%d").date()
+        window = [(out_date + timedelta(days=RETURN_MIN_NIGHTS)).isoformat(),
+                  (out_date + timedelta(days=RETURN_MAX_NIGHTS)).isoformat()]
+        options = [r for r in index.get((d.c.source, d.c.dest, d.c.origin, d.c.cabin), [])
+                   if window[0] <= r.c.date <= window[1]]
+        if not options:
+            continue
+        best = min(options, key=lambda r: r.c.points)
+        d.return_option = {"date": best.c.date, "points": best.c.points,
+                           "taxes_usd": round(best.taxes_usd, 2), "program": best.c.program,
+                           "round_trip_points": d.c.points + best.c.points}
+        found += 1
+    return found
 
 
 def estimate_drift(errors: list[float]) -> dict:
@@ -426,6 +455,43 @@ def price_promising(scored: list[Scored], max_lookups: int, log=print, max_watch
             live += 1
     stats["live"] = live
     return stats
+
+
+def reuse_holdout(scored: list[Scored], budget: int, log=print) -> dict:
+    """Price a few dates next to an existing fresh quote, to measure what reuse costs.
+
+    Reused quotes are never otherwise re-checked, so the error they introduce is
+    invisible: saved quotes contain no same-route pairs within a week to compare.
+    """
+    quotes = cash_quotes.load()
+    errors: list[float] = []
+    seen_cells: set[tuple] = set()
+    for s in scored:
+        if len(errors) >= budget:
+            break
+        cell = (s.c.origin, s.c.dest, price_cabin(s.c.cabin))
+        if cell in seen_cells:
+            continue
+        borrowed = cash_quotes.find_cached(quotes, s.c.origin, s.c.dest, s.c.date, price_cabin(s.c.cabin))
+        if borrowed is None or not borrowed.approx or borrowed.price_usd is None:
+            continue  # only interesting where a nearby-date quote would have been used
+        try:
+            fresh = cash_quotes.get_quote(s.c.origin, s.c.dest, s.c.date, price_cabin(s.c.cabin),
+                                          allow_approx=False)
+        except (cash_quotes.OutOfWindow, flight_search.NotConfigured, flight_search.SearchFailed):
+            continue
+        if fresh is None or fresh.price_usd is None:
+            continue
+        seen_cells.add(cell)
+        errors.append(abs(fresh.price_usd - borrowed.price_usd) / fresh.price_usd)
+    if not errors:
+        return {}
+    xs = sorted(errors)
+    out = {"n": len(xs), "median_pct": round(xs[len(xs) // 2] * 100, 1),
+           "max_pct": round(xs[-1] * 100, 1)}
+    log(f"Reuse check: a borrowed fare was off by {out['median_pct']}% at the median, "
+        f"{out['max_pct']}% at worst ({out['n']} samples)")
+    return out
 
 
 def _explore_pass(scored: list[Scored], budget: int, state: dict, stats: dict, log) -> int:
@@ -784,9 +850,14 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
         extra = sorted({d for w in watchlist for d in w.dests} - set(config["destinations"]))
         cabins = list(dict.fromkeys(config["cabins"] + [c for w in watchlist for c in (w.cabins or [])]))
         config = {**config, "destinations": config["destinations"] + extra, "cabins": cabins}
+    digest_before = _load_digest()
     program_balances = ledger.load_program_balances()
     transferable = award_scanner.transferable_sources(include_planned)
     held_sources = award_scanner.sources_for_programs(program_balances)
+    left = award_scanner.remaining_calls()
+    if left is not None and left < 250:
+        log(f"::warning::Only {left} seats.aero calls left today (a full scan needs ~210). "
+            "The scan will cover what it can and stop.")
     cands, scan_stats = award_scanner.scan(config, include_planned=include_planned, extra_sources=held_sources)
     if not cands:
         log("::error::No awards scanned (seats.aero quota exhausted or the API is down); "
@@ -801,10 +872,15 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
     if scan_stats.get("truncated"):
         log(f"WARNING: results cut off at the page limit for {', '.join(scan_stats['truncated'])}")
 
-    history = record_history(cands)
-    log(f"Award history: {len(history)} day(s) kept, {len(history.get(max(history), {})):,} "
-        "route/cabin/month prices recorded today")
-    model = fare_model.FareModel()
+    history = award_history.record(cands)
+    hist_series = award_history.series(history)
+    log(f"Award history: {len(history)} day(s) kept, {len(history.get(max(history), {})):,} price "
+        f"changes today, {sum(1 for v in hist_series.values() if len(v) >= award_history.MIN_DAYS_FOR_PERCENTILE):,} "
+        "route/cabin/months with enough history to rank on")
+    _warn_on_source_drop(scan_stats, digest_before, log)
+    training_rows = fare_model.training_rows()
+    _warn_on_stale_training(training_rows, log)
+    model = fare_model.FareModel(training_rows)
     log(f"Fare model: {model.summary()}")
     if program_balances:
         unscannable = sorted(set(program_balances) - set(award_scanner._PARTNER_TO_SOURCE))
@@ -825,6 +901,7 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
     del cands  # the scan's raw rows aren't needed once scored
     price_stats = price_promising(scored, max_lookups, log=log, max_watch_lookups=max_watch_lookups,
                                   watchlist=watchlist)
+    reuse = reuse_holdout(scored, HOLDOUT_LOOKUPS, log=log)
     drift = estimate_drift(price_stats.pop("estimate_errors", []))
     _warn_on_health(price_stats, scan_stats, max_lookups, log)
     log(f"Pricing: {price_stats}")
@@ -852,6 +929,11 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
     watch = watch_report(scored, watchlist, rt_cache, round_trip=round_trip, trip_cache=trip_cache,
                          sources_reporting_seats=sources_reporting_seats)
 
+    for s in scored:  # how unusual is this price for this route/cabin/month?
+        s.history_pct, s.history_days = award_history.percentile(
+            hist_series, award_history.key_for(s.c.source, s.c.origin, s.c.dest, s.c.cabin, s.c.date),
+            s.c.points)
+
     if FRESH_PRICE_SHORTLIST:
         shortlisted = {id(s): s for s in ranked + held}
         shortlisted.update({id(s): s for g in watch for s, _ in g["deals"]})
@@ -869,6 +951,12 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
                 d["watch_surplus_usd"] = round(s.surplus_vs(g["bar_fn"](s)))
     else:
         reprice_stats = {}
+
+    # NB: not `reported` -- that name holds the 14-day email history and is written
+    # to the digest; clobbering it broke the digest write.
+    reported_deals = ranked + held + [s for g in watch for s, _ in g["deals"]]
+    with_returns = attach_return_options(reported_deals, scored)
+    log(f"Return legs found for {with_returns} of {len(reported_deals)} reported deals")
 
     # Serialize now: watch_report regroups some of the same objects and rewrites
     # their other_dates/alternatives for its own subset.
@@ -943,6 +1031,7 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
         "pricing": price_stats,
         "repricing": reprice_stats,
         "estimate_drift": drift,
+        "reuse_error": reuse,
         "round_trip_checks": len(rt_cache),
         "held_miles": [{k: v for k, v in d.items() if k not in public} for _, d in held_pairs],
         "watchlist": [{**g, "deals": [{k: v for k, v in d.items() if k not in public} for d in g["deals"]]}

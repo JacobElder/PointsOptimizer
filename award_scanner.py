@@ -114,6 +114,24 @@ def sources_for_programs(program_names) -> list[str]:
     return [_PARTNER_TO_SOURCE[n] for n in program_names if n in _PARTNER_TO_SOURCE]
 
 
+def remaining_calls(session: requests.Session | None = None) -> int | None:
+    """Calls left in today's seats.aero allowance, or None if it can't be read.
+
+    One full scan is ~210 of 1,000; a scheduled run that starts with too few left
+    should say so rather than dying part-way through.
+    """
+    try:
+        http = session or requests
+        resp = http.get(seats_aero.SEARCH_URL, headers={"Partner-Authorization": seats_aero._get_api_key()},
+                        params={"origin_airport": "JFK", "destination_airport": "LHR", "take": 1},
+                        timeout=20)
+        if resp.status_code == 429:
+            return 0
+        return int(resp.headers.get("x-ratelimit-remaining"))
+    except (requests.RequestException, TypeError, ValueError, seats_aero.NotConfigured):
+        return None
+
+
 def scan(config: dict | None = None, include_planned: bool = False, today: date | None = None,
          session: requests.Session | None = None,
          extra_sources: list[str] | None = None, per_source: bool = True) -> tuple[list[AwardCandidate], dict]:
@@ -196,4 +214,8 @@ def scan(config: dict | None = None, include_planned: bool = False, today: date 
             skip += len(rows)
             cursor = payload.get("cursor", cursor)
     stats["candidates"] = len(found)
+    per_source: dict[str, int] = {}
+    for c in found.values():
+        per_source[c.source] = per_source.get(c.source, 0) + 1
+    stats["per_source"] = per_source
     return list(found.values()), stats

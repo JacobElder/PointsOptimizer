@@ -30,7 +30,7 @@ def test_premium_cabins_use_a_higher_baseline():
     assert biz == pytest.approx(econ * valuation.program_values()["business_multiplier"])
     # Published business value wins over the multiplier where we have one.
     assert valuation.baseline_cpp("British Airways Executive Club", "BUSINESS") == 2.2
-    assert valuation.great_floor("BUSINESS", "British Airways Executive Club") == pytest.approx(3.52)
+    assert valuation.great_floor("BUSINESS", "British Airways Executive Club") == pytest.approx(2.75)
 
 
 def test_unknown_program_falls_back_to_the_default_value():

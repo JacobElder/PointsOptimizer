@@ -134,13 +134,25 @@ def _digest_card(d: dict) -> str:
                      if baseline else "them the usual way")
                   + f"<br><span style='font-size:12px; color:#6b7280'>We only flag {_esc(d['program'])} "
                     f"above {bar:.2f}&cent;/pt</span>")
+    if d.get("history_pct") is not None and d["history_days"] >= 10:
+        pct, days = d["history_pct"], d["history_days"]
+        phrase = ("the cheapest this route has been in the last "
+                  f"{days} days" if pct >= 0.99 else
+                  f"cheaper than {pct:.0%} of the last {days} days on this route" if pct >= 0.5 else
+                  f"pricier than usual for this route ({1 - pct:.0%} of days were cheaper)")
+        value_html += f"<br><span style='font-size:12px; color:#6b7280'>Price history: {phrase}</span>"
     if d.get("rank_notes"):
         value_html += (f"<br><span style='font-size:12px; color:#92400e'>Ranked lower because "
                        f"{_esc('; '.join(d['rank_notes']))}</span>")
     rows += _row("Value", value_html)
-    if d["cabin"] in ("BUSINESS", "FIRST") or d["points"] > 30000:
-        rows += _row("Return", "Not included — a return leg would cost roughly another "
-                               f"{d['points']:,} points")
+    ret = d.get("return_option")
+    if ret:
+        rows += _row("Return", f"{_esc(places.nice_date(ret['date']))} for <b>{ret['points']:,} points</b>"
+                               f" + ${ret['taxes_usd']:,.0f}<br>"
+                               f"<span style='font-size:12px; color:#6b7280'>"
+                               f"{ret['round_trip_points']:,} points round trip on {_esc(ret['program'])}</span>")
+    elif d["cabin"] in ("BUSINESS", "FIRST") or d["points"] > 30000:
+        rows += _row("Return", "No matching return award found in this scan — this is a one way")
     dates = f"<b>{places.nice_date(d['date'])}</b>"
     others = d.get("other_dates") or []
     if others:

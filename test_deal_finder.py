@@ -437,6 +437,7 @@ def test_exploration_prices_routes_the_model_knows_least(monkeypatch):
 
 
 def test_record_history_keeps_the_cheapest_per_route_month(tmp_path):
+    import award_history
     import award_scanner
     path = str(tmp_path / "hist.json")
 
@@ -445,29 +446,30 @@ def test_record_history_keeps_the_cheapest_per_route_month(tmp_path):
                                             origin="JFK", dest="ZRH", date=date_str, cabin="BUSINESS",
                                             points=points, taxes=50.0, taxes_currency="USD", seats=1,
                                             direct=True, airlines="LX", distance=3900, updated_at="")
-    hist = deal_finder.record_history([cand(70000, "2027-03-04"), cand(60000, "2027-03-19"),
+    hist = award_history.record([cand(70000, "2027-03-04"), cand(60000, "2027-03-19"),
                                        cand(90000, "2027-04-02")], path=path)
     today = list(hist)[0]
     assert hist[today]["aeroplan|JFK|ZRH|BUSINESS|2027-03"] == 60000
     assert hist[today]["aeroplan|JFK|ZRH|BUSINESS|2027-04"] == 90000
-    deal_finder.record_history([cand(55000, "2027-03-10")], path=path)  # rerun same day keeps the min
-    assert deal_finder.record_history([], path=path)[today]["aeroplan|JFK|ZRH|BUSINESS|2027-03"] == 55000
+    award_history.record([cand(55000, "2027-03-10")], path=path)  # rerun same day keeps the min
+    assert award_history.record([], path=path)[today]["aeroplan|JFK|ZRH|BUSINESS|2027-03"] == 55000
 
 
 def test_history_only_records_changes(tmp_path):
+    import award_history
     import award_scanner
     path = str(tmp_path / "hist.json")
     c = award_scanner.AwardCandidate(id="i", source="united", program="United MileagePlus", origin="EWR",
                                      dest="LIS", date="2027-05-04", cabin="BUSINESS", points=88000,
                                      taxes=10.0, taxes_currency="USD", seats=1, direct=True, airlines="UA",
                                      distance=3400, updated_at="")
-    deal_finder.record_history([c], path=path)
+    award_history.record([c], path=path)
     import json
     hist = json.load(open(path))
     day = list(hist)[0]
     hist["2020-01-01"] = hist.pop(day)  # pretend yesterday recorded the same price
     json.dump(hist, open(path, "w"))
-    again = deal_finder.record_history([c], path=path)
+    again = award_history.record([c], path=path)
     assert again[list(again)[-1]] == {}, "an unchanged price should not be recorded again"
 
 
@@ -477,3 +479,42 @@ def test_health_warnings_fire_on_a_useless_run():
                                  "skipped_low_p": 5000}, {"rows": 1000, "stale": 400}, 100, msgs.append)
     joined = " ".join(msgs)
     assert "returned no fare" in joined and "lookup budget" in joined and "freshness limit" in joined
+
+
+def test_route_history_percentile_and_ranking(tmp_path, monkeypatch):
+    import award_history
+    path = str(tmp_path / "h.json")
+    hist = {}
+    for i in range(20):  # 20 days at 90k, then today's 60k award
+        hist[f"2026-09-{i + 1:02d}"] = {"aeroplan|JFK|ZRH|BUSINESS|2027-03": 90000} if i == 0 else {}
+    award_history._write_atomic(path, hist)
+    ser = award_history.series(award_history.load(path), window_days=3650)
+    pct, days = award_history.percentile(ser, "aeroplan|JFK|ZRH|BUSINESS|2027-03", 60000)
+    assert pct == 1.0 and days == 20  # cheapest it has ever been here
+    assert award_history.percentile(ser, "aeroplan|JFK|ZRH|BUSINESS|2027-03", 120000)[0] == 0.0
+    assert award_history.percentile(ser, "unknown|key|x|y|2027-03", 1000) == (None, 0)
+
+    cheap = _scored("ZRH", "BUSINESS", "aeroplan", "JFK", 60000, 3000)
+    usual = _scored("ZRH", "BUSINESS", "aeroplan", "JFK", 60000, 3000)
+    cheap.history_pct, cheap.history_days = 1.0, 20
+    usual.history_pct, usual.history_days = 0.2, 20
+    assert cheap.rank_value > usual.rank_value
+
+
+def test_return_leg_is_paired_from_the_same_scan():
+    out = _scored("ZRH", "BUSINESS", "aeroplan", "JFK", 60000, 3000, date="2027-03-10")
+    back_early = _scored("JFK", "BUSINESS", "aeroplan", "ZRH", 70000, 3000, date="2027-03-11")  # too soon
+    back_good = _scored("JFK", "BUSINESS", "aeroplan", "ZRH", 65000, 3000, date="2027-03-18")
+    back_other = _scored("JFK", "BUSINESS", "united", "ZRH", 50000, 3000, date="2027-03-18")  # other program
+    assert deal_finder.attach_return_options([out], [back_early, back_good, back_other]) == 1
+    assert out.return_option["points"] == 65000
+    assert out.return_option["round_trip_points"] == 125000
+
+
+def test_source_drop_and_stale_training_warnings():
+    msgs = []
+    deal_finder._warn_on_source_drop({"per_source": {"aeroplan": 100}},
+                                     {"scan": {"per_source": {"aeroplan": 5000}}}, msgs.append)
+    deal_finder._warn_on_stale_training([{"at": "2020-01-01T00:00:00Z"}] * 300, msgs.append)
+    joined = " ".join(msgs)
+    assert "aeroplan returned" in joined and "last two weeks" in joined

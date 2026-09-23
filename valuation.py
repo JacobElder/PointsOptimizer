@@ -19,7 +19,13 @@ PROGRAM_VALUES_PATH = os.path.join(_BASE, "program_values.json")
 # this much. A flat cabin bar rewarded programs whose points are simply worth
 # more (a routine 88k United award cleared a 2.0c "business" bar), so the bar is
 # now per program: baseline x GREAT_MULTIPLE.
-GREAT_MULTIPLE = 1.6
+# How far above the baseline a deal must be to be called a standout. Premium
+# cabins use a smaller multiple because their baseline already embeds the premium
+# uplift; multiplying both would demand ~3.4c from Aeroplan business, stricter
+# than a genuinely good business redemption priced the conservative way this app
+# prices them (cheapest comparable fare, or half a round trip).
+GREAT_MULTIPLE = {"ECONOMY": 1.6, "PREMIUM_ECONOMY": 1.5, "BUSINESS": 1.25, "FIRST": 1.25}
+DEFAULT_GREAT_MULTIPLE = 1.6
 # Floors so a low-value program can't set a trivially easy bar.
 MIN_GREAT_CPP = {"ECONOMY": 1.5, "PREMIUM_ECONOMY": 1.5, "BUSINESS": 1.8, "FIRST": 1.8}
 SKIP_CPP = 1.0  # never call anything below this a mere "borderline"
@@ -86,7 +92,8 @@ def fx_rate(currency: str) -> float:
 
 def great_floor(cabin: str, program: str = "") -> float:
     """The CPP bar at/above which a deal is a standout for this program and cabin."""
-    return max(baseline_cpp(program, cabin) * GREAT_MULTIPLE,
+    multiple = GREAT_MULTIPLE.get((cabin or "").upper(), DEFAULT_GREAT_MULTIPLE)
+    return max(baseline_cpp(program, cabin) * multiple,
                MIN_GREAT_CPP.get((cabin or "").upper(), 1.8))
 
 
