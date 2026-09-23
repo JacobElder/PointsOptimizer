@@ -79,9 +79,11 @@ For the scheduled Deal Finder, add the same keys as GitHub repo secrets (Setting
 Each program's points are worth a different amount, so one flat bar rewarded programs whose points are simply worth more — a routine 88,000-mile United award cleared a flat 2.0¢ "business" bar. Instead:
 
 - **Baseline** — what a point in that program is typically worth (`program_values.json`, conservative published valuations, e.g. United 1.2¢, Aeroplan 1.5¢, Alaska 1.6¢). Re-check a few times a year.
-- **Standout bar** = baseline × 1.6, with a floor of 1.5¢ economy / 1.8¢ business (so a cheap program can't set a trivial bar). At or above it → **Book**.
+- **Standout bar** = baseline × 1.6 in economy, × 1.25 in premium cabins (whose baseline already includes the premium uplift), with a floor of 1.5¢ economy / 1.8¢ business. At or above it → **Book**. In practice: United business 2.10¢, Aeroplan business 2.62¢, JetBlue economy 2.08¢.
 - **Skip** = worth less than the baseline: you'd do better spending those points the usual way.
-- **Ranking** = dollars of value above the baseline: `(cash − taxes) − points × baseline`. One program can fill at most 6 of the top 20, so its routine pricing can't crowd out everything else.
+- **Ranking** = dollars of value above the baseline: `(cash − taxes) − points × baseline`, nudged by how unusual the price is for that route (see history below) and discounted for long routings, mixed cabins, airport changes and stale data. One program can fill at most 6 places per cabin.
+- **Route price history** (`award_history.py`) — every scan records the cheapest award per program/route/cabin/travel-month, free, so after ~10 days a card can say "cheapest this route has been in the last N days". Ranking by dollars alone mostly measured deal size.
+- **Return legs** — a reported one-way is paired with a real return award from the same scan where one exists, with the round-trip points total.
 
 Set in `valuation.py` (`baseline_cpp`, `great_floor`, `verdict_for`) and used everywhere: Top Deals, Flight Search, emails. Watchlist entries can still set their own `bar`.
 

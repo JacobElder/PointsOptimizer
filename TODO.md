@@ -12,9 +12,8 @@ history before 2026-09-16.
 
 ## Possible improvements
 
-- [ ] Rank partly by "cheapest this route has been in 90 days" once `award_history.json`
-      has a few weeks of data (dollars-above-baseline correlates 0.92 with points, so
-      it mostly measures deal size, not quality).
+- [ ] Once `award_history.json` has a few weeks of data, consider raising
+      `HISTORY_WEIGHT` (0.3) so route-relative cheapness counts for more than deal size.
 - [ ] Premium economy was just added to the scan but `fare_model` has no premium-economy
       training data yet; its estimates there lean on economy x1.8 until quotes accumulate.
 
