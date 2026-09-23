@@ -45,7 +45,7 @@ def render_digest(digest: dict | None = None) -> None:
     st.header(f"🏆 Top {len(top)} of {scan.get('candidates', 0):,} awards")
     st.caption(
         f"Programs: {', '.join(scan.get('sources', []))}. "
-        "Ranked by dollars saved above your cabin's great-deal bar (1.5¢ Economy, 2.0¢ Business/First), "
+        "Ranked by dollars of value above what each program's points are normally worth, "
         "using live Google Flights cash fares. One entry per destination + cabin; other dates, "
         "origins and programs are listed under it. Award space moves fast: re-check on seats.aero."
     )
@@ -106,14 +106,17 @@ def _deal_card(d: dict, rank: int | None, bar: float | None, surplus: float | No
         st.caption(" · ".join(safe(t) for t in [cabin, d.get("program", "")] + (["🆕 new"] if d.get("new") else []) if t))
 
         # One headline line: works on a phone, and says what the numbers mean.
-        verdict = valuation.verdict_for(cpp, d.get("cabin", ""))
+        program = d.get("program", "")
+        verdict = valuation.verdict_for(cpp, d.get("cabin", ""), program)
         mark = {"BOOK": "🟢 Book", "BORDERLINE": "🟡 Borderline", "SKIP": "🔴 Skip"}.get(verdict, "")
         bits = [f"**{cpp:.2f}¢ per point**" if cpp is not None else "no value yet",
                 f"{points:,} points + ${taxes:,.0f} taxes" if points else None,
                 f"vs a ${cash:,.0f} cash fare" if cash else None]
         st.markdown(safe(f"{mark} · " + " · ".join(b for b in bits if b)))
+        baseline = d.get("baseline_cpp") or valuation.baseline_cpp(program)
         if surplus is not None and cpp is not None:
-            st.markdown(safe(f"**${surplus:,.0f} better** than paying cash at the {bar:.1f}¢/pt bar for {cabin}"))
+            st.markdown(safe(f"**${surplus:,.0f} more value** than these points normally give you "
+                             f"({baseline:.2f}¢ each · standout bar {bar:.2f}¢)"))
         st.caption(safe(f"Cash fare: {d.get('cash_basis') or 'cheapest comparable fare'}"
                         + (" (from a date within 7 days)" if d.get("cash_is_approx") else "")
                         + (" · first class compared with the business fare" if d.get("cabin") == "FIRST" else "")

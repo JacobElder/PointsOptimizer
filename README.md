@@ -57,7 +57,7 @@ For the scheduled Deal Finder, add the same keys as GitHub repo secrets (Setting
 `deal_finder.py` runs daily on GitHub Actions (`.github/workflows/deal_finder.yml`) or on demand with `make find`. The cron asks for 08:00 UTC, but GitHub's shared scheduler runs hours late, so the email usually lands mid-morning US Eastern — it's a daily digest, not a fixed time.
 
 1. **Scan** (`award_scanner.py`) — seats.aero Cached Search across `scan_config.json` routes (plus watchlist destinations), one query per program per cabin, in programs your **active** point pools can transfer to **plus** programs you already hold miles in. ~145,000 awards for ~200 of the 1,000 daily API calls.
-2. **Estimate** (`fare_model.py`) — predicted cash fare with uncertainty for every award, giving the probability it clears the cabin's great-deal bar.
+2. **Estimate** (`fare_model.py`) — predicted cash fare with uncertainty for every award, giving the probability it clears that program's standout bar.
 3. **Price** (`cash_quotes.py`) — real Google Flights fares for the most promising candidates, highest expected value first. Quotes are saved in `cash_quotes.json` and reused for dates within ±7 days on the same route and cabin.
 4. **Round-trip check** — near-top deals also price a round trip (7 nights, falling back to 4 or 2 so trips near the edge of the booking window still get checked). The award is valued against the **lower** of the one-way fare and half the round trip, because one-way fares run far above half a round trip. A deal that still can't be round-trip priced is flagged and ranked down.
 5. **Verify** (`award_trips.py`, 1 call per reported deal) — the actual flights, times, connections, cabin of each leg, seats left, and a direct booking link. Deals are **dropped** if the award is gone, has repriced above what the scan saw, or shows 0 seats in a program that reports seat counts. Deals are **ranked lower** for a mixed cabin (a "business" award with an economy leg), an airport change mid-trip, a very long itinerary, or award data older than 5 days — each flagged on the card.
@@ -72,14 +72,16 @@ For the scheduled Deal Finder, add the same keys as GitHub repo secrets (Setting
 - **First class** → valued against the **business** fare. Google's "first" results are business or mixed-cabin on most routes.
 - The nonstop fare and the award airline's own fare are shown for context, never used for CPP.
 
-### Great-deal bar (cabin-aware)
+### What counts as a standout (per program, not per cabin)
 
-| Cabin | Book at or above | Skip below |
-|-------|------------------|------------|
-| Economy / Premium Economy | 1.5¢ | 1.0¢ |
-| Business / First | 2.0¢ | 1.0¢ |
+Each program's points are worth a different amount, so one flat bar rewarded programs whose points are simply worth more — a routine 88,000-mile United award cleared a flat 2.0¢ "business" bar. Instead:
 
-Defined once in `valuation.py` (`verdict_for`) and used everywhere: Top Deals, Flight Search, emails.
+- **Baseline** — what a point in that program is typically worth (`program_values.json`, conservative published valuations, e.g. United 1.2¢, Aeroplan 1.5¢, Alaska 1.6¢). Re-check a few times a year.
+- **Standout bar** = baseline × 1.6, with a floor of 1.5¢ economy / 1.8¢ business (so a cheap program can't set a trivial bar). At or above it → **Book**.
+- **Skip** = worth less than the baseline: you'd do better spending those points the usual way.
+- **Ranking** = dollars of value above the baseline: `(cash − taxes) − points × baseline`. One program can fill at most 6 of the top 20, so its routine pricing can't crowd out everything else.
+
+Set in `valuation.py` (`baseline_cpp`, `great_floor`, `verdict_for`) and used everywhere: Top Deals, Flight Search, emails. Watchlist entries can still set their own `bar`.
 
 ### Changing what gets scanned
 
@@ -132,7 +134,7 @@ CI: `tests.yml` on every push; `cash_price_check.yml` weekly and whenever the pr
 | `fare_model.py` | Cash-fare estimates with uncertainty |
 | `cash_quotes.py` | Saved fare quotes, nearby-date reuse, comparable-fare matching |
 | `flight_search.py` | Google Flights fares (one-way and round-trip): fast-flights, capped SerpApi fallback |
-| `valuation.py` | CPP math, currency conversion, cabin-aware verdict |
+| `valuation.py` | CPP math, currency conversion, per-program baselines and verdict (`program_values.json`) |
 | `funding.py` | How to pay for an award: held miles first, then the best transfer (with active transfer bonuses) |
 | `award_trips.py` | Flight-level detail and live re-verification: flights, cabin per leg, stops, seats, current price, airport changes, booking link |
 | `seats_aero.py` | Single-date award search for Flight Search; program name mapping |

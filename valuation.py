@@ -13,11 +13,35 @@ import requests
 _BASE = os.path.dirname(os.path.abspath(__file__))
 RECORDED_FARES_PATH = os.path.join(_BASE, "deal_log.json")
 
-# "Great deal" bar: higher for Business/First, since committing a much larger
-# points balance to one seat warrants more proof it's a standout. Premium Economy
-# is bucketed with Economy. Confirmed with the user 2026-07-22.
-GREAT_CPP_BY_CABIN = {"ECONOMY": 1.5, "PREMIUM_ECONOMY": 1.5, "BUSINESS": 2.0, "FIRST": 2.0}
-SKIP_CPP = 1.0  # below this, a clear skip regardless of cabin
+PROGRAM_VALUES_PATH = os.path.join(_BASE, "program_values.json")
+
+# A deal is a standout only if it beats what those points are normally worth by
+# this much. A flat cabin bar rewarded programs whose points are simply worth
+# more (a routine 88k United award cleared a 2.0c "business" bar), so the bar is
+# now per program: baseline x GREAT_MULTIPLE.
+GREAT_MULTIPLE = 1.6
+# Floors so a low-value program can't set a trivially easy bar.
+MIN_GREAT_CPP = {"ECONOMY": 1.5, "PREMIUM_ECONOMY": 1.5, "BUSINESS": 1.8, "FIRST": 1.8}
+SKIP_CPP = 1.0  # never call anything below this a mere "borderline"
+
+_program_values: dict | None = None
+
+
+def program_values() -> dict:
+    global _program_values
+    if _program_values is None:
+        try:
+            with open(PROGRAM_VALUES_PATH) as f:
+                _program_values = json.load(f)
+        except (OSError, json.JSONDecodeError):
+            _program_values = {"values": {}, "default_cpp": 1.3}
+    return _program_values
+
+
+def baseline_cpp(program: str) -> float:
+    """What one point in this program is typically worth, in cents."""
+    data = program_values()
+    return float(data["values"].get(program, data.get("default_cpp", 1.3)))
 
 # Used only if the live rate lookup fails (offline, API down).
 _FX_FALLBACK = {"USD": 1.0, "CAD": 0.73, "EUR": 1.08, "GBP": 1.27}
@@ -48,17 +72,20 @@ def fx_rate(currency: str) -> float:
     return rate
 
 
-def great_floor(cabin: str) -> float:
-    """The cabin-aware CPP bar at/above which a deal is a standout."""
-    return GREAT_CPP_BY_CABIN.get((cabin or "").upper(), 2.0)
+def great_floor(cabin: str, program: str = "") -> float:
+    """The CPP bar at/above which a deal is a standout for this program and cabin."""
+    return max(baseline_cpp(program) * GREAT_MULTIPLE,
+               MIN_GREAT_CPP.get((cabin or "").upper(), 1.8))
 
 
-def verdict_for(cpp: float | None, cabin: str) -> str:
+def verdict_for(cpp: float | None, cabin: str, program: str = "") -> str:
+    """BOOK beats the program's typical value by GREAT_MULTIPLE; SKIP is worth
+    less than simply using those points normally."""
     if cpp is None:
         return "NO CASH PRICE"
-    if cpp >= great_floor(cabin):
+    if cpp >= great_floor(cabin, program):
         return "BOOK"
-    if cpp < SKIP_CPP:
+    if cpp < max(baseline_cpp(program), SKIP_CPP):
         return "SKIP"
     return "BORDERLINE"
 

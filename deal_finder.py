@@ -61,6 +61,7 @@ ROUND_TRIP_FALLBACK_STAYS = (7, 4, 2)  # shorter stays when the 7-night return i
 NO_ROUND_TRIP_PENALTY = 0.6  # a one-way-only valuation is usually too generous
 ROUND_TRIP_CHECK_EXTRA = 15  # also round-trip-check this many runners-up, since leaders can drop out
 WATCH_DEALS_PER_ENTRY = 2
+MAX_PER_PROGRAM = 6  # one program's routine pricing shouldn't fill the whole list
 WATCH_EMAIL_MAX = 10
 HELD_MILES_DEALS = 5  # "book now with miles you already have" section size  # most valuable new watchlist hits per email; the rest are on Deal Radar
 
@@ -82,7 +83,7 @@ class WatchEntry:
     cabins: list[str] | None = None
     start: str | None = None
     end: str | None = None
-    bar: float | None = None  # CPP bar; None = the cabin's usual great-deal bar
+    bar: float | None = None  # CPP bar; None = that program's usual standout bar
 
     @classmethod
     def from_config(cls, raw: dict) -> "WatchEntry":
@@ -100,8 +101,8 @@ class WatchEntry:
                 and (not self.start or c.date >= self.start)
                 and (not self.end or c.date <= self.end))
 
-    def bar_for(self, cabin: str) -> float:
-        return self.bar if self.bar is not None else valuation.great_floor(cabin)
+    def bar_for(self, cabin: str, program: str = "") -> float:
+        return self.bar if self.bar is not None else valuation.great_floor(cabin, program)
 
 
 def load_watchlist(config: dict) -> list[WatchEntry]:
@@ -191,6 +192,11 @@ class Scored:
         return "|".join([self.c.source, self.c.origin, self.c.dest, self.c.cabin,
                          str(self.c.points), self.c.date])
 
+    @property
+    def baseline(self) -> float:
+        """What these points are normally worth, in cents."""
+        return valuation.baseline_cpp(self.c.program)
+
     def surplus_vs(self, bar: float) -> float | None:
         if self.cash is None:
             return None
@@ -206,7 +212,7 @@ class Scored:
             "cash_basis": self.cash_basis, "same_carrier_cash": self.same_carrier_cash,
             "one_way_cash": self.one_way_cash, "round_trip_half": self.round_trip_half,
             "cpp": round(self.cpp, 3) if self.cpp is not None else None,
-            "great_floor": self.floor, "surplus_usd": round(self.surplus, 0) if self.surplus is not None else None,
+            "great_floor": self.floor, "baseline_cpp": self.baseline, "surplus_usd": round(self.surplus, 0) if self.surplus is not None else None,
             "est_cash": round(self.est.median_price), "est_cpp": round(self.est_cpp, 2),
             "p_great": round(self.p_great, 2), "seats": c.seats, "direct": c.direct, "airlines": c.airlines,
             "other_dates": self.other_dates, "alternatives": self.alternatives, "updated_at": c.updated_at,
@@ -229,14 +235,14 @@ def score_candidates(cands: list[award_scanner.AwardCandidate], model: fare_mode
             est_cache[k] = model.estimate(*k)
         est = est_cache[k]
         taxes_usd = c.taxes * valuation.fx_rate(c.taxes_currency)
-        floor = valuation.great_floor(c.cabin)
+        floor = valuation.great_floor(c.cabin, c.program)
         est_cpp = valuation.compute_cpp(est.median_price, taxes_usd, c.points) or 0.0
         # P(cash fare is high enough for this award to clear the bar)
         s = Scored(c, taxes_usd, est, floor, est_cpp, est.prob_at_least(floor * c.points / 100 + taxes_usd))
         s.held_miles = (program_balances or {}).get(c.program, 0)
         s.watch = [w for w in (watchlist or []) if w.matches(c)]
         if s.watch:
-            bar = min(w.bar_for(c.cabin) for w in s.watch)
+            bar = min(w.bar_for(c.cabin, c.program) for w in s.watch)
             s.p_watch = est.prob_at_least(bar * c.points / 100 + taxes_usd)
         out.append(s)
     return out
@@ -245,7 +251,9 @@ def score_candidates(cands: list[award_scanner.AwardCandidate], model: fare_mode
 def _set_cash(s: Scored, cash: float) -> None:
     s.cash = cash
     s.cpp = valuation.compute_cpp(cash, s.taxes_usd, s.c.points)
-    s.surplus = s.surplus_vs(s.floor)
+    # Rank by dollars above what these points are normally worth, not above a flat
+    # cabin bar: otherwise a program whose points are simply worth more wins by default.
+    s.surplus = s.surplus_vs(s.baseline)
 
 
 def _apply_quote(s: Scored, q: cash_quotes.Quote) -> None:
@@ -450,7 +458,19 @@ def group_leaders(scored: list[Scored], bar_fn=None) -> list[Scored]:
     return leaders
 
 
+def _cap_per_program(leaders: list[Scored], cap: int) -> list[Scored]:
+    seen: dict[str, int] = {}
+    out = []
+    for s in leaders:
+        n = seen.get(s.c.source, 0)
+        if n < cap:
+            seen[s.c.source] = n + 1
+            out.append(s)
+    return out
+
+
 def pick_top(leaders: list[Scored], top: int, min_economy: int = 5) -> list[Scored]:
+    leaders = _cap_per_program(leaders, MAX_PER_PROGRAM)
     # Dollar surplus always favours premium cabins; reserve slots for economy.
     premium = [s for s in leaders if s.c.cabin in ("BUSINESS", "FIRST")]
     economy = [s for s in leaders if s.c.cabin not in ("BUSINESS", "FIRST")]
@@ -508,7 +528,7 @@ def watch_report(scored: list[Scored], watchlist: list[WatchEntry], rt_cache: di
         mine = [s for s in scored if any(x is w for x in s.watch)]
 
         def bar(s, w=w):
-            return w.bar_for(s.c.cabin)
+            return w.bar_for(s.c.cabin, s.c.program)
 
         leaders = verify_leaders(mine, group_leaders(mine, bar)[: WATCH_DEALS_PER_ENTRY + 4], rt_cache,
                                  trip_cache, sources_reporting_seats or set(), round_trip, bar)

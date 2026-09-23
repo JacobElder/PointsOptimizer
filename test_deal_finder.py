@@ -114,10 +114,12 @@ def test_watch_entry_matching_and_bar():
     w = deal_finder.WatchEntry.from_config({"label": "Japan", "dests": ["nrt", "HND"], "cabins": ["business"],
                                             "start": "2027-03-20", "end": "2027-04-10", "bar": 1.8})
     c = _scored("NRT", "BUSINESS", "aeroplan", "JFK", 75000, 3000, date="2027-03-25").c
-    assert w.matches(c) and w.bar_for("BUSINESS") == 1.8
+    assert w.matches(c) and w.bar_for("BUSINESS", "Air Canada Aeroplan") == 1.8
     assert not w.matches(_scored("NRT", "BUSINESS", "aeroplan", "JFK", 75000, 3000, date="2027-05-01").c)
     assert not w.matches(_scored("NRT", "ECONOMY", "aeroplan", "JFK", 35000, 900, date="2027-03-25").c)
-    assert deal_finder.WatchEntry.from_config({"dests": ["LIS"]}).bar_for("ECONOMY") == 1.5
+    # No bar set: falls back to the program's own bar (Aeroplan 1.5c x 1.6).
+    assert deal_finder.WatchEntry.from_config({"dests": ["LIS"]}).bar_for(
+        "ECONOMY", "Air Canada Aeroplan") == pytest.approx(2.4)
 
 
 def test_watch_report_uses_entry_bar_even_below_the_usual_bar():
@@ -299,3 +301,17 @@ def test_resend_keeps_the_report_history(tmp_path, monkeypatch):
     out = deal_finder.run(max_lookups=0, top=5, send_email=False, resend=True, max_watch_lookups=0,
                           log=lambda m: None)
     assert out["reported"] == old["reported"]
+
+
+def test_top_list_is_not_filled_by_one_program():
+    leaders = []
+    for i in range(10):
+        s = _scored("D%d" % i, "BUSINESS", "united", "EWR", 88000, 3000 + i)
+        leaders.append(s)
+    for i in range(3):
+        s = _scored("E%d" % i, "BUSINESS", "aeroplan", "JFK", 60000, 2000 + i)
+        leaders.append(s)
+    leaders.sort(key=lambda s: -s.surplus)
+    picked = deal_finder.pick_top(leaders, top=10, min_economy=0)
+    assert sum(1 for s in picked if s.c.source == "united") == deal_finder.MAX_PER_PROGRAM
+    assert any(s.c.source == "aeroplan" for s in picked)

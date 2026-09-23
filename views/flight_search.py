@@ -171,10 +171,12 @@ with st.expander("🧮 Check a deal by hand"):
     program = h5.selectbox("Program", ["—"] + all_partner_names(), key="hand_program")
     if cash and pts:
         cpp = valuation.compute_cpp(cash, taxes, int(pts))
-        verdict = valuation.verdict_for(cpp, hand_cabin)
+        verdict = valuation.verdict_for(cpp, hand_cabin, program if program != "—" else "")
         st.metric("Cents per point", f"{cpp:.2f}¢")
-        st.write(f"{BADGE.get(verdict, verdict)} · the bar for {_cabin(hand_cabin)} is "
-                 f"{valuation.great_floor(hand_cabin):.1f}¢")
+        _bar = valuation.great_floor(hand_cabin, program if program != "—" else "")
+        st.write(f"{BADGE.get(verdict, verdict)} · standout bar "
+                 + (f"for {program}" if program != "—" else f"for {_cabin(hand_cabin)}")
+                 + f" is {_bar:.2f}¢/pt")
         if taxes > cash:
             st.warning("The award's taxes cost more than the cash fare: pay cash.")
         if program != "—":

@@ -120,8 +120,13 @@ def _digest_card(d: dict) -> str:
     if extras:
         fare += f"<br><span style='font-size:12px; color:#6b7280'>{' · '.join(extras)}</span>"
     rows += _row("Cash fare", fare)
-    rows += _row("Value", f"<span style='color:#15803d; font-weight:600'>${surplus:,.0f} more</span> than the "
-                          f"{bar:.1f}¢/pt bar")
+    baseline = d.get("baseline_cpp")
+    value_html = (f"<span style='color:#15803d; font-weight:600'>${surplus:,.0f} more value</span> than "
+                  + (f"{_esc(d['program'])} points normally give you ({baseline:.2f}&cent; each)"
+                     if baseline else f"the {bar:.1f}&cent;/pt bar")
+                  + f"<br><span style='font-size:12px; color:#6b7280'>standout bar for this program: "
+                    f"{bar:.2f}&cent;/pt</span>")
+    rows += _row("Value", value_html)
     dates = f"<b>{places.nice_date(d['date'])}</b>"
     others = d.get("other_dates") or []
     if others:
@@ -238,7 +243,8 @@ def build_digest(sections: list[tuple[str, str, list[dict]]], intro: str) -> tup
         {body}
         <div style="font-size:12px; color:#9ca3af; line-height:18px; margin-top:24px;">
           CPP = (cash fare − award taxes) ÷ points. Award space changes fast: confirm on the airline's
-          site before transferring points (transfers can't be undone). Bars: 1.5¢ economy, 2.0¢ business/first.
+          site before transferring points (transfers can't be undone). A deal is a standout when it beats
+          what that program's points are normally worth by 60%.
         </div>
       </div>
     </div>"""

@@ -1,0 +1,30 @@
+{
+  "_help": "What one point/mile is typically worth in each program, in cents. A deal is only a standout if it beats this by GREAT_MULTIPLE (valuation.py). Conservative 'what you should expect' values, matching how this app prices fares (cheapest comparable fare, not headline premium fares). Source: upgradedpoints.com/travel/points-and-miles-valuations (Sept 2026). Re-check a few times a year.",
+  "verified": "2026-09-23",
+  "default_cpp": 1.3,
+  "values": {
+    "Air Canada Aeroplan": 1.5,
+    "United MileagePlus": 1.2,
+    "Air France-KLM Flying Blue": 1.3,
+    "Virgin Atlantic Flying Club": 1.4,
+    "Alaska Atmos Rewards": 1.6,
+    "JetBlue TrueBlue": 1.3,
+    "British Airways Executive Club": 1.25,
+    "Iberia Plus": 1.25,
+    "Aer Lingus AerClub": 1.25,
+    "Singapore KrisFlyer": 1.35,
+    "Turkish Airlines Miles&Smiles": 1.3,
+    "Qatar Airways Privilege Club": 1.25,
+    "Etihad Guest": 1.4,
+    "Emirates Skywards": 1.1,
+    "American Airlines AAdvantage": 1.4,
+    "Delta SkyMiles": 1.2,
+    "Avianca LifeMiles": 1.4,
+    "Qantas Frequent Flyer": 1.3,
+    "Finnair Plus": 1.2,
+    "Aeromexico Rewards": 1.1,
+    "JAL Mileage Bank": 1.4,
+    "Southwest Rapid Rewards": 1.35,
+    "GOL Smiles": 1.1
+  }
+}
