@@ -171,6 +171,24 @@ class Scored:
         return self.trip.duration_min > max(1.8 * nonstop_min, nonstop_min + 300)
 
     @property
+    def rank_notes(self) -> list[str]:
+        """Why this deal was ranked below its dollar value, in plain words."""
+        notes = []
+        if self.trip and self.trip.mixed_cabin:
+            notes.append("part of the trip is in a lower cabin")
+        if self.trip and self.trip.airport_changes:
+            notes.append("you'd change airports mid-trip")
+        if self.slow:
+            notes.append("much slower than flying direct")
+        if (self.age_days or 0) > 5:
+            notes.append(f"last confirmed {self.age_days:.0f} days ago")
+        if self.rt_unavailable:
+            notes.append("no round-trip fare could be priced, so this uses the one-way fare")
+        if self.trip_unverified:
+            notes.append("couldn't re-check it with seats.aero just now")
+        return notes
+
+    @property
     def rank_value(self) -> float:
         """Dollar surplus, discounted for things that make a deal worse than its CPP says."""
         v = self.surplus or 0.0
@@ -230,7 +248,8 @@ class Scored:
             "id": c.id, "age_days": round(self.age_days, 1) if self.age_days is not None else None,
             "trip": self.trip.as_dict() if self.trip else None, "slow": self.slow,
             "rt_unavailable": self.rt_unavailable, "nonstop": self.nonstop,
-            "trip_unverified": self.trip_unverified,
+            "trip_unverified": self.trip_unverified, "rank_notes": self.rank_notes,
+            "ranked_value_usd": round(self.rank_value) if self.surplus is not None else None,
             "held_miles": self.held_miles, "bookable_now": self.bookable_now,
             "top_up_needed": max(c.points - self.held_miles, 0) if self.held_miles else None,
         }
@@ -904,8 +923,10 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
                 subject=(f"✈️ {n_unique} new award deal{'s' if n_unique != 1 else ''}: "
                          f"{places.city(lead['dest'])} {lead['cpp']:.1f}¢/pt"
                          + (f", {len(held_new)} bookable with miles you have" if held_new else "")),
-                intro=(f"Found in {scan_stats['candidates']:,} award seats on seats.aero, each valued against a live "
-                       "Google Flights fare (the lower of the one-way fare and half a round trip)."),
+                intro=(f"Picked from {scan_stats['candidates']:,} award seats on seats.aero. Every deal below "
+                       "was re-priced today on its own date against Google Flights, and valued at the "
+                       "lower of the one-way fare and half a round trip. Awards the estimate rated "
+                       "unpromising were never priced, so a bargain can still be missed."),
             )
             emailed = n_unique
             for k, _ in fresh:

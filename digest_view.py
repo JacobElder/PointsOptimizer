@@ -25,7 +25,7 @@ def load_digest() -> dict | None:
 def render_digest(digest: dict | None = None) -> None:
     digest = digest if digest is not None else load_digest()
     if not digest:
-        st.info("No deal scan yet. Click **Scan now** above, or wait for the daily 7am scan.")
+        st.info("No deal scan yet. Click **Scan now** above, or wait for the daily scan.")
         return
     top = digest.get("top", [])
     scan = digest.get("scan", {})
@@ -45,7 +45,9 @@ def render_digest(digest: dict | None = None) -> None:
     st.header(f"🏆 Top {len(top)} of {scan.get('candidates', 0):,} awards")
     st.caption(
         f"Programs: {', '.join(scan.get('sources', []))}. "
-        "Ranked by dollars of value above what each program's points are normally worth, "
+        "Ranked by dollars of value above what each program's points are normally worth, after "
+        "discounts for long routings, mixed cabins and stale data. At most 6 deals per program per "
+        "cabin, and the last few places are held for economy. "
         "using live Google Flights cash fares. One entry per destination + cabin; other dates, "
         "origins and programs are listed under it. Award space moves fast: re-check on seats.aero."
     )
@@ -123,10 +125,12 @@ def _deal_card(d: dict, rank: int | None, bar: float | None, surplus: float | No
                 f"{points:,} points + ${taxes:,.0f} taxes" if points else None,
                 f"vs a ${cash:,.0f} cash fare" if cash else None]
         st.markdown(safe(f"{mark} · " + " · ".join(b for b in bits if b)))
-        baseline = d.get("baseline_cpp") or valuation.baseline_cpp(program)
+        baseline = d.get("baseline_cpp") or valuation.baseline_cpp(program, d.get("cabin", ""))
         if surplus is not None and cpp is not None:
-            st.markdown(safe(f"**${surplus:,.0f} more value** than these points normally give you "
-                             f"({baseline:.2f}¢ each · standout bar {bar:.2f}¢)"))
+            st.markdown(safe(f"**${surplus:,.0f} better** than spending these points the usual way "
+                             f"(about {baseline:.2f}¢ each; we only flag {program} above {bar:.2f}¢)"))
+        if d.get("rank_notes"):
+            st.caption("⚖️ Ranked lower because " + safe("; ".join(d["rank_notes"])))
         st.caption(safe(f"Cash fare: {d.get('cash_basis') or 'cheapest comparable fare'}"
                         + (" (from a date within 7 days)" if d.get("cash_is_approx") else "")
                         + (" · first class compared with the business fare" if d.get("cabin") == "FIRST" else "")
@@ -156,13 +160,19 @@ def _deal_card(d: dict, rank: int | None, bar: float | None, surplus: float | No
                 if d.get("slow"):
                     st.caption("🐢 Much longer than flying there directly.")
                 if trip.get("seats"):
-                    st.caption(f"{trip['seats']} seat(s) left when checked")
+                    st.caption(f"{trip['seats']} seat{'s' if trip['seats'] != 1 else ''} left when we checked")
+                if d.get("trip_unverified"):
+                    st.caption("⚠️ Couldn't re-check this one with seats.aero just now.")
             else:
                 st.write(safe(date_line))
             if d.get("other_dates"):
                 st.markdown("**📅 Also available**")
                 st.caption(", ".join(places.nice_date(x, weekday=False) for x in d["other_dates"][:12])
-                           + (f" and {len(d['other_dates']) - 12} more" if len(d["other_dates"]) > 12 else ""))
+                           + (f" and {len(d['other_dates']) - 12} more" if len(d["other_dates"]) > 12 else "")
+                           + (" — on this many dates it's standard pricing, not a flash sale."
+                              if len(d["other_dates"]) > 30 else ""))
+            if d.get("points") and (d.get("cabin") in ("BUSINESS", "FIRST") or d["points"] > 30000):
+                st.caption(f"↩️ One way only — a return would cost roughly another {d['points']:,} points.")
             if d.get("alternatives"):
                 st.markdown("**🔁 Other ways**")
                 st.caption(safe(" · ".join(d["alternatives"])))

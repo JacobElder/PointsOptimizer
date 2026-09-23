@@ -85,7 +85,7 @@ def _digest_card(d: dict) -> str:
     if d.get("watch_label"):
         chips += _chip(f"⭐ {d['watch_label']}", "#e0e7ff", "#3730a3")
     if d.get("new") is False:
-        chips += _chip("Seen before", "#f3f4f6", "#4b5563")
+        chips += _chip("Sent before", "#f3f4f6", "#4b5563")
 
     cabin = d["cabin"].replace("_", " ").title()
     stops = "Nonstop" if d.get("direct") else "Connecting"
@@ -104,36 +104,54 @@ def _digest_card(d: dict) -> str:
         chips += _chip("🐢 Long itinerary", "#fef3c7", "#92400e")
     age = d.get("age_days")
     if age is not None and age > 5:
-        chips += _chip(f"Seen {age:.0f} days ago: may be gone", "#f3f4f6", "#4b5563")
+        chips += _chip(f"Last confirmed {age:.0f} days ago — check before you transfer", "#f3f4f6", "#4b5563")
+    if d.get("trip_unverified"):
+        chips += _chip("Couldn't re-check this one just now", "#f3f4f6", "#4b5563")
+    if d.get("rt_unavailable"):
+        chips += _chip("No round-trip fare to compare against", "#fef3c7", "#92400e")
 
     rows = _row("Award", f"<b>{d['points']:,} points</b> + ${d['taxes_usd']:,.0f} taxes &amp; fees")
     fare = f"<b>${d['cash_price']:,.0f}</b> <span style='color:#6b7280'>· {_esc(d.get('cash_basis') or 'cash fare')}</span>"
     extras = []
     if d.get("round_trip_half") is not None and d.get("one_way_cash") and d["cash_price"] < d["one_way_cash"]:
         extras.append(f"one-way ${d['one_way_cash']:,.0f}")
-    if d.get("same_carrier_cash"):
-        extras.append(f"{_esc(d['program'].split()[0])}'s own fare ${d['same_carrier_cash']:,.0f}")
+    own = d.get("same_carrier_cash")
+    if own and d.get("airlines"):
+        carrier = places.airline_names(d["airlines"]).split(",")[0]
+        extras.append(f"on {_esc(carrier)} itself: ${own:,.0f}"
+                      + (f", which would make this {(own - d['taxes_usd']) / d['points'] * 100:.2f}&cent;/pt"
+                         if own < d["cash_price"] else ""))
     if d["cabin"] == "FIRST":
         extras.append("first class compared with the business fare")
     if d.get("cash_is_approx"):
-        extras.append("fare from a date within 7 days")
+        extras.append("fare borrowed from a nearby date")
     if extras:
         fare += f"<br><span style='font-size:12px; color:#6b7280'>{' · '.join(extras)}</span>"
     rows += _row("Cash fare", fare)
     baseline = d.get("baseline_cpp")
-    value_html = (f"<span style='color:#15803d; font-weight:600'>${surplus:,.0f} more value</span> than "
-                  + (f"{_esc(d['program'])} points normally give you ({baseline:.2f}&cent; each)"
-                     if baseline else f"the {bar:.1f}&cent;/pt bar")
-                  + f"<br><span style='font-size:12px; color:#6b7280'>standout bar for this program: "
-                    f"{bar:.2f}&cent;/pt</span>")
+    value_html = (f"<span style='color:#15803d; font-weight:600'>${surplus:,.0f} better</span> than spending "
+                  + (f"these points the usual way (about {baseline:.2f}&cent; each)"
+                     if baseline else "them the usual way")
+                  + f"<br><span style='font-size:12px; color:#6b7280'>We only flag {_esc(d['program'])} "
+                    f"above {bar:.2f}&cent;/pt</span>")
+    if d.get("rank_notes"):
+        value_html += (f"<br><span style='font-size:12px; color:#92400e'>Ranked lower because "
+                       f"{_esc('; '.join(d['rank_notes']))}</span>")
     rows += _row("Value", value_html)
+    if d["cabin"] in ("BUSINESS", "FIRST") or d["points"] > 30000:
+        rows += _row("Return", "Not included — a return leg would cost roughly another "
+                               f"{d['points']:,} points")
     dates = f"<b>{places.nice_date(d['date'])}</b>"
     others = d.get("other_dates") or []
     if others:
         shown = ", ".join(places.nice_date(x, weekday=False) for x in others[:6])
         more = f" and {len(others) - 6} more" if len(others) > 6 else ""
-        dates += f"<br><span style='font-size:12px; color:#6b7280'>Also: {shown}{more}</span>"
+        note = ("<br>Available on this many dates means it's standard pricing, not a flash sale — no rush."
+                if len(others) > 30 else "")
+        dates += f"<br><span style='font-size:12px; color:#6b7280'>Also: {shown}{more}{note}</span>"
     rows += _row("Dates", dates)
+    if trip and trip.get("seats"):
+        rows += _row("Seats", f"{trip['seats']} left when we checked")
     if trip:
         n_stops = len(trip.get("connections") or [])
         h, m = divmod(int(trip.get("duration_min") or 0), 60)

@@ -7,8 +7,8 @@ import seats_aero
 st.title("🏆 Top Deals")
 st.caption(
     "The best award deals across your routes and watchlist, valued against live Google Flights fares. "
-    "A full scan runs automatically every morning at 7am ET and emails you new standouts; "
-    "scan now for fresher results."
+    "A full scan runs once a day (GitHub starts it when it has capacity, usually mid-morning US "
+    "Eastern) and emails you anything new; scan now for fresher results."
 )
 
 digest = digest_view.load_digest()
