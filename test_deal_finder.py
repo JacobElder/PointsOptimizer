@@ -274,14 +274,28 @@ def test_still_bookable_drops_gone_repriced_and_soldout_awards():
         == [False, False, False, True, True]
 
 
-def test_a_demoted_leader_does_not_take_its_destination_group_down():
+def test_a_demoted_leader_does_not_take_its_destination_group_down(monkeypatch):
     # Leader looks best on the one-way fare but is gone; the runner-up should be reported.
     leader = _scored("ZRH", "BUSINESS", "aeroplan", "JFK", 60000, 3000)
     runner_up = _scored("ZRH", "BUSINESS", "aeroplan", "EWR", 50000, 2000)
-    leader.trip, runner_up.trip = None, _trip()
-    out = deal_finder.verify_leaders([leader, runner_up], [leader, runner_up], None, {"x": 1},
+    leader.c.id, runner_up.c.id = "leader", "runner"
+    monkeypatch.setattr(deal_finder.award_trips, "fetch",
+                        lambda aid, *a, **k: None if aid == "leader" else _trip())
+    out = deal_finder.verify_leaders([leader, runner_up], [leader, runner_up], None, {},
                                      {"aeroplan"}, round_trip=False)
     assert [s.c.origin for s in out] == ["EWR"]
+
+
+def test_a_failed_lookup_keeps_the_deal_but_flags_it(monkeypatch):
+    """seats.aero timing out is not proof the award is gone: dropping it silently
+    empties the digest whenever the tail of a run gets rate-limited."""
+    s = _scored("ZRH", "BUSINESS", "aeroplan", "JFK", 60000, 3000)
+    monkeypatch.setattr(deal_finder.award_trips, "fetch",
+                        lambda *a, **k: (_ for _ in ()).throw(deal_finder.award_trips.LookupFailed("429")))
+    deal_finder.attach_trips([s], {})
+    assert s.trip_unverified is True and s.trip is None
+    assert deal_finder.still_bookable(s, {"aeroplan"}) is True
+    assert s.to_dict()["trip_unverified"] is True
 
 
 def test_resend_keeps_the_report_history(tmp_path, monkeypatch):
@@ -334,3 +348,132 @@ def test_live_lookups_record_how_far_off_the_estimate_was(monkeypatch):
                                                                     "2026-01-01T00:00:00Z"))
     stats = deal_finder.price_promising([s], max_lookups=5, log=lambda m: None)
     assert deal_finder.estimate_drift(stats["estimate_errors"]) == {"n": 1, "median_pct": 25.0, "p90_pct": 25.0}
+
+
+def test_round_trip_price_survives_the_later_fare_rematch(monkeypatch):
+    """Regression: attach_trips re-matched the one-way fare and wiped the cheaper
+    round-trip valuation, inflating every CPP in the digest."""
+    s = _scored("CPT", "BUSINESS", "flyingblue", "JFK", 115000, 5808)
+    s.quote = cash_quotes.Quote("JFK", "CPT", "BUSINESS", s.c.date, 5808.0, None, "test",
+                                "2026-09-23T00:00:00Z", offers=[[5808.0, 1, "AF"]])
+    s.one_way_cash = 5808.0
+    monkeypatch.setattr(deal_finder.flight_search, "search_round_trip_offers",
+                        lambda *a, **k: [_RT(6954.0, 1)])
+    from datetime import date
+    deal_finder.apply_round_trip(s, {}, today=date(2026, 9, 23))
+    assert s.cash == 3477.0 and "round trip" in s.cash_basis
+    monkeypatch.setattr(deal_finder.award_trips, "fetch", lambda *a, **k: _trip(nonstop=False, stops=1))
+    deal_finder.attach_trips([s], {})
+    assert s.cash == 3477.0, "the round-trip valuation must survive the fare re-match"
+    assert s.cpp == pytest.approx((3477.0 - 50.0) / 115000 * 100)
+
+
+def test_a_promoted_leader_is_verified_before_being_reported(monkeypatch):
+    """Regrouping can promote a deal the first verification pass never saw."""
+    leader = _scored("TPE", "BUSINESS", "united", "EWR", 110000, 4000)
+    backup = _scored("TPE", "BUSINESS", "united", "JFK", 110000, 3500)
+    leader.c.id, backup.c.id = "leader", "backup"
+    leader.trip = None
+    checked = []
+
+    def _fetch(aid, cabin, points, **k):
+        checked.append(points)
+        return None if len(checked) == 1 else _trip()
+
+    monkeypatch.setattr(deal_finder.award_trips, "fetch", _fetch)
+    out = deal_finder.verify_leaders([leader, backup], [leader], None, {}, {"united"}, round_trip=False)
+    assert [s.c.origin for s in out] == ["JFK"]  # unverified leader dropped, backup checked and kept
+    assert len(checked) == 2
+
+
+def test_shortlist_is_repriced_on_its_own_date_not_a_borrowed_one(monkeypatch):
+    """Reported deals are selected because their fare came in high, and most were
+    priced from a nearby date; re-checking found all 9 sampled deals cheaper."""
+    asked = []
+
+    def _quote(origin, dest, date_str, cabin, allow_approx=True, **k):
+        asked.append(allow_approx)
+        return cash_quotes.Quote(origin, dest, cabin, date_str, 1190.0, None, "test",
+                                 "2026-09-23T00:00:00Z", offers=[[1190.0, 1, "AT"]])
+
+    monkeypatch.setattr(cash_quotes, "get_quote", _quote)
+    s = _scored("CMN", "BUSINESS", "flyingblue", "JFK", 60000, 3685)
+    stats = deal_finder.reprice_fresh([s], log=lambda m: None)
+    assert asked == [False]  # never a borrowed quote
+    assert stats == {"repriced": 1, "changed": 1, "failed": 0}
+    assert s.cash == 1190.0 and s.cpp == pytest.approx((1190.0 - 50.0) / 60000 * 100)
+
+
+def test_repricing_keeps_a_cheaper_round_trip(monkeypatch):
+    s = _scored("ZRH", "BUSINESS", "aeroplan", "JFK", 60000, 3000)
+    s.round_trip_half, s.rt_stay_nights = 1500.0, 7
+    monkeypatch.setattr(cash_quotes, "get_quote",
+                        lambda o, d, dt, cab, **k: cash_quotes.Quote(o, d, cab, dt, 2800.0, None, "t",
+                                                                    "2026-09-23T00:00:00Z",
+                                                                    offers=[[2800.0, 1, "LX"]]))
+    deal_finder.reprice_fresh([s], log=lambda m: None)
+    assert s.cash == 1500.0 and "round trip" in s.cash_basis
+
+
+def test_exploration_prices_routes_the_model_knows_least(monkeypatch):
+    """Without this, the gate only ever prices what the model already likes, so it
+    never learns where it is wrong."""
+    known = _scored("LIS", "ECONOMY", "flyingblue", "JFK", 20000, 1.0)
+    unknown = _scored("NBO", "BUSINESS", "united", "EWR", 88000, 1.0)
+    for s in (known, unknown):
+        s.cash = s.cpp = s.surplus = None
+        s.p_great = 0.0  # both would be skipped by the normal gate
+    unknown.est = fare_model.Estimate(2000.0, 0.45, 0, "model")
+    known.est = fare_model.Estimate(400.0, 0.10, 3, "route")
+    asked = []
+    monkeypatch.setattr(cash_quotes, "load", lambda: [
+        {"origin": "JFK", "dest": "LIS", "cabin": "ECONOMY",
+         "fetched_at": deal_finder.datetime.now(deal_finder.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")}])
+    monkeypatch.setattr(cash_quotes, "get_quote", lambda o, d, dt, cab, **k: asked.append(d) or
+                        cash_quotes.Quote(o, d, cab, dt, 1500.0, None, "t", "2026-09-23T00:00:00Z"))
+    stats = deal_finder.price_promising([known, unknown], max_lookups=4, log=lambda m: None)
+    assert asked == ["NBO"]  # LIS was quoted recently; NBO is the unknown cell
+    assert stats["explore_live"] == 1
+
+
+def test_record_history_keeps_the_cheapest_per_route_month(tmp_path):
+    import award_scanner
+    path = str(tmp_path / "hist.json")
+
+    def cand(points, date_str):
+        return award_scanner.AwardCandidate(id="i", source="aeroplan", program="Air Canada Aeroplan",
+                                            origin="JFK", dest="ZRH", date=date_str, cabin="BUSINESS",
+                                            points=points, taxes=50.0, taxes_currency="USD", seats=1,
+                                            direct=True, airlines="LX", distance=3900, updated_at="")
+    hist = deal_finder.record_history([cand(70000, "2027-03-04"), cand(60000, "2027-03-19"),
+                                       cand(90000, "2027-04-02")], path=path)
+    today = list(hist)[0]
+    assert hist[today]["aeroplan|JFK|ZRH|BUSINESS|2027-03"] == 60000
+    assert hist[today]["aeroplan|JFK|ZRH|BUSINESS|2027-04"] == 90000
+    deal_finder.record_history([cand(55000, "2027-03-10")], path=path)  # rerun same day keeps the min
+    assert deal_finder.record_history([], path=path)[today]["aeroplan|JFK|ZRH|BUSINESS|2027-03"] == 55000
+
+
+def test_history_only_records_changes(tmp_path):
+    import award_scanner
+    path = str(tmp_path / "hist.json")
+    c = award_scanner.AwardCandidate(id="i", source="united", program="United MileagePlus", origin="EWR",
+                                     dest="LIS", date="2027-05-04", cabin="BUSINESS", points=88000,
+                                     taxes=10.0, taxes_currency="USD", seats=1, direct=True, airlines="UA",
+                                     distance=3400, updated_at="")
+    deal_finder.record_history([c], path=path)
+    import json
+    hist = json.load(open(path))
+    day = list(hist)[0]
+    hist["2020-01-01"] = hist.pop(day)  # pretend yesterday recorded the same price
+    json.dump(hist, open(path, "w"))
+    again = deal_finder.record_history([c], path=path)
+    assert again[list(again)[-1]] == {}, "an unchanged price should not be recorded again"
+
+
+def test_health_warnings_fire_on_a_useless_run():
+    msgs = []
+    deal_finder._warn_on_health({"live": 10, "watch_live": 0, "explore_live": 0, "no_fare": 6,
+                                 "skipped_low_p": 5000}, {"rows": 1000, "stale": 400}, 100, msgs.append)
+    joined = " ".join(msgs)
+    assert "returned no fare" in joined and "lookup budget" in joined and "freshness limit" in joined

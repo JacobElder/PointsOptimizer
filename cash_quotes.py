@@ -31,7 +31,12 @@ _BASE = os.path.dirname(os.path.abspath(__file__))
 QUOTES_PATH = os.path.join(_BASE, "cash_quotes.json")
 
 _DATE_RE = __import__("re").compile(r"^\d{4}-\d{2}-\d{2}$")
-APPROX_WINDOW_DAYS = 7
+# Fares move far more near departure: within-route spread is ~0.23 log-sd under 30
+# days out vs ~0.13 past 120, and at an 8-14 day date gap business fares differ by a
+# median 17.9% under 45 days lead vs 3.0% past 120. So reuse tightens as the trip
+# nears. (lead days -> how far a quote may be borrowed, how old it may be)
+REUSE_TIERS = ((45, 2, 3), (120, 7, 7), (10 ** 6, 14, 14))
+APPROX_WINDOW_DAYS = 7  # kept for callers that don't know the lead time
 APPROX_MAX_AGE_DAYS = 14
 # Google Flights only lists fares ~11 months ahead; every "no cash price" in
 # deal_log.json with no error was 343-357 days out, the furthest priced was 329.
@@ -143,6 +148,15 @@ def save(quotes: list[dict]) -> None:
         raise
 
 
+def _reuse_limits(travel_day: date, today: date) -> tuple[int, int]:
+    """(date window, max quote age) allowed for reuse, by how far out the trip is."""
+    lead = (travel_day - today).days
+    for upto, window, age in REUSE_TIERS:
+        if lead <= upto:
+            return window, age
+    return APPROX_WINDOW_DAYS, APPROX_MAX_AGE_DAYS
+
+
 def _max_age_days(travel_day: date, today: date) -> int:
     return 2 if (travel_day - today).days <= 30 else 7
 
@@ -175,11 +189,12 @@ def find_cached(quotes: list[dict], origin: str, dest: str, travel_date: str, ca
 
     if not allow_approx:
         return None
+    window, max_age = _reuse_limits(travel_day, today)
     nearby = [
         q for q in same_route
         if q.get("price_usd") is not None
-        and 0 < abs((_parse_day(q["date"]) - travel_day).days) <= APPROX_WINDOW_DAYS
-        and _age_days(q) <= APPROX_MAX_AGE_DAYS
+        and 0 < abs((_parse_day(q["date"]) - travel_day).days) <= window
+        and _age_days(q) <= max_age
     ]
     if not nearby:
         return None

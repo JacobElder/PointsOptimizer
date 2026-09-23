@@ -38,10 +38,22 @@ def program_values() -> dict:
     return _program_values
 
 
-def baseline_cpp(program: str) -> float:
-    """What one point in this program is typically worth, in cents."""
+_PREMIUM_CABINS = {"BUSINESS", "FIRST"}
+
+
+def baseline_cpp(program: str, cabin: str = "") -> float:
+    """What one point in this program is typically worth, in cents.
+
+    Premium-cabin redemptions genuinely return more per point, so a single number
+    made business bars too easy: published business values are used where they
+    exist, else economy x business_multiplier.
+    """
     data = program_values()
-    return float(data["values"].get(program, data.get("default_cpp", 1.3)))
+    economy = float(data["values"].get(program, data.get("default_cpp", 1.3)))
+    if (cabin or "").upper() not in _PREMIUM_CABINS:
+        return economy
+    business = data.get("business_values", {}).get(program)
+    return float(business) if business else economy * float(data.get("business_multiplier", 1.4))
 
 # Used only if the live rate lookup fails (offline, API down).
 _FX_FALLBACK = {"USD": 1.0, "CAD": 0.73, "EUR": 1.08, "GBP": 1.27}
@@ -74,7 +86,7 @@ def fx_rate(currency: str) -> float:
 
 def great_floor(cabin: str, program: str = "") -> float:
     """The CPP bar at/above which a deal is a standout for this program and cabin."""
-    return max(baseline_cpp(program) * GREAT_MULTIPLE,
+    return max(baseline_cpp(program, cabin) * GREAT_MULTIPLE,
                MIN_GREAT_CPP.get((cabin or "").upper(), 1.8))
 
 
@@ -85,7 +97,7 @@ def verdict_for(cpp: float | None, cabin: str, program: str = "") -> str:
         return "NO CASH PRICE"
     if cpp >= great_floor(cabin, program):
         return "BOOK"
-    if cpp < max(baseline_cpp(program), SKIP_CPP):
+    if cpp < max(baseline_cpp(program, cabin), SKIP_CPP):
         return "SKIP"
     return "BORDERLINE"
 

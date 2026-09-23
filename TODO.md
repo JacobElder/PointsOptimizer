@@ -12,6 +12,12 @@ history before 2026-09-16.
 
 ## Possible improvements
 
+- [ ] Rank partly by "cheapest this route has been in 90 days" once `award_history.json`
+      has a few weeks of data (dollars-above-baseline correlates 0.92 with points, so
+      it mostly measures deal size, not quality).
+- [ ] Premium economy was just added to the scan but `fare_model` has no premium-economy
+      training data yet; its estimates there lean on economy x1.8 until quotes accumulate.
+
 - [ ] **Re-check `program_values.json`** a few times a year (what each program's
       points are worth). Last verified 2026-09-23 from upgradedpoints.com.
 

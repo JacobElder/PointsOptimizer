@@ -61,9 +61,14 @@ class PayPlan:
         best = self.pools[0]
         verb = "transfer" if prefix else "Transfer"
         bonus = best.get("bonus")
+        partner = best["partner"]
+        soon = (f", before it drops to {partner.ratio_after} on "
+                f"{date.fromisoformat(partner.changes_on):%b %-d}"
+                if partner.changes_on and partner.ratio_after
+                and partner.ratio_on() == partner.ratio else "")
         line = (f"{prefix}{verb} {_round_up(best['pts_needed']):,} {best['pool'].currency_name}"
                 + (f" (+{bonus['bonus_pct']}% transfer bonus until {date.fromisoformat(bonus['ends']):%b %-d})"
-                   if bonus else f" ({best['partner'].ratio})"))
+                   if bonus else f" ({partner.ratio_on()}{soon})"))
         if best["balance"]:
             line += f": you have {best['balance']:,}" + ("" if best["covered"] else ", not enough")
         others = [r for r in self.pools[1:] if r["covered"] or not best["covered"]]
@@ -85,7 +90,8 @@ def plan(program: str, points: int, balances: dict[str, int] | None = None,
         bonus = active_bonus(r["pool"].key, program)
         if bonus:
             r["bonus"] = bonus
-            r["pts_needed"] = top_up / (transfer_ratio_multiplier(r["partner"].ratio) * (1 + bonus["bonus_pct"] / 100))
+            r["pts_needed"] = top_up / (transfer_ratio_multiplier(r["partner"].ratio_on())
+                                        * (1 + bonus["bonus_pct"] / 100))
             r["covered"] = r["balance"] >= r["pts_needed"]
     pools.sort(key=lambda r: (not r["covered"], r["flexibility"], r["pts_needed"]))
     return PayPlan(program, int(points), held, top_up, pools)

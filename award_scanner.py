@@ -33,7 +33,7 @@ _PARTNER_TO_SOURCE = {v: k for k, v in seats_aero.SOURCE_TO_PARTNER.items()}
 MAX_PAGES_PER_CABIN = 25  # per program and cabin; hitting it is logged as truncated
 
 
-@dataclass
+@dataclass(slots=True)  # ~150k of these per run: slots keep the run inside memory
 class AwardCandidate:
     id: str
     source: str
@@ -140,7 +140,7 @@ def scan(config: dict | None = None, include_planned: bool = False, today: date 
     key = seats_aero._get_api_key()
 
     stats = {"calls": 0, "rows": 0, "stale": 0, "sources": wanted_sources, "rate_limit_remaining": None,
-             "truncated": []}
+             "truncated": [], "quota_exhausted": False}
     found: dict[tuple, AwardCandidate] = {}
     # One query per cabin PER PROGRAM: a combined query across ~15 programs and ~100
     # destinations returned >25k economy rows and silently cut off whole programs
@@ -166,7 +166,11 @@ def scan(config: dict | None = None, include_planned: bool = False, today: date 
             stats["calls"] += 1
             stats["rate_limit_remaining"] = resp.headers.get("x-ratelimit-remaining")
             if resp.status_code == 429:
-                raise seats_aero.SearchFailed("seats.aero daily quota (1,000 calls) is used up.")
+                # Out of daily calls: keep whatever was scanned rather than losing the
+                # whole run, and let the caller decide whether it's enough.
+                stats["quota_exhausted"] = True
+                stats["candidates"] = len(found)
+                return list(found.values()), stats
             resp.raise_for_status()
             payload = resp.json()
             rows = payload.get("data", [])

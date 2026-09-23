@@ -61,7 +61,13 @@ for col, pool in zip(bal_cols, points_pools):
 
 if st.button("Save balances"):
     synced = ledger.save_balances(new_balances)
-    st.success("Balances saved and synced." if synced else "Balances saved on this machine.")
+    if synced:
+        st.success("Balances saved and synced.")
+    elif ledger.gist_enabled():
+        st.error("Not saved: your balances Gist couldn't be read, so writing now could overwrite "
+                 "the real numbers. Check GIST_TOKEN and reload.")
+    else:
+        st.success("Balances saved on this machine.")
 
 st.subheader("Miles already in airline & hotel programs")
 st.caption(
@@ -84,7 +90,13 @@ edited = st.data_editor(
 )
 if st.button("Save program balances"):
     synced = ledger.save_program_balances({r["Program"]: int(r["Miles"] or 0) for r in edited if r.get("Program")})
-    st.success("Program balances saved and synced." if synced else "Program balances saved on this machine.")
+    if synced:
+        st.success("Program balances saved and synced.")
+    elif ledger.gist_enabled():
+        st.error("Not saved: your balances Gist couldn't be read, so writing now could overwrite "
+                 "the real numbers. Check GIST_TOKEN and reload.")
+    else:
+        st.success("Program balances saved on this machine.")
 
 st.divider()
 st.header("Point Pools & Transfer Partners")

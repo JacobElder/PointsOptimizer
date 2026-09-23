@@ -114,7 +114,10 @@ def _deal_card(d: dict, rank: int | None, bar: float | None, surplus: float | No
 
         # One headline line: works on a phone, and says what the numbers mean.
         program = d.get("program", "")
-        verdict = valuation.verdict_for(cpp, d.get("cabin", ""), program)
+        if d.get("watch_bar") and cpp is not None:  # judged against this entry's own bar
+            verdict = "BOOK" if cpp >= d["watch_bar"] else "BORDERLINE"
+        else:
+            verdict = valuation.verdict_for(cpp, d.get("cabin", ""), program)
         mark = {"BOOK": "🟢 Book", "BORDERLINE": "🟡 Borderline", "SKIP": "🔴 Skip"}.get(verdict, "")
         bits = [f"**{cpp:.2f}¢ per point**" if cpp is not None else "no value yet",
                 f"{points:,} points + ${taxes:,.0f} taxes" if points else None,

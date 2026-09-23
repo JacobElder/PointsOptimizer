@@ -14,12 +14,13 @@ _airlines: dict | None = None
 _CITY_OVERRIDES = {
     "GCM": "Grand Cayman", "UVF": "Vieux Fort", "SJU": "San Juan", "STT": "St. Thomas",
     "SXM": "St. Maarten", "PLS": "Providenciales", "NAS": "Nassau", "AUA": "Aruba",
-    "CUR": "Curaçao", "BGI": "Barbados", "ANU": "Antigua", "PUJ": "Punta Cana", "LIR": "Liberia",
+    "CUR": "Curaçao", "BGI": "Barbados", "ANU": "Antigua", "PUJ": "Punta Cana",
     "HKT": "Phuket", "KIX": "Osaka", "NRT": "Tokyo", "HND": "Tokyo", "PVG": "Shanghai",
     "ICN": "Seoul", "CPT": "Cape Town", "JNB": "Johannesburg", "GRU": "São Paulo",
     "EZE": "Buenos Aires", "MDE": "Medellín", "CTA": "Catania, Sicily", "PMO": "Palermo, Sicily",
     "MXP": "Milan", "LIN": "Milan", "TLV": "Tel Aviv", "LIR": "Liberia (Guanacaste)",
-    "SJO": "San José", "BGO": "Bergen",
+    "SJO": "San José", "BGO": "Bergen", "CUZ": "Cusco", "KEF": "Reykjavík", "CUN": "Cancún",
+    "UVF": "St. Lucia (Vieux Fort)",
 }
 # Current, short names for carriers that show up in award results (OpenFlights has
 # defunct or awkward names for several, e.g. AZ "Alitalia", 4Y "Airbus France").
@@ -35,9 +36,8 @@ _AIRLINE_OVERRIDES = {
     "OS": "Austrian", "OZ": "Asiana", "QF": "Qantas", "QK": "Air Canada Express", "QR": "Qatar Airways",
     "SA": "South African", "SK": "SAS", "SN": "Brussels Airlines", "SQ": "Singapore Airlines",
     "TK": "Turkish Airlines", "TP": "TAP Air Portugal", "UA": "United", "UX": "Air Europa",
-    "VL": "Lufthansa City", "VS": "Virgin Atlantic", "WK": "Edelweiss", "WN": "Southwest",
-    "YU": "EuroAtlantic", "UX2": "Air Europa",
-}
+    "VL": "Lufthansa City", "NI": "TAP Express", "VS": "Virgin Atlantic", "WK": "Edelweiss", "WN": "Southwest",
+    "YU": "EuroAtlantic", }
 _METROS = {"NYC": "New York", "TYO": "Tokyo", "LON": "London", "PAR": "Paris", "MIL": "Milan",
            "ROM": "Rome", "CHI": "Chicago", "WAS": "Washington", "SEL": "Seoul", "OSA": "Osaka",
            "SAO": "São Paulo", "RIO": "Rio de Janeiro", "BUE": "Buenos Aires", "STO": "Stockholm",

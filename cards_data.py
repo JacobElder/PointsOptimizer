@@ -13,6 +13,7 @@ capitalone.com's list).
 """
 
 from dataclasses import dataclass, field
+from datetime import date
 
 
 @dataclass
@@ -30,6 +31,15 @@ class Partner:
     name: str
     kind: str  # "airline" or "hotel"
     ratio: str  # e.g. "1:1" or "2:1.5"
+    # An announced future change: the ratio stays as-is until this date.
+    changes_on: str | None = None  # "YYYY-MM-DD"
+    ratio_after: str | None = None
+
+    def ratio_on(self, on: date | None = None) -> str:
+        """The ratio in force on a date (today by default)."""
+        if self.changes_on and self.ratio_after and str(on or date.today()) >= self.changes_on:
+            return self.ratio_after
+        return self.ratio
 
 
 @dataclass
@@ -67,9 +77,9 @@ POOLS: dict[str, Pool] = {
             Partner("Virgin Atlantic Flying Club", "airline", "1:1"),
             Partner("IHG One Rewards", "hotel", "1:1"),
             Partner("Marriott Bonvoy", "hotel", "1:1"),
-            # 4:3 for Sapphire Preferred holders from Oct 1, 2026 (immediately for
-            # CSP applications on/after Jun 15, 2026). Still 1:1 with Sapphire Reserve.
-            Partner("World of Hyatt", "hotel", "4:3"),
+            # Sapphire Preferred accounts opened before Jun 15, 2026 keep 1:1 until
+            # Oct 1, 2026, then drop to 4:3 (Sapphire Reserve stays 1:1).
+            Partner("World of Hyatt", "hotel", "1:1", changes_on="2026-10-01", ratio_after="4:3"),
             Partner("Wyndham Rewards", "hotel", "1:1"),  # added Feb 2026
         ],
     ),
@@ -100,6 +110,7 @@ POOLS: dict[str, Pool] = {
             Partner("Turkish Airlines Miles&Smiles", "airline", "1:1"),
             Partner("Virgin Red", "airline", "1:1"),
             Partner("Wyndham Rewards", "hotel", "1:1"),
+            Partner("Preferred Hotels I Prefer", "hotel", "1:2"),
         ],
     ),
     "citi_ty": Pool(
@@ -298,7 +309,7 @@ def rank_funding_pools(
     for pool, partner in matches:
         if not pool_is_active(pool.key):
             continue
-        pts_needed = points_required / transfer_ratio_multiplier(partner.ratio)
+        pts_needed = points_required / transfer_ratio_multiplier(partner.ratio_on())
         balance = balances.get(pool.key, 0)
         uniques = unique_partners(pool.key)
         ranked.append(

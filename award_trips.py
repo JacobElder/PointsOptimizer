@@ -16,6 +16,15 @@ import requests
 import seats_aero
 
 TRIPS_URL = "https://seats.aero/partnerapi/trips/{id}"
+
+
+class LookupFailed(Exception):
+    """The trip lookup itself failed (network, rate limit, bad response).
+
+    Distinct from returning None, which means seats.aero answered and the award
+    is no longer offered in that cabin. Treating a failure as "gone" would
+    silently empty a digest whenever seats.aero rate-limits the tail of a run.
+    """
 _CABIN_RANK = {"economy": 0, "premium": 1, "business": 2, "first": 3}
 _SEATS_CABIN = {"ECONOMY": "economy", "PREMIUM_ECONOMY": "premium", "BUSINESS": "business", "FIRST": "first"}
 
@@ -56,8 +65,8 @@ def fetch(availability_id: str, cabin: str, points: int, session: requests.Sessi
                         headers={"Partner-Authorization": seats_aero._get_api_key()}, timeout=30)
         resp.raise_for_status()
         payload = resp.json()
-    except (requests.RequestException, ValueError, seats_aero.NotConfigured):
-        return None
+    except (requests.RequestException, ValueError, seats_aero.NotConfigured) as e:
+        raise LookupFailed(str(e)) from e
     want = _SEATS_CABIN.get(cabin.upper(), "economy")
     trips = [t for t in payload.get("data", []) if t.get("Cabin") == want]
     if not trips:

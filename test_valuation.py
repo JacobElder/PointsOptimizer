@@ -10,16 +10,27 @@ def test_compute_cpp_subtracts_taxes_and_guards_zero_points():
 
 
 def test_bars_come_from_each_program_baseline():
-    # United points are worth ~1.2c, Alaska ~1.6c, so the same CPP is a standout
+    # United points are worth ~1.2c, Alaska ~1.55c, so the same CPP is a standout
     # in one and only ordinary in the other.
     assert valuation.baseline_cpp("United MileagePlus") == 1.2
-    assert valuation.great_floor("BUSINESS", "United MileagePlus") == pytest.approx(1.92)
-    assert valuation.great_floor("BUSINESS", "Alaska Atmos Rewards") == pytest.approx(2.56)
-    assert valuation.verdict_for(2.2, "BUSINESS", "United MileagePlus") == "BOOK"
-    assert valuation.verdict_for(2.2, "BUSINESS", "Alaska Atmos Rewards") == "BORDERLINE"
+    assert valuation.great_floor("ECONOMY", "United MileagePlus") == pytest.approx(1.92)
+    assert valuation.great_floor("ECONOMY", "Alaska Atmos Rewards") == pytest.approx(2.48)
+    assert valuation.verdict_for(2.0, "ECONOMY", "United MileagePlus") == "BOOK"
+    assert valuation.verdict_for(2.0, "ECONOMY", "Alaska Atmos Rewards") == "BORDERLINE"
     # Worth less than simply using the points normally.
-    assert valuation.verdict_for(1.3, "BUSINESS", "Alaska Atmos Rewards") == "SKIP"
+    assert valuation.verdict_for(1.3, "ECONOMY", "Alaska Atmos Rewards") == "SKIP"
     assert valuation.verdict_for(None, "ECONOMY") == "NO CASH PRICE"
+
+
+def test_premium_cabins_use_a_higher_baseline():
+    """Business redemptions return more per point, so a flat number made business
+    bars too easy to clear."""
+    econ = valuation.baseline_cpp("United MileagePlus", "ECONOMY")
+    biz = valuation.baseline_cpp("United MileagePlus", "BUSINESS")
+    assert biz == pytest.approx(econ * valuation.program_values()["business_multiplier"])
+    # Published business value wins over the multiplier where we have one.
+    assert valuation.baseline_cpp("British Airways Executive Club", "BUSINESS") == 2.2
+    assert valuation.great_floor("BUSINESS", "British Airways Executive Club") == pytest.approx(3.52)
 
 
 def test_unknown_program_falls_back_to_the_default_value():
@@ -27,8 +38,9 @@ def test_unknown_program_falls_back_to_the_default_value():
 
 
 def test_a_cheap_program_cannot_set_a_trivial_bar():
-    # Emirates baseline 1.1c x 1.6 = 1.76, below the cabin floor.
-    assert valuation.great_floor("BUSINESS", "Emirates Skywards") == 1.8
+    # GOL Smiles economy baseline 1.0c x 1.6 = 1.6, above the 1.5c economy floor;
+    # a program valued at 0.8c would fall to the floor instead.
+    assert valuation.great_floor("ECONOMY", "Aeromexico Rewards") == 1.5
 
 
 def test_fx_rate_falls_back_when_live_lookup_fails(monkeypatch):

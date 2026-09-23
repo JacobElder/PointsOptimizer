@@ -41,6 +41,7 @@ import award_trips
 import cash_quotes
 import deal_email
 import fare_model
+import seats_aero
 import flight_search
 import ledger
 import valuation
@@ -61,6 +62,11 @@ ROUND_TRIP_FALLBACK_STAYS = (7, 4, 2)  # shorter stays when the 7-night return i
 NO_ROUND_TRIP_PENALTY = 0.6  # a one-way-only valuation is usually too generous
 ROUND_TRIP_CHECK_EXTRA = 15  # also round-trip-check this many runners-up, since leaders can drop out
 WATCH_DEALS_PER_ENTRY = 2
+EXPLORE_SHARE = 0.25  # of the live budget, spent on route+cabin cells we haven't priced lately
+EXPLORE_STALE_DAYS = 10
+HISTORY_PATH = os.path.join(_BASE, "award_history.json")
+HISTORY_KEEP_DAYS = 180
+FRESH_PRICE_SHORTLIST = True  # re-price reported deals on their own date before publishing
 ESTIMATE_DRIFT_WARN_PCT = 45  # fare model is ~28% median error on unseen routes; well past that is a problem
 MAX_PER_PROGRAM = 6  # one program's routine pricing shouldn't fill the whole list
 WATCH_EMAIL_MAX = 10
@@ -111,7 +117,7 @@ def load_watchlist(config: dict) -> list[WatchEntry]:
 
 
 # ── scoring ──────────────────────────────────────────────────────────────────
-@dataclass(eq=False)
+@dataclass(eq=False, slots=True)  # one per scanned award: slots matter at ~150k
 class Scored:
     c: award_scanner.AwardCandidate
     taxes_usd: float
@@ -135,6 +141,8 @@ class Scored:
     trip: award_trips.TripInfo | None = None
     quote: cash_quotes.Quote | None = None
     rt_unavailable: bool = False  # couldn't price a round trip (date too far out)
+    rt_stay_nights: int = ROUND_TRIP_STAY_DAYS
+    trip_unverified: bool = False  # the live re-check failed; not proof the award is gone
     dropped: bool = False  # re-verification says it's gone, repriced, or sold out
 
     @property
@@ -166,6 +174,8 @@ class Scored:
     def rank_value(self) -> float:
         """Dollar surplus, discounted for things that make a deal worse than its CPP says."""
         v = self.surplus or 0.0
+        if v <= 0:
+            return v  # discounts on a negative surplus would rank a worse deal higher
         if self.trip and self.trip.mixed_cabin:
             v *= 0.4
         if self.trip and self.trip.airport_changes:
@@ -196,7 +206,7 @@ class Scored:
     @property
     def baseline(self) -> float:
         """What these points are normally worth, in cents."""
-        return valuation.baseline_cpp(self.c.program)
+        return valuation.baseline_cpp(self.c.program, self.c.cabin)
 
     def surplus_vs(self, bar: float) -> float | None:
         if self.cash is None:
@@ -220,6 +230,7 @@ class Scored:
             "id": c.id, "age_days": round(self.age_days, 1) if self.age_days is not None else None,
             "trip": self.trip.as_dict() if self.trip else None, "slow": self.slow,
             "rt_unavailable": self.rt_unavailable, "nonstop": self.nonstop,
+            "trip_unverified": self.trip_unverified,
             "held_miles": self.held_miles, "bookable_now": self.bookable_now,
             "top_up_needed": max(c.points - self.held_miles, 0) if self.held_miles else None,
         }
@@ -230,6 +241,9 @@ def score_candidates(cands: list[award_scanner.AwardCandidate], model: fare_mode
                      program_balances: dict[str, int] | None = None) -> list[Scored]:
     est_cache: dict[tuple, fare_model.Estimate] = {}
     out = []
+    # An award whose estimated value is far below its bar can never be priced or
+    # reported; dropping it here keeps ~150k awards' worth of state manageable.
+    keep_ratio = 0.5
     for c in cands:
         k = (c.origin, c.dest, price_cabin(c.cabin))
         if k not in est_cache:
@@ -245,6 +259,8 @@ def score_candidates(cands: list[award_scanner.AwardCandidate], model: fare_mode
         if s.watch:
             bar = min(w.bar_for(c.cabin, c.program) for w in s.watch)
             s.p_watch = est.prob_at_least(bar * c.points / 100 + taxes_usd)
+        if est_cpp < floor * keep_ratio and not s.watch and not s.bookable_now:
+            continue
         out.append(s)
     return out
 
@@ -255,6 +271,22 @@ def _set_cash(s: Scored, cash: float) -> None:
     # Rank by dollars above what these points are normally worth, not above a flat
     # cabin bar: otherwise a program whose points are simply worth more wins by default.
     s.surplus = s.surplus_vs(s.baseline)
+
+
+def _finalize_cash(s: Scored) -> None:
+    """Value the award at the LOWER of the comparable one-way fare and half a round
+    trip. Both inputs can arrive in either order (a round trip is priced first, then
+    the fare is re-matched once the real stop count is known), so the choice is made
+    here rather than at either call site.
+    """
+    if s.one_way_cash is None:
+        return
+    if s.round_trip_half is not None and s.round_trip_half < s.one_way_cash:
+        s.cash_basis = (f"half of a {s.rt_stay_nights}-night round trip "
+                        f"(the one-way fare is ${s.one_way_cash:,.0f})")
+        _set_cash(s, s.round_trip_half)
+    else:
+        _set_cash(s, s.one_way_cash)
 
 
 def _apply_quote(s: Scored, q: cash_quotes.Quote) -> None:
@@ -270,7 +302,7 @@ def _apply_quote(s: Scored, q: cash_quotes.Quote) -> None:
     s.quote = q
     s.cash_approx, s.cash_basis, s.same_carrier_cash = q.approx, comp.basis, comp.same_carrier_price
     s.one_way_cash = comp.price
-    _set_cash(s, comp.price)
+    _finalize_cash(s)
 
 
 def _pricing_priority(s: Scored) -> float:
@@ -278,6 +310,51 @@ def _pricing_priority(s: Scored) -> float:
     if s.watch:
         upside = max(upside, s.p_watch * s.c.points * 0.1) * WATCH_PRIORITY_BOOST
     return upside
+
+
+def _warn_on_health(price: dict, scan: dict, budget: int, log) -> None:
+    """Loud warnings for the ways a run can look fine and still be useless."""
+    live = price.get("live", 0) + price.get("watch_live", 0) + price.get("explore_live", 0)
+    if live and price.get("no_fare", 0) / live > 0.3:
+        log(f"::warning::{price['no_fare']} of {live} cash lookups returned no fare: "
+            "Google may be blocking or serving empty pages.")
+    if budget and live < 0.5 * budget and price.get("skipped_low_p", 0) > 1000:
+        log(f"::warning::Only {live} of a {budget} lookup budget was spent; this digest leans on "
+            "reused fares.")
+    if scan.get("rows") and scan.get("stale", 0) / scan["rows"] > 0.25:
+        log(f"::warning::{scan['stale']:,} of {scan['rows']:,} seats.aero rows were past the "
+            "freshness limit: its cache may be lagging.")
+
+
+def record_history(cands: list, path: str = "") -> dict:
+    """Append today's cheapest award per program/route/cabin/travel-month.
+
+    Costs no API calls (the scan already has the data) and builds the history for
+    "cheapest this route has been in 90 days", which needs no cash fare at all and
+    works beyond the 330-day pricing window.
+    """
+    path = path or HISTORY_PATH
+    try:
+        with open(path) as f:
+            hist = json.load(f)
+    except (OSError, json.JSONDecodeError):
+        hist = {}
+    today = datetime.now(timezone.utc).date().isoformat()
+    cheapest: dict[str, int] = dict(hist.get(today, {}))
+    for c in cands:
+        key = f"{c.source}|{c.origin}|{c.dest}|{c.cabin}|{c.date[:7]}"
+        if key not in cheapest or c.points < cheapest[key]:
+            cheapest[key] = c.points
+    # Store only what changed since the last recorded value: award prices are mostly
+    # static, so a full daily snapshot would add megabytes a week for no information.
+    previous: dict[str, int] = {}
+    for day in sorted(k for k in hist if k < today):
+        previous.update(hist[day])
+    hist[today] = {k: v for k, v in cheapest.items() if previous.get(k) != v}
+    cutoff = (datetime.now(timezone.utc).date() - timedelta(days=HISTORY_KEEP_DAYS)).isoformat()
+    hist = {d: v for d, v in hist.items() if d >= cutoff}
+    _write_json_atomic(path, hist)
+    return hist
 
 
 def estimate_drift(errors: list[float]) -> dict:
@@ -297,8 +374,8 @@ def price_promising(scored: list[Scored], max_lookups: int, log=print, max_watch
     across entries (otherwise one entry with thousands of matches, like the
     Caribbean, takes it all). Then everything competes for max_lookups.
     """
-    stats = {"cached": 0, "live": 0, "watch_live": 0, "no_fare": 0, "failed": 0, "skipped_low_p": 0,
-             "estimate_errors": []}
+    stats = {"cached": 0, "live": 0, "watch_live": 0, "explore_live": 0, "no_fare": 0, "failed": 0,
+             "skipped_low_p": 0, "estimate_errors": []}
     state = {"quotes": cash_quotes.load(), "stop": False}
     if max_watch_lookups:
         groups = [[s for s in scored if any(x is w for x in s.watch)] for w in (watchlist or [])]
@@ -316,6 +393,9 @@ def price_promising(scored: list[Scored], max_lookups: int, log=print, max_watch
                 if spent >= max_watch_lookups or state["stop"]:
                     break
         stats["watch_live"], stats["live"] = stats["live"], 0
+    explore_budget = int(max_lookups * EXPLORE_SHARE)
+    if explore_budget:
+        stats["explore_live"] = _explore_pass(scored, explore_budget, state, stats, log)
     live = 0
     for s in sorted((s for s in scored if s.cash is None), key=lambda s: -_pricing_priority(s)):
         if state["stop"]:
@@ -329,7 +409,42 @@ def price_promising(scored: list[Scored], max_lookups: int, log=print, max_watch
     return stats
 
 
-def _price_one(s: Scored, state: dict, stats: dict, log, allow_live: bool = True) -> str:
+def _explore_pass(scored: list[Scored], budget: int, state: dict, stats: dict, log) -> int:
+    """Spend part of the budget on route+cabin cells with no recent quote.
+
+    The normal gate only prices awards the model already rates highly, so it never
+    learns where it is wrong, and a fare spike on a route it rates cheap stays
+    invisible. This samples the least-known cells: one award per cell, largest
+    uncertainty x points first.
+    """
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=EXPLORE_STALE_DAYS)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    recent = {(q["origin"], q["dest"], q["cabin"]) for q in state["quotes"]
+              if q.get("fetched_at", "") >= cutoff}
+    best_per_cell: dict[tuple, Scored] = {}
+    for s in scored:
+        if s.cash is not None:
+            continue
+        cell = (s.c.origin, s.c.dest, price_cabin(s.c.cabin))
+        if cell in recent:
+            continue
+        cur = best_per_cell.get(cell)
+        if cur is None or s.est.sigma_log * s.c.points > cur.est.sigma_log * cur.c.points:
+            best_per_cell[cell] = s
+    spent = 0
+    for s in sorted(best_per_cell.values(), key=lambda s: -(s.est.sigma_log * s.c.points)):
+        if spent >= budget or state["stop"]:
+            break
+        before = stats["live"]
+        if _price_one(s, state, stats, log, force=True) == "live":
+            spent += 1
+        stats["live"] = before  # counted separately so the main pass keeps its budget
+    if spent:
+        log(f"Explored {spent} route/cabin(s) with no quote in the last {EXPLORE_STALE_DAYS} days")
+    return spent
+
+
+def _price_one(s: Scored, state: dict, stats: dict, log, allow_live: bool = True,
+               force: bool = False) -> str:
     """Price one candidate from cache or live. Returns "cached", "live", or "skipped"."""
     if s.cash is not None:
         return "skipped"
@@ -341,8 +456,9 @@ def _price_one(s: Scored, state: dict, stats: dict, log, allow_live: bool = True
         return "cached"
     if not allow_live:
         return "skipped"
-    if (s.p_great < MIN_P_GREAT_TO_PRICE and not (s.watch and s.p_watch >= MIN_P_WATCH_TO_PRICE)
-            and not (s.bookable_now and s.p_great >= MIN_P_WATCH_TO_PRICE)):
+    if not force and (s.p_great < MIN_P_GREAT_TO_PRICE
+                      and not (s.watch and s.p_watch >= MIN_P_WATCH_TO_PRICE)
+                      and not (s.bookable_now and s.p_great >= MIN_P_WATCH_TO_PRICE)):
         stats["skipped_low_p"] += 1
         return "skipped"
     try:
@@ -408,12 +524,10 @@ def apply_round_trip(s: Scored, rt_cache: dict, today: date_cls | None = None) -
         s.rt_unavailable = True
         return False
     pool = ([o for o in offers if o.stops <= 1] if s.nonstop else offers) or offers
-    half = min(o.price_usd for o in pool) / 2
-    s.round_trip_half = half
+    s.round_trip_half = min(o.price_usd for o in pool) / 2
+    s.rt_stay_nights = stay
     s.rt_unavailable = False
-    if s.one_way_cash is not None and half < s.one_way_cash:
-        s.cash_basis = f"half of a {stay}-night round trip (lower than the one-way fare)"
-        _set_cash(s, half)
+    _finalize_cash(s)
     return True
 
 
@@ -425,8 +539,12 @@ def attach_trips(scored: list[Scored], cache: dict) -> None:
             continue
         k = (s.c.id, s.c.cabin, s.c.points)
         if k not in cache:
-            cache[k] = award_trips.fetch(s.c.id, s.c.cabin, s.c.points)
-        s.trip = cache[k]
+            try:
+                cache[k] = award_trips.fetch(s.c.id, s.c.cabin, s.c.points)
+            except award_trips.LookupFailed:
+                cache[k] = "failed"  # don't retry within a run, don't call it gone either
+        s.trip_unverified = cache[k] == "failed"
+        s.trip = None if s.trip_unverified else cache[k]
         if s.trip is not None and s.quote is not None:
             _apply_quote(s, s.quote)  # redo the fare match now that the real stop count is known
 
@@ -438,6 +556,8 @@ def still_bookable(s: Scored, sources_reporting_seats: set[str]) -> bool:
     that show 0 seats left in a program that does report seat counts (American
     and some others always report 0, meaning "unknown").
     """
+    if s.trip_unverified:
+        return True  # couldn't check; keep it, flagged, rather than pretending it's gone
     if s.trip is None:
         return False
     if not s.trip.price_matches:
@@ -486,32 +606,79 @@ def _cap_per_program(leaders: list[Scored], cap: int) -> list[Scored]:
 
 
 def pick_top(leaders: list[Scored], top: int, min_economy: int = 5) -> list[Scored]:
-    leaders = _cap_per_program(leaders, MAX_PER_PROGRAM)
-    # Dollar surplus always favours premium cabins; reserve slots for economy.
-    premium = [s for s in leaders if s.c.cabin in ("BUSINESS", "FIRST")]
-    economy = [s for s in leaders if s.c.cabin not in ("BUSINESS", "FIRST")]
+    # Dollar surplus always favours premium cabins; reserve slots for economy. The
+    # per-program cap applies within each cabin bucket, or one program's business
+    # deals would consume the cap before economy is considered at all.
+    premium = _cap_per_program([s for s in leaders if s.c.cabin in ("BUSINESS", "FIRST")], MAX_PER_PROGRAM)
+    economy = _cap_per_program([s for s in leaders if s.c.cabin not in ("BUSINESS", "FIRST")], MAX_PER_PROGRAM)
     n_econ = min(len(economy), min_economy)
     picked = premium[: max(top - n_econ, 0)] + economy[: top - min(len(premium), max(top - n_econ, 0))]
     return sorted(picked, key=lambda s: -s.rank_value)[:top]
 
 
+def reprice_fresh(deals: list[Scored], log=print) -> dict:
+    """Re-price each reported deal on its exact date, ignoring saved quotes.
+
+    Reported deals are selected precisely because their fare came in high, and most
+    are priced from a quote borrowed from a nearby date: re-checking 9 top deals by
+    hand found all 9 lower, one by 68% (a 5.52c "deal" was really 1.36c). This is
+    ~50 free lookups and removes the single largest error in the digest.
+    """
+    stats = {"repriced": 0, "changed": 0, "failed": 0}
+    for s in deals:
+        if s.cash is None:
+            continue
+        try:
+            q = cash_quotes.get_quote(s.c.origin, s.c.dest, s.c.date, price_cabin(s.c.cabin),
+                                      allow_approx=False)
+        except (cash_quotes.OutOfWindow, flight_search.NotConfigured, flight_search.SearchFailed):
+            stats["failed"] += 1
+            continue
+        if q is None or q.price_usd is None:
+            stats["failed"] += 1
+            continue
+        before = s.cash
+        stats["repriced"] += 1
+        _apply_quote(s, q)  # keeps the round-trip floor via _finalize_cash
+        if before and abs(s.cash - before) / before > 0.05:
+            stats["changed"] += 1
+    if stats["repriced"]:
+        log(f"Fresh re-pricing of the shortlist: {stats['repriced']} re-checked, "
+            f"{stats['changed']} moved more than 5%, {stats['failed']} unavailable")
+    return stats
+
+
 def verify_leaders(scored: list[Scored], candidates: list[Scored], rt_cache: dict | None,
                    trip_cache: dict | None, sources_reporting_seats: set[str],
-                   round_trip: bool, bar_fn=None) -> list[Scored]:
+                   round_trip: bool, bar_fn=None, max_passes: int = 3) -> list[Scored]:
     """Round-trip check + live re-verification, then regroup from the FULL scored
-    list so a demoted leader doesn't take its whole destination down with it."""
+    list so a demoted leader doesn't take its whole destination down with it.
+
+    Regrouping can promote a deal that was never checked, so this repeats until
+    the leaders it returns have all been verified (or the pass limit is hit).
+    """
     bar_fn = bar_fn or (lambda s: s.floor)
-    if round_trip and rt_cache is not None:
-        for s in candidates:
-            apply_round_trip(s, rt_cache)
-    if trip_cache is not None:
-        attach_trips(candidates, trip_cache)
-        for s in candidates:
-            if not still_bookable(s, sources_reporting_seats):
-                s.dropped = True
-    kept = [s for s in scored if not s.dropped
-            and s.cpp is not None and s.cpp >= bar_fn(s)]
-    return group_leaders(kept, bar_fn)
+    limit = max(len(candidates), 1)
+    pending = list(candidates)
+    leaders: list[Scored] = []
+    for _ in range(max_passes):
+        if round_trip and rt_cache is not None:
+            for s in pending:
+                apply_round_trip(s, rt_cache)
+        if trip_cache is not None:
+            attach_trips(pending, trip_cache)
+            for s in pending:
+                if not still_bookable(s, sources_reporting_seats):
+                    s.dropped = True
+        kept = [s for s in scored if not s.dropped and s.cpp is not None and s.cpp >= bar_fn(s)]
+        leaders = group_leaders(kept, bar_fn)
+        pending = [s for s in leaders[:limit]
+                   if (trip_cache is not None and s.trip is None)
+                   or (round_trip and rt_cache is not None and s.round_trip_half is None
+                       and not s.rt_unavailable)]
+        if not pending:
+            break
+    return leaders
 
 
 def shortlist(scored: list[Scored], top: int, min_economy: int = 5, rt_cache: dict | None = None,
@@ -555,12 +722,30 @@ def watch_report(scored: list[Scored], watchlist: list[WatchEntry], rt_cache: di
             d["watch_bar"] = bar(s)
             d["watch_surplus_usd"] = round(s.surplus_vs(bar(s)))
             deals.append((s, d))
-        out.append({"label": w.label, "matched_awards": len(mine),
+        out.append({"label": w.label, "matched_awards": len(mine), "bar_fn": bar,
                     "priced": sum(1 for s in mine if s.cpp is not None), "deals": deals})
     return out
 
 
 # ── reporting ────────────────────────────────────────────────────────────────
+def _write_json_atomic(path: str, data: dict) -> None:
+    """A crash mid-write would leave unparseable JSON, losing the report history
+    and re-emailing everything next run."""
+    import tempfile
+    fd, tmp = tempfile.mkstemp(dir=os.path.dirname(path) or ".", prefix=".digest-", suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w") as f:
+            json.dump(data, f, indent=1)
+            f.write("\n")
+        os.replace(tmp, path)
+    except BaseException:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise
+
+
 def _load_digest() -> dict:
     try:
         with open(DIGEST_PATH) as f:
@@ -584,11 +769,22 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
     transferable = award_scanner.transferable_sources(include_planned)
     held_sources = award_scanner.sources_for_programs(program_balances)
     cands, scan_stats = award_scanner.scan(config, include_planned=include_planned, extra_sources=held_sources)
+    if not cands:
+        log("::error::No awards scanned (seats.aero quota exhausted or the API is down); "
+            "keeping the previous digest.")
+        return _load_digest() or {"top": [], "held_miles": [], "watchlist": []}
     log(f"Scan: {scan_stats['candidates']:,} fresh awards from {scan_stats['calls']} seats.aero calls "
         f"({scan_stats['stale']:,} stale rows dropped; {scan_stats['rate_limit_remaining']} calls left today)")
+    if scan_stats.get("quota_exhausted"):
+        log("::warning::seats.aero's daily call quota ran out mid-scan; this digest covers only the "
+            f"programs scanned so far ({', '.join(scan_stats['sources'][:6])}...). It resets 24h after "
+            "the first call of the day.")
     if scan_stats.get("truncated"):
         log(f"WARNING: results cut off at the page limit for {', '.join(scan_stats['truncated'])}")
 
+    history = record_history(cands)
+    log(f"Award history: {len(history)} day(s) kept, {len(history.get(max(history), {})):,} "
+        "route/cabin/month prices recorded today")
     model = fare_model.FareModel()
     log(f"Fare model: {model.summary()}")
     if program_balances:
@@ -603,12 +799,15 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
     # topped up from your cards, so keep those awards only when your miles fully cover them.
     scored = [s for s in scored if s.c.source in transferable or s.bookable_now]
     promising = sum(1 for s in scored if s.p_great >= MIN_P_GREAT_TO_PRICE)
-    log(f"Estimates: {promising:,} candidates >= {MIN_P_GREAT_TO_PRICE:.0%} chance of clearing the bar; "
+    log(f"Estimates: {len(scored):,} awards worth considering, {promising:,} with a "
+        f">= {MIN_P_GREAT_TO_PRICE:.0%} chance of clearing their bar; "
         f"{sum(1 for s in scored if s.watch):,} match the watchlist")
 
+    del cands  # the scan's raw rows aren't needed once scored
     price_stats = price_promising(scored, max_lookups, log=log, max_watch_lookups=max_watch_lookups,
                                   watchlist=watchlist)
     drift = estimate_drift(price_stats.pop("estimate_errors", []))
+    _warn_on_health(price_stats, scan_stats, max_lookups, log)
     log(f"Pricing: {price_stats}")
     if drift:
         log(f"Fare estimates vs fresh fares: {drift['median_pct']}% median error, "
@@ -629,6 +828,29 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
     trip_cache: dict = {}
     ranked = shortlist(scored, top, rt_cache=rt_cache, round_trip=round_trip, trip_cache=trip_cache,
                        sources_reporting_seats=sources_reporting_seats)
+    held = held_miles_report(scored, rt_cache, round_trip=round_trip, trip_cache=trip_cache,
+                             sources_reporting_seats=sources_reporting_seats)
+    watch = watch_report(scored, watchlist, rt_cache, round_trip=round_trip, trip_cache=trip_cache,
+                         sources_reporting_seats=sources_reporting_seats)
+
+    if FRESH_PRICE_SHORTLIST:
+        shortlisted = {id(s): s for s in ranked + held}
+        shortlisted.update({id(s): s for g in watch for s, _ in g["deals"]})
+        reprice_stats = reprice_fresh(list(shortlisted.values()), log=log)
+        # Re-pricing can push a deal below its bar: rebuild the lists rather than
+        # publishing a deal that no longer qualifies.
+        ranked = pick_top([s for s in ranked if s.cpp is not None and s.cpp >= s.floor], top)
+        held = sorted([s for s in held if s.cpp is not None and s.cpp >= s.floor],
+                      key=lambda s: -s.rank_value)
+        for g in watch:
+            g["deals"] = [(s, s.to_dict()) for s, _ in g["deals"]
+                          if s.cpp is not None and s.cpp >= g["bar_fn"](s)]
+            for s, d in g["deals"]:
+                d["watch_bar"] = g["bar_fn"](s)
+                d["watch_surplus_usd"] = round(s.surplus_vs(g["bar_fn"](s)))
+    else:
+        reprice_stats = {}
+
     # Serialize now: watch_report regroups some of the same objects and rewrites
     # their other_dates/alternatives for its own subset.
     top_pairs = []
@@ -637,14 +859,11 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
         d["new"] = s.report_key not in already
         top_pairs.append((s.report_key, d))
     held_pairs = []
-    for s in held_miles_report(scored, rt_cache, round_trip=round_trip, trip_cache=trip_cache,
-                               sources_reporting_seats=sources_reporting_seats):
+    for s in held:
         d = s.to_dict()
         key = f"held:{s.report_key}"
         d["new"] = key not in already
         held_pairs.append((key, d))
-    watch = watch_report(scored, watchlist, rt_cache, round_trip=round_trip, trip_cache=trip_cache,
-                         sources_reporting_seats=sources_reporting_seats)
     log(f"Round-trip checks: {len(rt_cache)} ({sum(1 for v in rt_cache.values() if v)} priced); "
         f"flight details: {len(trip_cache)} checked, "
         f"{sum(1 for v in trip_cache.values() if v is None)} gone/repriced, "
@@ -673,7 +892,8 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
         held_new = [d for k, d in fresh if k.startswith("held:")]
         watch_new = [d for k, d in fresh if k.startswith("watch:")]
         top_new = [d for k, d in fresh if not k.startswith(("held:", "watch:"))]
-        lead = (held_new + watch_new + top_new)[0]
+        n_unique = len({k.split(":", 1)[-1] for k, _ in fresh})  # same award can appear in 2 sections
+        lead = max((d for _, d in fresh), key=lambda d: d.get("surplus_usd") or 0)  # biggest, not first
         import places
         try:
             deal_email.send_digest_email(
@@ -681,13 +901,13 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
                   "Covered by miles already in your airline accounts: no transfer needed.", held_new),
                  ("⭐ Your watchlist", "Destinations you asked to watch, in their best seasons.", watch_new),
                  ("🏆 Top deals", "The best value across all your routes, ranked by dollars saved.", top_new)],
-                subject=(f"✈️ {len(fresh)} new award deal{'s' if len(fresh) != 1 else ''}: "
+                subject=(f"✈️ {n_unique} new award deal{'s' if n_unique != 1 else ''}: "
                          f"{places.city(lead['dest'])} {lead['cpp']:.1f}¢/pt"
                          + (f", {len(held_new)} bookable with miles you have" if held_new else "")),
                 intro=(f"Found in {scan_stats['candidates']:,} award seats on seats.aero, each valued against a live "
                        "Google Flights fare (the lower of the one-way fare and half a round trip)."),
             )
-            emailed = len(fresh)
+            emailed = n_unique
             for k, _ in fresh:
                 reported.setdefault(k, started.isoformat())
         except Exception as e:
@@ -700,6 +920,7 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
         "scan": scan_stats,
         "model": model.summary(),
         "pricing": price_stats,
+        "repricing": reprice_stats,
         "estimate_drift": drift,
         "round_trip_checks": len(rt_cache),
         "held_miles": [{k: v for k, v in d.items() if k not in public} for _, d in held_pairs],
@@ -710,10 +931,8 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
         "reported": reported,
     }
     # The site recomputes "how to pay" locally from your balances, so the public
-    # digest never carries them. bookable_now is kept as a boolean-free hint: dropped.
-    with open(DIGEST_PATH, "w") as f:
-        json.dump(out, f, indent=1)
-        f.write("\n")
+    # digest never carries them.
+    _write_json_atomic(DIGEST_PATH, out)
     return out
 
 
@@ -752,8 +971,12 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--include-planned", action="store_true",
                     help="also scan programs reachable only from cards you plan to get")
     args = ap.parse_args(argv)
-    out = run(args.max_lookups, args.top, not args.no_email, args.include_planned, not args.no_round_trip,
-              max_watch_lookups=args.max_watch_lookups, resend=args.resend)
+    try:
+        out = run(args.max_lookups, args.top, not args.no_email, args.include_planned, not args.no_round_trip,
+                  max_watch_lookups=args.max_watch_lookups, resend=args.resend)
+    except (seats_aero.SearchFailed, seats_aero.NotConfigured) as e:
+        print(f"::error::seats.aero is unavailable: {e}")
+        return 1
     if out.get("email_failed"):
         return 1  # fail the scheduled run so GitHub tells you the email didn't go out
     if out["held_miles"]:

@@ -73,6 +73,7 @@
   ],
   "cabins": [
     "ECONOMY",
+    "PREMIUM_ECONOMY",
     "BUSINESS",
     "FIRST"
   ],
@@ -85,9 +86,7 @@
     {
       "label": "Thailand (cool dry season)",
       "dests": [
-        "BKK",
-        "HKT",
-        "CNX"
+        "BKK"
       ],
       "start": "2026-11-01",
       "end": "2027-02-28"
@@ -95,9 +94,7 @@
     {
       "label": "Vietnam (dry season)",
       "dests": [
-        "SGN",
-        "HAN",
-        "DAD"
+        "SGN"
       ],
       "start": "2026-12-01",
       "end": "2027-04-15"
@@ -124,7 +121,7 @@
         "NBO"
       ],
       "start": "2027-07-01",
-      "end": "2027-08-31"
+      "end": "2027-10-31"
     },
     {
       "label": "Ghana (dry season, December peak)",
@@ -137,8 +134,7 @@
     {
       "label": "Shanghai (autumn)",
       "dests": [
-        "PVG",
-        "SHA"
+        "PVG"
       ],
       "start": "2026-09-19",
       "end": "2026-11-30"
@@ -146,8 +142,7 @@
     {
       "label": "Shanghai (spring)",
       "dests": [
-        "PVG",
-        "SHA"
+        "PVG"
       ],
       "start": "2027-04-01",
       "end": "2027-05-31"
@@ -161,29 +156,13 @@
       "end": "2026-12-31"
     },
     {
-      "label": "Oaxaca (Day of the Dead through dry season)",
-      "dests": [
-        "OAX"
-      ],
-      "start": "2026-10-20",
-      "end": "2027-03-31"
-    },
-    {
-      "label": "Oaxaca (Guelaguetza)",
-      "dests": [
-        "OAX"
-      ],
-      "start": "2027-07-10",
-      "end": "2027-08-02"
-    },
-    {
       "label": "Peru (dry season)",
       "dests": [
         "LIM",
         "CUZ"
       ],
       "start": "2027-05-01",
-      "end": "2027-08-31"
+      "end": "2027-10-31"
     },
     {
       "label": "Colombia (dry season)",
@@ -238,8 +217,7 @@
     {
       "label": "Norway (summer)",
       "dests": [
-        "OSL",
-        "BGO"
+        "OSL"
       ],
       "start": "2027-06-01",
       "end": "2027-08-31"
@@ -266,8 +244,7 @@
       "label": "Morocco (autumn)",
       "dests": [
         "RAK",
-        "CMN",
-        "FEZ"
+        "CMN"
       ],
       "start": "2026-09-19",
       "end": "2026-11-30"
@@ -276,8 +253,7 @@
       "label": "Morocco (spring)",
       "dests": [
         "RAK",
-        "CMN",
-        "FEZ"
+        "CMN"
       ],
       "start": "2027-03-01",
       "end": "2027-05-31"
@@ -285,8 +261,7 @@
     {
       "label": "Istanbul/Turkey (autumn)",
       "dests": [
-        "IST",
-        "SAW"
+        "IST"
       ],
       "start": "2026-09-19",
       "end": "2026-10-31"
@@ -294,8 +269,7 @@
     {
       "label": "Istanbul/Turkey (spring)",
       "dests": [
-        "IST",
-        "SAW"
+        "IST"
       ],
       "start": "2027-04-01",
       "end": "2027-06-15"
@@ -319,24 +293,6 @@
       ],
       "start": "2027-03-20",
       "end": "2027-04-15"
-    },
-    {
-      "label": "Georgia (autumn wine season)",
-      "dests": [
-        "TBS",
-        "KUT"
-      ],
-      "start": "2026-09-19",
-      "end": "2026-10-31"
-    },
-    {
-      "label": "Georgia (late spring–summer)",
-      "dests": [
-        "TBS",
-        "KUT"
-      ],
-      "start": "2027-05-01",
-      "end": "2027-08-31"
     },
     {
       "label": "Panama (dry season)",

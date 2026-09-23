@@ -122,6 +122,10 @@ class _FakeGitHub:
 
     def __init__(self):
         self.gists = {}
+        self.updated_at = "2026-09-23T00:00:00Z"
+
+    def bump(self):
+        self.updated_at = "2026-09-23T01:00:00Z"
 
     def __call__(self, method, url, **kw):
         path = url.replace("https://api.github.com", "")
@@ -138,7 +142,8 @@ class _FakeGitHub:
             data = {"id": gid}
         else:  # GET /gists/{id}
             gid = path.rsplit("/", 1)[-1]
-            data = {"files": {n: {"content": c} for n, c in self.gists[gid].items()}}
+            data = {"updated_at": self.updated_at,
+                    "files": {n: {"content": c} for n, c in self.gists[gid].items()}}
 
         class R:
             def raise_for_status(self):
@@ -183,7 +188,23 @@ def test_gist_failure_falls_back_to_local(tmp_path, monkeypatch):
     monkeypatch.setattr(ledger, "GIST_DISABLED", False)
     monkeypatch.setattr(ledger, "_gist_id", None)
     monkeypatch.setenv("GIST_TOKEN", "t")
+    monkeypatch.setattr(ledger, "_gist_unavailable", False)
+    # A failed read still shows the local copy...
     assert ledger.load_balances() == {"bilt": 103000}
-    assert ledger.save_balances({"bilt": 90000}) is False
+    # ...but must NOT then write: on Streamlit Cloud the local copy is empty, and
+    # saving what the page rendered would wipe the real balances in the Gist.
+    assert ledger.save_balances({}) is False
     monkeypatch.setattr(ledger, "GIST_DISABLED", True)
-    assert ledger.load_balances() == {"bilt": 90000}
+    assert ledger.load_balances() == {"bilt": 103000}
+
+
+def test_gist_write_is_refused_when_someone_else_changed_it(monkeypatch):
+    fake = _FakeGitHub()
+    monkeypatch.setattr(ledger.requests, "request", fake)
+    monkeypatch.setattr(ledger, "GIST_DISABLED", False)
+    monkeypatch.setattr(ledger, "_gist_id", None)
+    monkeypatch.setattr(ledger, "_gist_unavailable", False)
+    monkeypatch.setenv("GIST_TOKEN", "t")
+    ledger.load_balances()  # seeds the gist and records its updated_at
+    fake.bump()  # another writer (the site, or the daily run) saves
+    assert ledger.save_balances({"chase_ur": 1}) is False

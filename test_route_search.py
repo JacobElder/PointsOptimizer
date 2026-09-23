@@ -82,3 +82,37 @@ def test_quote_save_prunes_old_and_past_quotes(tmp_path, monkeypatch):
     cash_quotes.save(rows)
     kept = cash_quotes.load()
     assert len(kept) == 1 and kept[0]["fetched_at"] == new_fetch
+
+
+def test_scan_returns_partial_results_when_the_daily_quota_runs_out(monkeypatch):
+    """Losing a whole run to a 429 on the last program wastes the ~200 calls already spent."""
+    import award_scanner
+
+    class _Resp:
+        def __init__(self, status, rows):
+            self.status_code = status
+            self.headers = {"x-ratelimit-remaining": "0"}
+            self._rows = rows
+
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {"data": self._rows, "hasMore": False}
+
+    row = {"ID": "a", "Source": "aeroplan", "Date": "2027-01-10", "UpdatedAt": "2099-01-01T00:00:00Z",
+           "TaxesCurrency": "USD", "YAvailable": True, "YMileageCostRaw": 30000, "YTotalTaxesRaw": 500,
+           "YRemainingSeatsRaw": 2, "YDirectRaw": True, "YAirlinesRaw": "AC",
+           "Route": {"OriginAirport": "JFK", "DestinationAirport": "LIS", "Distance": 3400}}
+    calls = []
+
+    class _Session:
+        def get(self, url, **kw):
+            calls.append(kw["params"]["sources"])
+            return _Resp(200, [row]) if len(calls) == 1 else _Resp(429, [])
+
+    monkeypatch.setattr(award_scanner.seats_aero, "_get_api_key", lambda: "k")
+    cfg = {"origins": ["JFK"], "destinations": ["LIS"], "cabins": ["ECONOMY"], "sources": []}
+    cands, stats = award_scanner.scan(cfg, today=date.today(), session=_Session())
+    assert stats["quota_exhausted"] is True
+    assert len(cands) == 1 and stats["candidates"] == 1  # keeps what it already scanned
