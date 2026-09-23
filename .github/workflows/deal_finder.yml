@@ -62,8 +62,22 @@ jobs:
           git add deal_digest.json cash_quotes.json
           git diff --cached --quiet && exit 0
           git commit -m "Deal Finder: daily digest [skip ci]"
-          for i in 1 2 3; do
+          # These two files are regenerated output, so on a conflict this run's
+          # copies win -- never throw away a whole run's work over a merge.
+          cp deal_digest.json /tmp/digest.json
+          cp cash_quotes.json /tmp/quotes.json
+          for i in 1 2 3 4; do
             git push origin HEAD:main && exit 0
-            git pull --rebase origin main || { git rebase --abort; exit 1; }
+            if ! git pull --rebase origin main; then
+              git rebase --abort || true
+              git fetch origin main
+              git reset --hard origin/main
+              cp /tmp/digest.json deal_digest.json
+              cp /tmp/quotes.json cash_quotes.json
+              git add deal_digest.json cash_quotes.json
+              git diff --cached --quiet && exit 0
+              git commit -m "Deal Finder: daily digest [skip ci]"
+            fi
           done
+          echo "::error::Could not push the digest after 4 attempts."
           exit 1

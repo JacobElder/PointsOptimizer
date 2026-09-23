@@ -152,7 +152,7 @@ POOLS: dict[str, Pool] = {
         transferable=True,
         portal_rate_cents=1.0,
         # Bilt Mastercard is closed but the points were kept; user confirmed 2026-09-16
-        # that transfers still work without the card.
+        # that transfers still work without the card. Partner list re-verified 2026-09-23.
         transfers_without_card=True,
         # Verified 2026-09-16 against point.me and awardtravelfinder.com; only partners
         # both list are included. Contested (one source only): American AAdvantage,
@@ -175,10 +175,13 @@ POOLS: dict[str, Pool] = {
             Partner("Turkish Airlines Miles&Smiles", "airline", "1:1"),
             Partner("United MileagePlus", "airline", "1:1"),
             Partner("Virgin Atlantic Flying Club", "airline", "1:1"),
+            Partner("Virgin Red", "airline", "1:1"),
+            Partner("Accor Live Limitless", "hotel", "3:2"),
             Partner("Hilton Honors", "hotel", "1:1"),
             Partner("IHG One Rewards", "hotel", "1:1"),
             Partner("Marriott Bonvoy", "hotel", "1:1"),
             Partner("World of Hyatt", "hotel", "1:1"),
+            Partner("Wyndham Rewards", "hotel", "1:1"),  # added Mar 2026
         ],
     ),
     "usbank_points": Pool(
