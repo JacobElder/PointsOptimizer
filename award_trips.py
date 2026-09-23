@@ -35,6 +35,12 @@ class TripInfo:
     booking_label: str | None
     other_itineraries: int  # other flight options at the same price
     airport_changes: list[str] = None  # "DCA → IAD": land at one airport, depart from another
+    # Re-verification against seats.aero right now (the scan's data can be days old):
+    stops: int = 0
+    nonstop: bool = False  # ONE segment. seats.aero's "direct" flag only means one flight number.
+    seats: int = 0
+    current_points: int = 0  # cheapest price for this cabin now
+    price_matches: bool = True  # still bookable at the points the scan reported
 
     def as_dict(self) -> dict:
         return asdict(self)
@@ -55,8 +61,10 @@ def fetch(availability_id: str, cabin: str, points: int, session: requests.Sessi
     want = _SEATS_CABIN.get(cabin.upper(), "economy")
     trips = [t for t in payload.get("data", []) if t.get("Cabin") == want]
     if not trips:
-        return None
-    at_price = [t for t in trips if int(t.get("MileageCost") or 0) == int(points)] or trips
+        return None  # award no longer offered in this cabin
+    cheapest_now = min(int(t.get("MileageCost") or 0) for t in trips)
+    # Allow the price to have improved, but never report a stale cheaper price.
+    at_price = [t for t in trips if int(t.get("MileageCost") or 0) <= int(points)] or trips
     at_price.sort(key=lambda t: (int(t.get("MileageCost") or 0), int(t.get("TotalDuration") or 0)))
     t = at_price[0]
     segs = t.get("AvailabilitySegments") or []
@@ -88,4 +96,9 @@ def fetch(availability_id: str, cabin: str, points: int, session: requests.Sessi
         booking_label=link.get("label") if link else None,
         other_itineraries=len(at_price) - 1,
         airport_changes=changes,
+        stops=max(len(segs) - 1, 0),
+        nonstop=len(segs) == 1,
+        seats=int(t.get("RemainingSeats") or 0),
+        current_points=cheapest_now,
+        price_matches=cheapest_now <= int(points),
     )

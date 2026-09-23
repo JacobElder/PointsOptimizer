@@ -45,7 +45,9 @@ balances = ledger.load_balances()
 points_pools = [p for p in POOLS.values() if p.key != "cashback"
                 and (cards_in_pool(p.key, status="held") or p.transfers_without_card)]
 
-bal_cols = st.columns(len(points_pools))
+if not points_pools:
+    st.info("No transferable point pools yet — add a card with status='held' in cards_data.py.")
+bal_cols = st.columns(len(points_pools)) if points_pools else []
 new_balances = {}
 for col, pool in zip(bal_cols, points_pools):
     with col:

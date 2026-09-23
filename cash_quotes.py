@@ -21,14 +21,16 @@ from __future__ import annotations
 
 import json
 import os
+import tempfile
 from dataclasses import asdict, dataclass
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 
 import flight_search
 
 _BASE = os.path.dirname(os.path.abspath(__file__))
 QUOTES_PATH = os.path.join(_BASE, "cash_quotes.json")
 
+_DATE_RE = __import__("re").compile(r"^\d{4}-\d{2}-\d{2}$")
 APPROX_WINDOW_DAYS = 7
 APPROX_MAX_AGE_DAYS = 14
 # Google Flights only lists fares ~11 months ahead; every "no cash price" in
@@ -116,13 +118,29 @@ def load() -> list[dict]:
         return []
 
 
+MAX_QUOTE_AGE_DAYS = 30  # a quote older than this can never be reused (see APPROX_MAX_AGE_DAYS)
+
+
 def save(quotes: list[dict]) -> None:
+    """Atomic write: this file is the fare history that also trains fare_model,
+    so a crash mid-write must not truncate it."""
     cutoff = _now().date().isoformat()
-    quotes = [q for q in quotes if q["date"] >= cutoff]  # past-dated quotes are useless
+    stale = (_now() - timedelta(days=MAX_QUOTE_AGE_DAYS)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    quotes = [q for q in quotes if q["date"] >= cutoff and q.get("fetched_at", "") >= stale]
     quotes = sorted(quotes, key=lambda q: (q["origin"], q["dest"], q["cabin"], q["date"]))
-    with open(QUOTES_PATH, "w") as f:
-        json.dump({"quotes": quotes}, f, indent=1)
-        f.write("\n")
+    directory = os.path.dirname(QUOTES_PATH) or "."
+    fd, tmp = tempfile.mkstemp(dir=directory, prefix=".cash_quotes-", suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w") as f:
+            json.dump({"quotes": quotes}, f, indent=1)
+            f.write("\n")
+        os.replace(tmp, QUOTES_PATH)
+    except BaseException:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise
 
 
 def _max_age_days(travel_day: date, today: date) -> int:
@@ -148,7 +166,8 @@ def find_cached(quotes: list[dict], origin: str, dest: str, travel_date: str, ca
     origin, dest, cabin = origin.upper(), dest.upper(), cabin.upper()
     today = _now().date()
     travel_day = _parse_day(travel_date)
-    same_route = [q for q in quotes if q["origin"] == origin and q["dest"] == dest and q["cabin"] == cabin]
+    same_route = [q for q in quotes if q["origin"] == origin and q["dest"] == dest and q["cabin"] == cabin
+                  and _DATE_RE.match(str(q.get("date", "")))]  # one malformed row must not abort a run
 
     for q in same_route:
         if q["date"] == travel_date and _age_days(q) <= _max_age_days(travel_day, today):

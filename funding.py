@@ -13,6 +13,13 @@ from cards_data import POOLS, pool_is_active, rank_funding_pools, transfer_ratio
 BONUSES_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "transfer_bonuses.json")
 
 
+TRANSFER_INCREMENT = 1000  # issuers move points in 1,000-point blocks
+
+
+def _round_up(points: float) -> int:
+    return int(-(-points // TRANSFER_INCREMENT) * TRANSFER_INCREMENT)
+
+
 def active_bonus(pool_key: str, partner: str, on: date | None = None) -> dict | None:
     """The active transfer bonus for pool -> partner, if any (expired entries ignored)."""
     on = on or date.today()
@@ -22,7 +29,8 @@ def active_bonus(pool_key: str, partner: str, on: date | None = None) -> dict | 
     except (OSError, json.JSONDecodeError):
         return None
     for b in bonuses:
-        if b.get("pool") == pool_key and b.get("partner") == partner and str(on) <= str(b.get("ends", "")):
+        if (b.get("pool") == pool_key and b.get("partner") == partner
+                and str(b.get("starts", "")) <= str(on) <= str(b.get("ends", ""))):
             return b
     return None
 
@@ -43,7 +51,8 @@ class PayPlan:
     @property
     def summary(self) -> str:
         if self.covered_by_held:
-            return f"Pay with the {self.held_miles:,} {self.program} miles you already have"
+            return (f"Pay with {self.points:,} of the {self.held_miles:,} {self.program} miles "
+                    "you already have")
         prefix = f"Use your {self.held_miles:,} {self.program} miles, then " if self.held_miles else ""
         if not self.pools:
             if self.held_miles:
@@ -52,7 +61,7 @@ class PayPlan:
         best = self.pools[0]
         verb = "transfer" if prefix else "Transfer"
         bonus = best.get("bonus")
-        line = (f"{prefix}{verb} {best['pts_needed']:,.0f} {best['pool'].currency_name}"
+        line = (f"{prefix}{verb} {_round_up(best['pts_needed']):,} {best['pool'].currency_name}"
                 + (f" (+{bonus['bonus_pct']}% transfer bonus until {date.fromisoformat(bonus['ends']):%b %-d})"
                    if bonus else f" ({best['partner'].ratio})"))
         if best["balance"]:

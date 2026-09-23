@@ -93,14 +93,16 @@ if st.button("Find the best deals", type="primary"):
         error = "From and To are the same place."
     elif not cabins:
         error = "Pick at least one cabin."
+    if not error and mode == "Outbound + return" and not all(out_rng + ret_rng):
+        error = "Pick a start and end date for both outbound and return."
+    if not error and mode == "Date range" and not all(rng):
+        error = "Pick a start and end date."
     if error:
         st.error(error)
     else:
         try:
             with st.status("Searching…", expanded=True) as status:
                 if mode == "Outbound + return":
-                    if not all(out_rng + ret_rng):
-                        raise ValueError("Pick a start and end date for both outbound and return.")
                     result = ("pair", route_search.search_pair(o_code, d_code, cabins, *out_rng, *ret_rng,
                                                                log=status.write))
                 else:
@@ -108,13 +110,17 @@ if st.button("Find the best deals", type="primary"):
                         lo, hi = one_day - timedelta(days=flex), one_day + timedelta(days=flex)
                     elif mode == "Date range":
                         lo, hi = rng
-                        if not (lo and hi):
-                            raise ValueError("Pick a start and end date.")
                     else:
                         lo, hi = None, None
                     result = ("single", route_search.search(o_code, d_code, cabins, lo, hi, log=status.write))
                 status.update(label="Done", state="complete", expanded=False)
+            when = (f"{places.nice_date(lo.isoformat(), weekday=False)} – "
+                    f"{places.nice_date(hi.isoformat(), weekday=False)}" if mode != "Outbound + return" and lo
+                    else ("any date" if mode == "Any time" else "out and back"))
             st.session_state["fs_result"] = result
+            st.session_state["fs_result_label"] = (
+                f"{places.airport_label(o_code)} → {places.airport_label(d_code)} · {when} · "
+                + ", ".join(_cabin(c) for c in cabins))
         except (ValueError, seats_aero.NotConfigured, seats_aero.SearchFailed) as e:
             st.error(str(e))
 
@@ -123,6 +129,8 @@ result = st.session_state.get("fs_result")
 if result:
     kind, r = result
     st.divider()
+    st.subheader(st.session_state.get("fs_result_label", "Results"))
+    st.caption("Best value per point first, against live Google Flights fares.")
     if kind == "pair":
         if r.best_pair:
             o, b = r.best_pair
@@ -139,9 +147,10 @@ if result:
             st.warning("No return date falls after an outbound date in these ranges.")
         sections = [("Outbound", r.outbound), ("Return", r.inbound)]
     else:
-        sections = [("Best deals", r)]
+        sections = [("", r)]
     for title, res in sections:
-        st.subheader(title)
+        if title:
+            st.markdown(f"**{title}**")
         for n in res.notes:
             st.info(n)
         st.caption(f"{res.awards_found:,} award seats you can pay for · {res.priced} priced · best value first")

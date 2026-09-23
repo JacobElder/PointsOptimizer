@@ -146,7 +146,8 @@ def scan(config: dict | None = None, include_planned: bool = False, today: date 
     # destinations returned >25k economy rows and silently cut off whole programs
     # (American's 9,500-mile Caribbean awards were never seen).
     groups = [[src] for src in wanted_sources] if per_source else [wanted_sources]
-    for cabin, group in [(c, g) for c in cfg["cabins"] for g in groups]:
+    cabins = [c for c in cfg["cabins"] if c in _CABIN_PARAM]  # ignore a typo'd cabin, don't crash
+    for cabin, group in [(c, g) for c in cabins for g in groups]:
         source = ",".join(group)
         params = {
             "origin_airport": ",".join(cfg["origins"]),

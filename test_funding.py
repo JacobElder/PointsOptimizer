@@ -3,7 +3,8 @@ import funding
 
 def test_held_miles_cover_the_award():
     p = funding.plan("American Airlines AAdvantage", 9500, {}, {"American Airlines AAdvantage": 14440})
-    assert p.covered_by_held and p.top_up == 0 and "already have" in p.summary
+    assert p.covered_by_held and p.top_up == 0
+    assert p.summary == "Pay with 9,500 of the 14,440 American Airlines AAdvantage miles you already have"
 
 
 def test_transfer_from_the_best_active_pool_after_using_held_miles():
@@ -11,7 +12,8 @@ def test_transfer_from_the_best_active_pool_after_using_held_miles():
                      {"United MileagePlus": 5980})
     assert p.top_up == 24020
     assert p.pools and {r["pool"].key for r in p.pools} == {"chase_ur", "bilt"}
-    assert p.summary.startswith("Use your 5,980 United MileagePlus miles, then transfer 24,020")
+    # Issuers transfer in 1,000-point blocks, so 24,020 is rounded up to 25,000.
+    assert p.summary.startswith("Use your 5,980 United MileagePlus miles, then transfer 25,000")
 
 
 def test_program_no_card_reaches():

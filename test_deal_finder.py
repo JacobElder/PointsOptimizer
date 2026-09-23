@@ -134,12 +134,23 @@ class _RT:
         self.price_usd, self.stops = price, stops
 
 
+def _trip(**over):
+    import award_trips
+    base = dict(flights=["X1 A–B"], connections=[], duration_min=600, departs_at="2027-02-09T10:00:00Z",
+                arrives_at="2027-02-09T18:00:00Z", leg_cabins=["business"], mixed_cabin=False,
+                lower_cabin_legs=[], carriers="", booking_url=None, booking_label=None,
+                other_itineraries=0, airport_changes=[], stops=0, nonstop=True, seats=2,
+                current_points=88000, price_matches=True)
+    base.update(over)
+    return award_trips.TripInfo(**base)
+
+
 def test_round_trip_half_replaces_higher_one_way_fare(monkeypatch):
     s = _scored("CPT", "BUSINESS", "united", "EWR", 88000, 5084, date="2027-02-09")
     s.one_way_cash = 5084.0
     monkeypatch.setattr(deal_finder.flight_search, "search_round_trip_offers",
                         lambda *a, **k: [_RT(5038.0, 1), _RT(3000.0, 3)])
-    s.c.direct = True
+    s.trip = _trip(nonstop=True)  # a confirmed nonstop compares against <=1-stop fares
     from datetime import date
     assert deal_finder.apply_round_trip(s, {}, today=date(2026, 9, 16))
     assert s.cash == 2519.0 and s.round_trip_half == 2519.0  # 3-stop RT ignored for a nonstop award
@@ -214,3 +225,77 @@ def test_mixed_cabin_and_airport_change_rank_lower():
     mixed.trip = award_trips.TripInfo(**base, mixed_cabin=True, lower_cabin_legs=["X1 (economy)"], airport_changes=[])
     change.trip = award_trips.TripInfo(**base, mixed_cabin=False, lower_cabin_legs=[], airport_changes=["DCA → IAD"])
     assert clean.rank_value > change.rank_value > mixed.rank_value
+
+
+def test_round_trip_falls_back_to_a_shorter_stay_near_the_booking_window(monkeypatch):
+    from datetime import date, timedelta
+    today = date(2026, 9, 22)
+    depart = today + timedelta(days=327)  # a 7-night return is past the 330-day window
+    asked = []
+
+    def _rt(o, d, dep, ret, cabin):
+        asked.append(ret)
+        return [_RT(4000.0, 1)]
+
+    monkeypatch.setattr(deal_finder.flight_search, "search_round_trip_offers", _rt)
+    s = _scored("ATH", "BUSINESS", "united", "EWR", 88000, 3500, date=depart.isoformat())
+    s.one_way_cash = 3500.0
+    assert deal_finder.apply_round_trip(s, {}, today=today) is True
+    assert asked == [(depart + timedelta(days=2)).isoformat()]
+    assert s.cash == 2000.0 and s.rt_unavailable is False
+
+
+def test_no_round_trip_possible_marks_and_demotes(monkeypatch):
+    from datetime import date, timedelta
+    today = date(2026, 9, 22)
+    s = _scored("ATH", "BUSINESS", "united", "EWR", 88000, 3500,
+                date=(today + timedelta(days=330)).isoformat())
+    s.one_way_cash = 3500.0
+    before = s.rank_value
+    assert deal_finder.apply_round_trip(s, {}, today=today) is False
+    assert s.rt_unavailable is True and s.rank_value < before
+
+
+def test_still_bookable_drops_gone_repriced_and_soldout_awards():
+    gone = _scored("ATH", "BUSINESS", "united", "EWR", 88000, 3500)
+    repriced = _scored("ACC", "ECONOMY", "flyingblue", "JFK", 33000, 900)
+    soldout = _scored("JNB", "BUSINESS", "united", "EWR", 88000, 3500)
+    unknown_seats = _scored("GCM", "ECONOMY", "american", "JFK", 10000, 320)
+    ok = _scored("DUB", "BUSINESS", "alaska", "JFK", 55000, 2600)
+    gone.trip = None
+    repriced.trip = _trip(price_matches=False, current_points=91000)
+    soldout.trip = _trip(seats=0)
+    unknown_seats.trip = _trip(seats=0)  # American always reports 0 = unknown
+    ok.trip = _trip(seats=3)
+    reporting = {"united", "flyingblue", "alaska"}
+    assert [deal_finder.still_bookable(s, reporting) for s in (gone, repriced, soldout, unknown_seats, ok)] \
+        == [False, False, False, True, True]
+
+
+def test_a_demoted_leader_does_not_take_its_destination_group_down():
+    # Leader looks best on the one-way fare but is gone; the runner-up should be reported.
+    leader = _scored("ZRH", "BUSINESS", "aeroplan", "JFK", 60000, 3000)
+    runner_up = _scored("ZRH", "BUSINESS", "aeroplan", "EWR", 50000, 2000)
+    leader.trip, runner_up.trip = None, _trip()
+    out = deal_finder.verify_leaders([leader, runner_up], [leader, runner_up], None, {"x": 1},
+                                     {"aeroplan"}, round_trip=False)
+    assert [s.c.origin for s in out] == ["EWR"]
+
+
+def test_resend_keeps_the_report_history(tmp_path, monkeypatch):
+    monkeypatch.setattr(deal_finder, "DIGEST_PATH", str(tmp_path / "digest.json"))
+    import json
+    old = {"reported": {"a|b|c|BUSINESS|60000|2027-01-01": "2099-01-01T00:00:00"}}
+    (tmp_path / "digest.json").write_text(json.dumps(old))
+    monkeypatch.setattr(deal_finder.award_scanner, "scan", lambda *a, **k: ([], {
+        "calls": 0, "rows": 0, "stale": 0, "sources": [], "rate_limit_remaining": "1", "candidates": 0,
+        "truncated": []}))
+    class _Model:
+        def summary(self):
+            return "stub"
+
+    monkeypatch.setattr(deal_finder.fare_model, "FareModel", lambda *a, **k: _Model())
+    monkeypatch.setattr(deal_finder, "score_candidates", lambda *a, **k: [])
+    out = deal_finder.run(max_lookups=0, top=5, send_email=False, resend=True, max_watch_lookups=0,
+                          log=lambda m: None)
+    assert out["reported"] == old["reported"]

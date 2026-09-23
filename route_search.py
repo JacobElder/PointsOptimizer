@@ -115,21 +115,22 @@ def search_pair(origin: str, dest: str, cabins: list[str], out_start: date, out_
     """Outbound and return as two separate one-way awards; best compatible pair."""
     out = search(origin, dest, cabins, out_start, out_end, max_lookups, top=25, log=log)
     back = search(dest, origin, cabins, ret_start, ret_end, max_lookups, top=25, log=log)
-    best_pair, best_value = None, None
+    best_pair, best_value, best_dates = None, None, None
     for o in out.deals:
-        o_dates = [o.c.date] + o.other_dates
+        o_dates = sorted([o.c.date] + o.other_dates)
         for r in back.deals:
-            r_dates = [r.c.date] + r.other_dates
-            if not any(rd > od for od in o_dates for rd in r_dates):
+            r_dates = sorted([r.c.date] + r.other_dates)
+            # Pick outbound and return dates together: the earliest workable pair.
+            pair_dates = next(((od, rd) for od in o_dates for rd in r_dates if rd > od), None)
+            if pair_dates is None:
                 continue
-            value = (o.cash + r.cash - o.taxes_usd - r.taxes_usd) / (o.c.points + r.c.points)
+            value = (o.cash + r.cash - o.taxes_usd - r.taxes_usd) / (o.c.points + r.c.points) * 100
             if best_value is None or value > best_value:
-                best_pair, best_value = (o, r), value
+                best_pair, best_value, best_dates = (o, r), value, pair_dates
     result = PairResult(out, back, best_pair)
     if best_pair:
         o, r = best_pair
-        od = o.c.date
-        rd = min(d for d in [r.c.date] + r.other_dates if d > od)
+        od, rd = best_dates
         result.pair_cash_one_ways = o.cash + r.cash
         cash_total = result.pair_cash_one_ways
         try:

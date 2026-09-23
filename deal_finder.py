@@ -57,6 +57,8 @@ DEFAULT_TOP = 20
 REPORT_COOLDOWN_DAYS = 14
 SERPAPI_CAP = 5
 ROUND_TRIP_STAY_DAYS = 7
+ROUND_TRIP_FALLBACK_STAYS = (7, 4, 2)  # shorter stays when the 7-night return is past the booking window
+NO_ROUND_TRIP_PENALTY = 0.6  # a one-way-only valuation is usually too generous
 ROUND_TRIP_CHECK_EXTRA = 15  # also round-trip-check this many runners-up, since leaders can drop out
 WATCH_DEALS_PER_ENTRY = 2
 WATCH_EMAIL_MAX = 10
@@ -129,6 +131,9 @@ class Scored:
     alternatives: list[str] = field(default_factory=list)
     held_miles: int = 0  # miles you already hold in this award's program
     trip: award_trips.TripInfo | None = None
+    quote: cash_quotes.Quote | None = None
+    rt_unavailable: bool = False  # couldn't price a round trip (date too far out)
+    dropped: bool = False  # re-verification says it's gone, repriced, or sold out
 
     @property
     def age_days(self) -> float | None:
@@ -137,6 +142,15 @@ class Scored:
         except (ValueError, AttributeError):
             return None
         return (datetime.now(timezone.utc) - seen).total_seconds() / 86400
+
+    @property
+    def nonstop(self) -> bool | None:
+        """True/False once flight details are known; None before that.
+
+        seats.aero's `direct` flag only means "one flight number" -- EWR-JNB is
+        flagged direct but stops twice -- so it is never used to pick a fare.
+        """
+        return None if self.trip is None else self.trip.nonstop
 
     @property
     def slow(self) -> bool:
@@ -158,6 +172,8 @@ class Scored:
             v *= 0.75
         if (self.age_days or 0) > 5:
             v *= 0.85
+        if self.rt_unavailable:
+            v *= NO_ROUND_TRIP_PENALTY
         return v
 
     @property
@@ -172,7 +188,8 @@ class Scored:
 
     @property
     def report_key(self) -> str:
-        return "|".join([self.c.source, self.c.origin, self.c.dest, self.c.cabin, str(self.c.points)])
+        return "|".join([self.c.source, self.c.origin, self.c.dest, self.c.cabin,
+                         str(self.c.points), self.c.date])
 
     def surplus_vs(self, bar: float) -> float | None:
         if self.cash is None:
@@ -195,6 +212,7 @@ class Scored:
             "other_dates": self.other_dates, "alternatives": self.alternatives, "updated_at": c.updated_at,
             "id": c.id, "age_days": round(self.age_days, 1) if self.age_days is not None else None,
             "trip": self.trip.as_dict() if self.trip else None, "slow": self.slow,
+            "rt_unavailable": self.rt_unavailable, "nonstop": self.nonstop,
             "held_miles": self.held_miles, "bookable_now": self.bookable_now,
             "top_up_needed": max(c.points - self.held_miles, 0) if self.held_miles else None,
         }
@@ -231,9 +249,16 @@ def _set_cash(s: Scored, cash: float) -> None:
 
 
 def _apply_quote(s: Scored, q: cash_quotes.Quote) -> None:
-    comp = cash_quotes.comparable_fare(q, s.c.direct, s.c.airlines)
+    """Value the award against a comparable one-way fare.
+
+    Until flight details confirm a true nonstop, compare against the cheapest
+    fare at any number of stops -- the conservative choice, since a connecting
+    award shouldn't get credit for a pricier nonstop-grade fare.
+    """
+    comp = cash_quotes.comparable_fare(q, s.nonstop, s.c.airlines)
     if comp is None:
         return
+    s.quote = q
     s.cash_approx, s.cash_basis, s.same_carrier_cash = q.approx, comp.basis, comp.same_carrier_price
     s.one_way_cash = comp.price
     _set_cash(s, comp.price)
@@ -303,7 +328,8 @@ def _price_one(s: Scored, state: dict, stats: dict, log, allow_live: bool = True
         return "skipped"
     try:
         q = cash_quotes.get_quote(s.c.origin, s.c.dest, s.c.date, price_cabin(s.c.cabin))
-        state["quotes"] = cash_quotes.load()
+        if q is not None:  # keep the in-memory cache current without re-reading the whole file
+            state["quotes"].append({k: v for k, v in q.__dict__.items() if k != "approx"})
     except cash_quotes.OutOfWindow:
         return "skipped"
     except flight_search.QuotaExhausted as e:
@@ -313,7 +339,8 @@ def _price_one(s: Scored, state: dict, stats: dict, log, allow_live: bool = True
     except (flight_search.NotConfigured, flight_search.SearchFailed) as e:
         stats["live"] += 1
         stats["failed"] += 1
-        if stats["failed"] >= 5 and stats["live"] == 0 and stats["watch_live"] == 0:
+        # Stop early only if EVERY attempt so far has failed (e.g. Google blocked the scraper).
+        if stats["failed"] >= 5 and stats["failed"] == stats["live"] + stats["watch_live"]:
             log(f"Cash lookups failing ({e}); stopping.")
             state["stop"] = True
         return "live"
@@ -327,15 +354,25 @@ def _price_one(s: Scored, state: dict, stats: dict, log, allow_live: bool = True
 
 # ── round trip ───────────────────────────────────────────────────────────────
 def apply_round_trip(s: Scored, rt_cache: dict, today: date_cls | None = None) -> bool:
-    """Value the award against min(one-way fare, half a 7-night round trip).
-    Returns True if a round-trip price was obtained. Never spends SerpApi quota."""
+    """Value the award against min(one-way fare, half a round trip).
+
+    Tries a 7-night stay, then shorter ones so trips near the edge of the
+    booking window still get checked; a one-way-only valuation is usually far
+    too generous (one-way fares run 1.5-2x half a round trip), so when no round
+    trip can be priced the deal is marked and ranked down instead.
+    """
     if s.cash is None:
         return False
     today = today or datetime.now(timezone.utc).date()
-    ret = datetime.strptime(s.c.date, "%Y-%m-%d").date() + timedelta(days=ROUND_TRIP_STAY_DAYS)
-    if (ret - today).days > cash_quotes.MAX_LOOKAHEAD_DAYS:
+    depart = datetime.strptime(s.c.date, "%Y-%m-%d").date()
+    stays = [n for n in ROUND_TRIP_FALLBACK_STAYS
+             if (depart + timedelta(days=n) - today).days <= cash_quotes.MAX_LOOKAHEAD_DAYS]
+    if not stays:
+        s.rt_unavailable = True
         return False
-    key = (s.c.origin, s.c.dest, s.c.date, price_cabin(s.c.cabin))
+    stay = stays[0]
+    ret = depart + timedelta(days=stay)
+    key = (s.c.origin, s.c.dest, s.c.date, price_cabin(s.c.cabin), stay)
     if key not in rt_cache:
         try:
             rt_cache[key] = flight_search.search_round_trip_offers(
@@ -344,12 +381,14 @@ def apply_round_trip(s: Scored, rt_cache: dict, today: date_cls | None = None) -
             rt_cache[key] = None
     offers = rt_cache[key]
     if not offers:
+        s.rt_unavailable = True
         return False
-    pool = ([o for o in offers if o.stops <= 1] if s.c.direct else offers) or offers
+    pool = ([o for o in offers if o.stops <= 1] if s.nonstop else offers) or offers
     half = min(o.price_usd for o in pool) / 2
     s.round_trip_half = half
+    s.rt_unavailable = False
     if s.one_way_cash is not None and half < s.one_way_cash:
-        s.cash_basis = f"half of a {ROUND_TRIP_STAY_DAYS}-night round trip (lower than the one-way fare)"
+        s.cash_basis = f"half of a {stay}-night round trip (lower than the one-way fare)"
         _set_cash(s, half)
     return True
 
@@ -364,6 +403,22 @@ def attach_trips(scored: list[Scored], cache: dict) -> None:
         if k not in cache:
             cache[k] = award_trips.fetch(s.c.id, s.c.cabin, s.c.points)
         s.trip = cache[k]
+        if s.trip is not None and s.quote is not None:
+            _apply_quote(s, s.quote)  # redo the fare match now that the real stop count is known
+
+
+def still_bookable(s: Scored, sources_reporting_seats: set[str]) -> bool:
+    """Re-check an award against seats.aero right now: the scan's data can be days old.
+
+    Drops awards that are gone, that have repriced above what the scan saw, or
+    that show 0 seats left in a program that does report seat counts (American
+    and some others always report 0, meaning "unknown").
+    """
+    if s.trip is None:
+        return False
+    if not s.trip.price_matches:
+        return False
+    return not (s.trip.seats == 0 and s.c.source in sources_reporting_seats)
 
 
 # ── ranking ──────────────────────────────────────────────────────────────────
@@ -400,42 +455,54 @@ def pick_top(leaders: list[Scored], top: int, min_economy: int = 5) -> list[Scor
     premium = [s for s in leaders if s.c.cabin in ("BUSINESS", "FIRST")]
     economy = [s for s in leaders if s.c.cabin not in ("BUSINESS", "FIRST")]
     n_econ = min(len(economy), min_economy)
-    picked = premium[: top - n_econ] + economy[: top - min(len(premium), top - n_econ)]
+    picked = premium[: max(top - n_econ, 0)] + economy[: top - min(len(premium), max(top - n_econ, 0))]
     return sorted(picked, key=lambda s: -s.rank_value)[:top]
 
 
+def verify_leaders(scored: list[Scored], candidates: list[Scored], rt_cache: dict | None,
+                   trip_cache: dict | None, sources_reporting_seats: set[str],
+                   round_trip: bool, bar_fn=None) -> list[Scored]:
+    """Round-trip check + live re-verification, then regroup from the FULL scored
+    list so a demoted leader doesn't take its whole destination down with it."""
+    bar_fn = bar_fn or (lambda s: s.floor)
+    if round_trip and rt_cache is not None:
+        for s in candidates:
+            apply_round_trip(s, rt_cache)
+    if trip_cache is not None:
+        attach_trips(candidates, trip_cache)
+        for s in candidates:
+            if not still_bookable(s, sources_reporting_seats):
+                s.dropped = True
+    kept = [s for s in scored if not s.dropped
+            and s.cpp is not None and s.cpp >= bar_fn(s)]
+    return group_leaders(kept, bar_fn)
+
+
 def shortlist(scored: list[Scored], top: int, min_economy: int = 5, rt_cache: dict | None = None,
-              round_trip: bool = False, trip_cache: dict | None = None) -> list[Scored]:
+              round_trip: bool = False, trip_cache: dict | None = None,
+              sources_reporting_seats: set[str] | None = None) -> list[Scored]:
     leaders = group_leaders(scored)
     if round_trip or trip_cache is not None:
         premium = [s for s in leaders if s.c.cabin in ("BUSINESS", "FIRST")][: top + ROUND_TRIP_CHECK_EXTRA]
-        economy = [s for s in leaders if s.c.cabin not in ("BUSINESS", "FIRST")][: min_economy + 5]
-        if round_trip:
-            cache = rt_cache if rt_cache is not None else {}
-            for s in premium + economy:
-                apply_round_trip(s, cache)
-        if trip_cache is not None:
-            attach_trips(premium + economy, trip_cache)
-        leaders = sorted([s for s in premium + economy if s.cpp is not None and s.cpp >= s.floor],
-                         key=lambda s: -s.rank_value)
+        economy = [s for s in leaders if s.c.cabin not in ("BUSINESS", "FIRST")][: max(min_economy + 5, top)]
+        leaders = verify_leaders(scored, premium + economy, rt_cache, trip_cache,
+                                 sources_reporting_seats or set(), round_trip)
     return pick_top(leaders, top, min_economy)
 
 
 def held_miles_report(scored: list[Scored], rt_cache: dict, round_trip: bool = True,
-                      trip_cache: dict | None = None) -> list[Scored]:
+                      trip_cache: dict | None = None,
+                      sources_reporting_seats: set[str] | None = None) -> list[Scored]:
     """Best deals bookable outright with miles already sitting in a program."""
-    leaders = group_leaders([s for s in scored if s.bookable_now])[: HELD_MILES_DEALS + 3]
-    if round_trip:
-        for s in leaders:
-            apply_round_trip(s, rt_cache)
-    leaders = [s for s in leaders if s.cpp is not None and s.cpp >= s.floor]
-    if trip_cache is not None:
-        attach_trips(leaders, trip_cache)
+    mine = [s for s in scored if s.bookable_now]
+    leaders = verify_leaders(mine, group_leaders(mine)[: HELD_MILES_DEALS + 4], rt_cache, trip_cache,
+                             sources_reporting_seats or set(), round_trip)
     return sorted(leaders, key=lambda s: -s.rank_value)[:HELD_MILES_DEALS]
 
 
 def watch_report(scored: list[Scored], watchlist: list[WatchEntry], rt_cache: dict,
-                 round_trip: bool = True, trip_cache: dict | None = None) -> list[dict]:
+                 round_trip: bool = True, trip_cache: dict | None = None,
+                 sources_reporting_seats: set[str] | None = None) -> list[dict]:
     out = []
     for w in watchlist:
         mine = [s for s in scored if any(x is w for x in s.watch)]
@@ -443,13 +510,8 @@ def watch_report(scored: list[Scored], watchlist: list[WatchEntry], rt_cache: di
         def bar(s, w=w):
             return w.bar_for(s.c.cabin)
 
-        leaders = group_leaders(mine, bar)[: WATCH_DEALS_PER_ENTRY + 3]
-        if round_trip:
-            for s in leaders:
-                apply_round_trip(s, rt_cache)
-        leaders = [s for s in leaders if s.cpp is not None and s.cpp >= bar(s)]
-        if trip_cache is not None:
-            attach_trips(leaders[:WATCH_DEALS_PER_ENTRY + 1], trip_cache)
+        leaders = verify_leaders(mine, group_leaders(mine, bar)[: WATCH_DEALS_PER_ENTRY + 4], rt_cache,
+                                 trip_cache, sources_reporting_seats or set(), round_trip, bar)
         leaders.sort(key=lambda s: -(s.surplus_vs(bar(s)) * (s.rank_value / s.surplus if s.surplus else 1)))
         deals = []
         for s in leaders[:WATCH_DEALS_PER_ENTRY]:
@@ -497,6 +559,9 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
         unscannable = sorted(set(program_balances) - set(award_scanner._PARTNER_TO_SOURCE))
         log(f"Miles already held: {program_balances}"
             + (f" (not covered by seats.aero: {', '.join(unscannable)})" if unscannable else ""))
+    # Programs that never report seat counts (American always says 0) must not be
+    # treated as sold out; only trust a 0 from a program that reports seats elsewhere.
+    sources_reporting_seats = {c.source for c in cands if c.seats > 0}
     scored = score_candidates(cands, model, watchlist, program_balances)
     # Programs scanned only because you hold miles there (e.g. American, Delta) can't be
     # topped up from your cards, so keep those awards only when your miles fully cover them.
@@ -511,32 +576,40 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
 
     digest = _load_digest()
     cutoff = (started - timedelta(days=REPORT_COOLDOWN_DAYS)).isoformat()
-    reported = {} if resend else {k: v for k, v in digest.get("reported", {}).items() if v >= cutoff}
+    reported = {k: v for k, v in digest.get("reported", {}).items() if v >= cutoff}
+    # --resend emails everything currently listed, but must not erase the history:
+    # a wiped history would re-email every deal again on the next normal run.
+    already = {} if resend else reported
 
     rt_cache: dict = {}
     trip_cache: dict = {}
-    ranked = shortlist(scored, top, rt_cache=rt_cache, round_trip=round_trip, trip_cache=trip_cache)
+    ranked = shortlist(scored, top, rt_cache=rt_cache, round_trip=round_trip, trip_cache=trip_cache,
+                       sources_reporting_seats=sources_reporting_seats)
     # Serialize now: watch_report regroups some of the same objects and rewrites
     # their other_dates/alternatives for its own subset.
     top_pairs = []
     for s in ranked:
         d = s.to_dict()
-        d["new"] = s.report_key not in reported
+        d["new"] = s.report_key not in already
         top_pairs.append((s.report_key, d))
     held_pairs = []
-    for s in held_miles_report(scored, rt_cache, round_trip=round_trip, trip_cache=trip_cache):
+    for s in held_miles_report(scored, rt_cache, round_trip=round_trip, trip_cache=trip_cache,
+                               sources_reporting_seats=sources_reporting_seats):
         d = s.to_dict()
         key = f"held:{s.report_key}"
-        d["new"] = key not in reported
+        d["new"] = key not in already
         held_pairs.append((key, d))
-    watch = watch_report(scored, watchlist, rt_cache, round_trip=round_trip, trip_cache=trip_cache)
+    watch = watch_report(scored, watchlist, rt_cache, round_trip=round_trip, trip_cache=trip_cache,
+                         sources_reporting_seats=sources_reporting_seats)
     log(f"Round-trip checks: {len(rt_cache)} ({sum(1 for v in rt_cache.values() if v)} priced); "
-        f"flight details: {len(trip_cache)} ({sum(1 for v in trip_cache.values() if v and v.mixed_cabin)} mixed cabin)")
+        f"flight details: {len(trip_cache)} checked, "
+        f"{sum(1 for v in trip_cache.values() if v is None)} gone/repriced, "
+        f"{sum(1 for v in trip_cache.values() if v and v.mixed_cabin)} mixed cabin")
     watch_out, watch_pairs = [], []
     for g in watch:
         for s, d in g["deals"]:
             key = f"watch:{g['label']}|{s.report_key}"
-            d["watch_label"], d["new"] = g["label"], key not in reported
+            d["watch_label"], d["new"] = g["label"], key not in already
             watch_pairs.append((key, d))
         watch_out.append({"label": g["label"], "matched_awards": g["matched_awards"],
                           "priced": g["priced"], "deals": [d for _, d in g["deals"]]})
@@ -573,18 +646,22 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
         except Exception as e:
             log(f"Email failed: {e}")
 
+    public = {"pay_summary", "held_miles", "top_up_needed", "bookable_now"}  # keep balances private
     out = {
         "generated_at": started.strftime("%Y-%m-%dT%H:%M:%SZ"),
         "scan": scan_stats,
         "model": model.summary(),
         "pricing": price_stats,
         "round_trip_checks": len(rt_cache),
-        "held_miles": [d for _, d in held_pairs],
-        "watchlist": watch_out,
-        "top": [d for _, d in top_pairs],
+        "held_miles": [{k: v for k, v in d.items() if k not in public} for _, d in held_pairs],
+        "watchlist": [{**g, "deals": [{k: v for k, v in d.items() if k not in public} for d in g["deals"]]}
+                      for g in watch_out],
+        "top": [{k: v for k, v in d.items() if k not in public} for _, d in top_pairs],
         "emailed_new": emailed,
         "reported": reported,
     }
+    # The site recomputes "how to pay" locally from your balances, so the public
+    # digest never carries them. bookable_now is kept as a boolean-free hint: dropped.
     with open(DIGEST_PATH, "w") as f:
         json.dump(out, f, indent=1)
         f.write("\n")
