@@ -61,6 +61,7 @@ ROUND_TRIP_FALLBACK_STAYS = (7, 4, 2)  # shorter stays when the 7-night return i
 NO_ROUND_TRIP_PENALTY = 0.6  # a one-way-only valuation is usually too generous
 ROUND_TRIP_CHECK_EXTRA = 15  # also round-trip-check this many runners-up, since leaders can drop out
 WATCH_DEALS_PER_ENTRY = 2
+ESTIMATE_DRIFT_WARN_PCT = 45  # fare model is ~28% median error on unseen routes; well past that is a problem
 MAX_PER_PROGRAM = 6  # one program's routine pricing shouldn't fill the whole list
 WATCH_EMAIL_MAX = 10
 HELD_MILES_DEALS = 5  # "book now with miles you already have" section size  # most valuable new watchlist hits per email; the rest are on Deal Radar
@@ -279,6 +280,15 @@ def _pricing_priority(s: Scored) -> float:
     return upside
 
 
+def estimate_drift(errors: list[float]) -> dict:
+    """Median and 90th-percentile error of the fare model against fresh real fares."""
+    if not errors:
+        return {}
+    xs = sorted(errors)
+    return {"n": len(xs), "median_pct": round(xs[len(xs) // 2] * 100, 1),
+            "p90_pct": round(xs[min(int(len(xs) * 0.9), len(xs) - 1)] * 100, 1)}
+
+
 def price_promising(scored: list[Scored], max_lookups: int, log=print, max_watch_lookups: int = 0,
                     watchlist: list[WatchEntry] | None = None) -> dict:
     """Attach real fares, spending live lookups on the highest expected value first.
@@ -287,7 +297,8 @@ def price_promising(scored: list[Scored], max_lookups: int, log=print, max_watch
     across entries (otherwise one entry with thousands of matches, like the
     Caribbean, takes it all). Then everything competes for max_lookups.
     """
-    stats = {"cached": 0, "live": 0, "watch_live": 0, "no_fare": 0, "failed": 0, "skipped_low_p": 0}
+    stats = {"cached": 0, "live": 0, "watch_live": 0, "no_fare": 0, "failed": 0, "skipped_low_p": 0,
+             "estimate_errors": []}
     state = {"quotes": cash_quotes.load(), "stop": False}
     if max_watch_lookups:
         groups = [[s for s in scored if any(x is w for x in s.watch)] for w in (watchlist or [])]
@@ -356,6 +367,11 @@ def _price_one(s: Scored, state: dict, stats: dict, log, allow_live: bool = True
     if q is None or q.price_usd is None:
         stats["no_fare"] += 1
     else:
+        # Fresh fare for an award the model had estimated: track how far off it was,
+        # so drift in the estimates (which decide what gets priced) shows up early.
+        if s.est.median_price > 0:
+            stats.setdefault("estimate_errors", []).append(
+                abs(q.price_usd - s.est.median_price) / s.est.median_price)
         _apply_quote(s, q)
     return "live"
 
@@ -592,7 +608,15 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
 
     price_stats = price_promising(scored, max_lookups, log=log, max_watch_lookups=max_watch_lookups,
                                   watchlist=watchlist)
+    drift = estimate_drift(price_stats.pop("estimate_errors", []))
     log(f"Pricing: {price_stats}")
+    if drift:
+        log(f"Fare estimates vs fresh fares: {drift['median_pct']}% median error, "
+            f"{drift['p90_pct']}% at the 90th percentile ({drift['n']} lookups)")
+        if drift["median_pct"] > ESTIMATE_DRIFT_WARN_PCT:
+            log(f"::warning::Fare estimates are drifting ({drift['median_pct']}% median error, "
+                f"expected under {ESTIMATE_DRIFT_WARN_PCT}%): the deals picked for pricing may be "
+                "poorly chosen. Check fare_model against recent cash_quotes.")
 
     digest = _load_digest()
     cutoff = (started - timedelta(days=REPORT_COOLDOWN_DAYS)).isoformat()
@@ -676,6 +700,7 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
         "scan": scan_stats,
         "model": model.summary(),
         "pricing": price_stats,
+        "estimate_drift": drift,
         "round_trip_checks": len(rt_cache),
         "held_miles": [{k: v for k, v in d.items() if k not in public} for _, d in held_pairs],
         "watchlist": [{**g, "deals": [{k: v for k, v in d.items() if k not in public} for d in g["deals"]]}

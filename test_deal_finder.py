@@ -315,3 +315,22 @@ def test_top_list_is_not_filled_by_one_program():
     picked = deal_finder.pick_top(leaders, top=10, min_economy=0)
     assert sum(1 for s in picked if s.c.source == "united") == deal_finder.MAX_PER_PROGRAM
     assert any(s.c.source == "aeroplan" for s in picked)
+
+
+def test_estimate_drift_summarises_error_against_real_fares():
+    assert deal_finder.estimate_drift([]) == {}
+    d = deal_finder.estimate_drift([0.05, 0.10, 0.20, 0.30, 1.00])
+    assert d == {"n": 5, "median_pct": 20.0, "p90_pct": 100.0}
+
+
+def test_live_lookups_record_how_far_off_the_estimate_was(monkeypatch):
+    s = _scored("LIS", "ECONOMY", "flyingblue", "JFK", 20000, 1.0)
+    s.cash = s.cpp = s.surplus = None
+    s.est = fare_model.Estimate(400.0, 0.3, 0, "model")
+    s.p_great = 0.9
+    monkeypatch.setattr(cash_quotes, "load", lambda: [])
+    monkeypatch.setattr(cash_quotes, "get_quote",
+                        lambda o, d, dt, cab, **k: cash_quotes.Quote(o, d, cab, dt, 500.0, None, "t",
+                                                                    "2026-01-01T00:00:00Z"))
+    stats = deal_finder.price_promising([s], max_lookups=5, log=lambda m: None)
+    assert deal_finder.estimate_drift(stats["estimate_errors"]) == {"n": 1, "median_pct": 25.0, "p90_pct": 25.0}

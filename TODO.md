@@ -20,8 +20,6 @@ history before 2026-09-16.
       travel plans aren't visible in the public repo.
 - [ ] Maybe later: tune the email after a week of real use (fewer/more watchlist deals,
       bars).
-- [ ] Later: weekly check that cash-fare estimates haven't drifted (estimate vs real
-      fare error on that week's lookups).
 
 - [ ] **Add GIST_TOKEN** (classic token, `gist` scope only) to secrets.toml,
       Streamlit Cloud secrets and GitHub secrets, then delete the PROGRAM_BALANCES

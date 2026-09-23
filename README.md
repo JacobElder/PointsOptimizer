@@ -63,7 +63,8 @@ For the scheduled Deal Finder, add the same keys as GitHub repo secrets (Setting
 5. **Verify** (`award_trips.py`, 1 call per reported deal) — the actual flights, times, connections, cabin of each leg, seats left, and a direct booking link. Deals are **dropped** if the award is gone, has repriced above what the scan saw, or shows 0 seats in a program that reports seat counts. Deals are **ranked lower** for a mixed cabin (a "business" award with an economy leg), an airport change mid-trip, a very long itinerary, or award data older than 5 days — each flagged on the card.
 6. **Book now with miles you already hold** — awards fully covered by miles already in a program (e.g. JetBlue, American), listed first. Programs you can't top up from a card only show awards your balance fully covers.
 7. **Watchlist** — destinations you care about are always reported when they clear their bar, even outside the top 20.
-8. **Report** — `deal_digest.json` (shown on Top Deals) and an email of deals not reported in the last 14 days, watchlist hits first. The digest is committed to this public repo, so it deliberately carries **no balances**; the site computes "how to pay" locally.
+8. **Self-check** — every fresh fare is compared with what `fare_model` predicted; the run logs the median and 90th-percentile error and warns in the GitHub log if the median passes `ESTIMATE_DRIFT_WARN_PCT` (45%). Shown on Top Deals.
+9. **Report** — `deal_digest.json` (shown on Top Deals) and an email of deals not reported in the last 14 days, watchlist hits first. The digest is committed to this public repo, so it deliberately carries **no balances**; the site computes "how to pay" locally.
 
 ### Which cash fare an award is compared against
 

@@ -49,6 +49,13 @@ def render_digest(digest: dict | None = None) -> None:
         "using live Google Flights cash fares. One entry per destination + cabin; other dates, "
         "origins and programs are listed under it. Award space moves fast: re-check on seats.aero."
     )
+    drift = digest.get("estimate_drift") or {}
+    if drift:
+        ok = drift["median_pct"] <= deal_finder.ESTIMATE_DRIFT_WARN_PCT
+        st.caption(("✅ " if ok else "⚠️ ") + f"Fare estimates (used to choose what to price) were "
+                   f"{drift['median_pct']}% off real fares this run, {drift['p90_pct']}% at the 90th "
+                   f"percentile, over {drift['n']} lookups."
+                   + ("" if ok else " That's high: the deals picked for pricing may be poorly chosen."))
     for i, d in enumerate(top):
         deal_card(d, rank=i + 1)
 
