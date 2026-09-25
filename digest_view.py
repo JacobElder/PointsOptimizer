@@ -11,6 +11,7 @@ import deal_finder
 import funding
 import ledger
 import places
+import seats_aero
 import valuation
 
 
@@ -32,27 +33,37 @@ def render_digest(digest: dict | None = None) -> None:
     held = digest.get("held_miles", [])
     if held:
         st.header("✅ Book now with miles you already hold")
-        st.caption("Your airline balances already cover these: nothing to transfer.")
+        st.caption("Your airline balances covered these when the scan ran: nothing to transfer. "
+                   "If the payment line below still asks for a transfer, this app can't see your "
+                   "balances — check the Wallet page.")
         for d in held:
             deal_card(d)
     for group in digest.get("watchlist", []):
         st.header(f"⭐ Watchlist: {group.get('label', 'Watchlist')}")
         if not group.get("deals"):
-            st.caption(f"Nothing clears this entry's bar yet ({group.get('matched_awards', 0):,} matching "
-                       f"awards, {group.get('priced', 0)} priced).")
+            if not group.get("matched_awards"):
+                st.caption("No award seats found for these dates — seats.aero may not cover this "
+                           "route, or the dates may fall outside the scan window.")
+            else:
+                st.caption(f"Nothing clears this entry's bar yet ({group['matched_awards']:,} matching "
+                           f"awards, {group.get('priced', 0)} priced).")
         for d in group.get("deals") or []:
-            deal_card(d, bar=d.get("watch_bar"), surplus=d.get("watch_surplus_usd"))
+            # Only the bar is watchlist-specific. watch_surplus_usd measures against
+            # that bar, and the card's sentence compares with the program's baseline.
+            deal_card(d, bar=d.get("watch_bar"))
     st.header(f"🏆 Top {len(top)} of {scan.get('candidates', 0):,} awards")
+    programs = ", ".join(sorted(seats_aero.SOURCE_TO_PARTNER.get(x, x) for x in scan.get("sources", [])))
     st.caption(
-        f"Programs: {', '.join(scan.get('sources', []))}. "
-        "Ranked by dollars of value above what each program's points are normally worth, after "
-        "discounts for long routings, mixed cabins and stale data. At most 6 deals per program per "
-        "cabin, and the last few places are held for economy. "
-        "using live Google Flights cash fares. One entry per destination + cabin; other dates, "
-        "origins and programs are listed under it. Award space moves fast: re-check on seats.aero."
+        f"Programs scanned: {programs}. "
+        "Ranked by dollars of value above what each program's points are normally worth, using live "
+        "Google Flights cash fares, after discounts for long routings, mixed cabins, unconfirmed "
+        "flights and stale data. At most 6 deals per program in economy and 6 in business or first, "
+        "and the last few places are held for economy. One entry per destination + cabin; other "
+        "dates, origins and programs are listed under it. Award space moves fast: re-check on "
+        "seats.aero before transferring."
     )
     drift = digest.get("estimate_drift") or {}
-    if drift:
+    if drift and {"median_pct", "p90_pct", "n"} <= set(drift):
         ok = drift["median_pct"] <= deal_finder.ESTIMATE_DRIFT_WARN_PCT
         st.caption(("✅ " if ok else "⚠️ ") + f"Fare estimates (used to choose what to price) were "
                    f"{drift['median_pct']}% off real fares this run, {drift['p90_pct']}% at the 90th "
@@ -105,7 +116,8 @@ def _deal_card(d: dict, rank: int | None, bar: float | None, surplus: float | No
     cash = d.get("cash_price")
     taxes = float(d.get("taxes_usd") or 0)
     cabin = str(d.get("cabin") or "").replace("_", " ").title() or "Unknown cabin"
-    bar = bar if bar is not None else d.get("great_floor") or valuation.great_floor(d.get("cabin", ""))
+    bar = (bar if bar is not None else d.get("great_floor")
+           or valuation.great_floor(d.get("cabin", ""), d.get("program", "")))
     surplus = surplus if surplus is not None else d.get("surplus_usd")
     trip = d.get("trip") or {}
     with st.container(border=True):
@@ -116,15 +128,22 @@ def _deal_card(d: dict, rank: int | None, bar: float | None, surplus: float | No
 
         # One headline line: works on a phone, and says what the numbers mean.
         program = d.get("program", "")
-        if d.get("watch_bar") and cpp is not None:  # judged against this entry's own bar
-            verdict = "BOOK" if cpp >= d["watch_bar"] else "BORDERLINE"
+        # Judge against the bar this card actually shows. Recomputing from valuation
+        # here disagreed with the stored floor whenever the bars were retuned after
+        # the digest was written.
+        if cpp is None:
+            verdict = ""
+        elif cpp >= bar:
+            verdict = "BOOK"
         else:
-            verdict = valuation.verdict_for(cpp, d.get("cabin", ""), program)
+            verdict = "BORDERLINE" if cpp >= bar * 0.8 else "SKIP"
         mark = {"BOOK": "🟢 Book", "BORDERLINE": "🟡 Borderline", "SKIP": "🔴 Skip"}.get(verdict, "")
+        lead = f"{mark} · " if mark else ""
         bits = [f"**{cpp:.2f}¢ per point**" if cpp is not None else "no value yet",
-                f"{points:,} points + ${taxes:,.0f} taxes" if points else None,
+                (f"{points:,} points + ${taxes:,.0f} taxes" if not d.get("taxes_unknown")
+                 else f"{points:,} points + taxes not reported") if points else None,
                 f"vs a ${cash:,.0f} cash fare" if cash else None]
-        st.markdown(safe(f"{mark} · " + " · ".join(b for b in bits if b)))
+        st.markdown(safe(lead + " · ".join(b for b in bits if b)))
         baseline = d.get("baseline_cpp") or valuation.baseline_cpp(program, d.get("cabin", ""))
         if surplus is not None and cpp is not None:
             st.markdown(safe(f"**${surplus:,.0f} better** than spending these points the usual way "
@@ -138,11 +157,18 @@ def _deal_card(d: dict, rank: int | None, bar: float | None, surplus: float | No
                                 f"Pricier than usual: {1 - pct:.0%} of the last {days} days were cheaper"))
         if d.get("rank_notes"):
             st.caption("⚖️ Ranked lower because " + safe("; ".join(d["rank_notes"])))
+        own = d.get("same_carrier_cash")
+        if own and cash and own < cash and points:
+            carrier = places.airline_names(d.get("airlines") or "").split(",")[0] or "that airline"
+            st.caption(safe(f"↘️ On {carrier} itself the fare is ${own:,.0f}, which would make this "
+                            f"{(own - taxes) / points * 100:.2f}¢/pt."))
+        if d.get("round_trip_half") is not None and d.get("one_way_cash") and cash and cash < d["one_way_cash"]:
+            st.caption(safe(f"The one-way fare on this date is ${d['one_way_cash']:,.0f}."))
+        # cash_basis already says whether a round trip was priced, was cheaper, or
+        # wasn't checked, so it isn't repeated here.
         st.caption(safe(f"Cash fare: {d.get('cash_basis') or 'cheapest comparable fare'}"
-                        + (" (from a date within 7 days)" if d.get("cash_is_approx") else "")
-                        + (" · first class compared with the business fare" if d.get("cabin") == "FIRST" else "")
-                        + (" · no round trip could be priced, so this is the one-way fare and may flatter the deal"
-                           if d.get("rt_unavailable") else "")))
+                        + (" (borrowed from a nearby date, not this one)" if d.get("cash_is_approx") else "")
+                        + (" · first class compared with the business fare" if d.get("cabin") == "FIRST" else "")))
 
         left, right = st.columns([3, 2], gap="medium")
         with left:
@@ -168,10 +194,17 @@ def _deal_card(d: dict, rank: int | None, bar: float | None, surplus: float | No
                     st.caption("🐢 Much longer than flying there directly.")
                 if trip.get("seats"):
                     st.caption(f"{trip['seats']} seat{'s' if trip['seats'] != 1 else ''} left when we checked")
-                if d.get("trip_unverified"):
-                    st.caption("⚠️ Couldn't re-check this one with seats.aero just now.")
             else:
                 st.write(safe(date_line))
+                if d.get("airlines"):
+                    st.caption(safe(places.airline_names(d["airlines"])))
+                if d.get("trip_unverified"):
+                    st.caption("⚠️ seats.aero didn't answer when we re-checked this one.")
+                if d.get("unverified"):
+                    # Without trip details the stop count is unknown: seats.aero's
+                    # `direct` flag only means "one flight number".
+                    st.caption("⚠️ Flights, stops and seats not confirmed — check on seats.aero "
+                               "before you transfer.")
             if d.get("other_dates"):
                 st.markdown("**📅 Also available**")
                 st.caption(", ".join(places.nice_date(x, weekday=False) for x in d["other_dates"][:12])
@@ -212,7 +245,9 @@ def _deal_card(d: dict, rank: int | None, bar: float | None, surplus: float | No
         elif age < 1:
             age_s = " · award seen today"
         elif age <= 5:
-            age_s = f" · award seen {age:.0f} day{'s' if age >= 1.5 else ''} ago, usually still there"
+            shown = d.get("age_shown", int(age))
+            age_s = f" · award seen {shown} day{'s' if shown != 1 else ''} ago, usually still there"
         else:
-            age_s = f" · award seen {age:.0f} days ago, may be gone: check before transferring"
+            shown = d.get("age_shown", int(age))
+            age_s = f" · award seen {shown} days ago, may be gone: check before transferring"
         st.caption(" · ".join(links) + age_s)

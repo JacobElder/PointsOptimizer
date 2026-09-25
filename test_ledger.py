@@ -208,3 +208,18 @@ def test_gist_write_is_refused_when_someone_else_changed_it(monkeypatch):
     ledger.load_balances()  # seeds the gist and records its updated_at
     fake.bump()  # another writer (the site, or the daily run) saves
     assert ledger.save_balances({"chase_ur": 1}) is False
+
+
+def test_missing_gist_is_not_created_from_nothing(monkeypatch):
+    """CI has no local balance files. Creating a gist there published an empty one
+    that GitHub then listed first, hiding the real balances from the app."""
+    monkeypatch.setattr(ledger, "_gist_id", None)
+    monkeypatch.setattr(ledger, "_find_gist_id", lambda: None)
+    monkeypatch.setattr(ledger, "_load_local_balances", dict)
+    monkeypatch.setattr(ledger, "_load_local_program_balances", dict)
+    wrote = []
+    monkeypatch.setattr(ledger, "_gist_write", lambda data: wrote.append(data))
+
+    assert ledger._gist_read() is None
+    assert wrote == []
+    assert ledger.gist_failed() is True  # so saves refuse rather than overwrite

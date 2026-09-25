@@ -92,6 +92,13 @@ def plan(program: str, points: int, balances: dict[str, int] | None = None,
             r["bonus"] = bonus
             r["pts_needed"] = top_up / (transfer_ratio_multiplier(r["partner"].ratio_on())
                                         * (1 + bonus["bonus_pct"] / 100))
-            r["covered"] = r["balance"] >= r["pts_needed"]
-    pools.sort(key=lambda r: (not r["covered"], r["flexibility"], r["pts_needed"]))
+    for r in pools:
+        # "Covered" has to answer the question the instruction asks: transfers move
+        # in 1,000-point increments, so a balance can clear pts_needed and still not
+        # cover the transfer the summary tells you to make.
+        r["covered"] = r["balance"] >= _round_up(r["pts_needed"])
+    # A bonus is the whole point of spending one pool over another -- a 70% bonus can
+    # save 20,000 points on a single award -- so it outranks the "keep the flexible
+    # pool" tiebreak instead of sitting below it.
+    pools.sort(key=lambda r: (not r["covered"], not r.get("bonus"), r["flexibility"], r["pts_needed"]))
     return PayPlan(program, int(points), held, top_up, pools)

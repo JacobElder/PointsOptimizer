@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import os
+import warnings
 
 import requests
 
@@ -61,8 +62,14 @@ def baseline_cpp(program: str, cabin: str = "") -> float:
     business = data.get("business_values", {}).get(program)
     return float(business) if business else economy * float(data.get("business_multiplier", 1.4))
 
-# Used only if the live rate lookup fails (offline, API down).
-_FX_FALLBACK = {"USD": 1.0, "CAD": 0.73, "EUR": 1.08, "GBP": 1.27}
+# Used when the live rate lookup fails (offline, API down) or doesn't carry the
+# currency at all: frankfurter.app is ECB-backed and 404s on AED/QAR/SAR, which
+# Etihad, Qatar and Emirates quote taxes in. Falling through to 1.0 there treated
+# 2,000 AED of taxes as $2,000 and silently buried every deal those programs list.
+# The Gulf currencies are hard USD pegs, so these are exact, not estimates.
+_FX_FALLBACK = {"USD": 1.0, "CAD": 0.73, "EUR": 1.08, "GBP": 1.27,
+                "AED": 0.2723, "QAR": 0.2747, "SAR": 0.2666, "OMR": 2.6008,
+                "BHD": 2.6525, "KWD": 3.26, "JOD": 1.4104, "HKD": 0.1282}
 _fx_cache: dict[str, float] = {}
 
 
@@ -85,7 +92,13 @@ def fx_rate(currency: str) -> float:
         resp.raise_for_status()
         rate = resp.json()["rates"]["USD"]
     except (requests.RequestException, KeyError, ValueError):
-        rate = _FX_FALLBACK.get(currency, 1.0)
+        rate = _FX_FALLBACK.get(currency)
+        if rate is None:
+            # 1.0 is a guess that can go either way: it buries a deal when the
+            # currency is weaker than the dollar and inflates CPP when stronger.
+            warnings.warn(f"No FX rate for {currency}; treating taxes as 1:1 with USD.",
+                          stacklevel=2)
+            rate = 1.0
     _fx_cache[currency] = rate
     return rate
 

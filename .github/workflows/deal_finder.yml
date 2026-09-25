@@ -41,9 +41,17 @@ jobs:
       - name: Check secrets
         env:
           SEATS_AERO_API_KEY: ${{ secrets.SEATS_AERO_API_KEY }}
+          GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
         run: |
           if [ -z "$SEATS_AERO_API_KEY" ]; then
             echo "::error::Add the SEATS_AERO_API_KEY repo secret (Settings > Secrets and variables > Actions)."
+            exit 1
+          fi
+          # Without these the run stays green and silently sends nothing, which is
+          # indistinguishable from "no deals today".
+          if [ -z "$GMAIL_ADDRESS" ] || [ -z "$GMAIL_APP_PASSWORD" ]; then
+            echo "::error::GMAIL_ADDRESS / GMAIL_APP_PASSWORD are missing, so no digest email can be sent."
             exit 1
           fi
       - name: Find deals
@@ -56,16 +64,18 @@ jobs:
           PROGRAM_BALANCES: ${{ secrets.PROGRAM_BALANCES }} # fallback when GIST_TOKEN isn't set
         run: python deal_finder.py ${{ inputs.resend && '--resend' || '' }}
       - name: Commit digest and quotes
+        if: always()
         run: |
           git config user.name "Deal Radar bot"
           git config user.email "deal-radar-bot@users.noreply.github.com"
-          git add deal_digest.json cash_quotes.json
+          git add deal_digest.json cash_quotes.json award_history.json
           git diff --cached --quiet && exit 0
           git commit -m "Deal Finder: daily digest [skip ci]"
           # These two files are regenerated output, so on a conflict this run's
           # copies win -- never throw away a whole run's work over a merge.
           cp deal_digest.json /tmp/digest.json
           cp cash_quotes.json /tmp/quotes.json
+          cp award_history.json /tmp/history.json
           for i in 1 2 3 4; do
             git push origin HEAD:main && exit 0
             if ! git pull --rebase origin main; then
@@ -74,7 +84,8 @@ jobs:
               git reset --hard origin/main
               cp /tmp/digest.json deal_digest.json
               cp /tmp/quotes.json cash_quotes.json
-              git add deal_digest.json cash_quotes.json
+              cp /tmp/history.json award_history.json
+              git add deal_digest.json cash_quotes.json award_history.json
               git diff --cached --quiet && exit 0
               git commit -m "Deal Finder: daily digest [skip ci]"
             fi

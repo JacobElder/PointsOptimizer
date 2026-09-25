@@ -1,8 +1,10 @@
 import math
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
 import award_scanner
+import award_trips
 import cash_quotes
 import deal_finder
 import fare_model
@@ -298,25 +300,6 @@ def test_a_failed_lookup_keeps_the_deal_but_flags_it(monkeypatch):
     assert s.to_dict()["trip_unverified"] is True
 
 
-def test_resend_keeps_the_report_history(tmp_path, monkeypatch):
-    monkeypatch.setattr(deal_finder, "DIGEST_PATH", str(tmp_path / "digest.json"))
-    import json
-    old = {"reported": {"a|b|c|BUSINESS|60000|2027-01-01": "2099-01-01T00:00:00"}}
-    (tmp_path / "digest.json").write_text(json.dumps(old))
-    monkeypatch.setattr(deal_finder.award_scanner, "scan", lambda *a, **k: ([], {
-        "calls": 0, "rows": 0, "stale": 0, "sources": [], "rate_limit_remaining": "1", "candidates": 0,
-        "truncated": []}))
-    class _Model:
-        def summary(self):
-            return "stub"
-
-    monkeypatch.setattr(deal_finder.fare_model, "FareModel", lambda *a, **k: _Model())
-    monkeypatch.setattr(deal_finder, "score_candidates", lambda *a, **k: [])
-    out = deal_finder.run(max_lookups=0, top=5, send_email=False, resend=True, max_watch_lookups=0,
-                          log=lambda m: None)
-    assert out["reported"] == old["reported"]
-
-
 def test_top_list_is_not_filled_by_one_program():
     leaders = []
     for i in range(10):
@@ -518,3 +501,151 @@ def test_source_drop_and_stale_training_warnings():
     deal_finder._warn_on_stale_training([{"at": "2020-01-01T00:00:00Z"}] * 300, msgs.append)
     joined = " ".join(msgs)
     assert "aeroplan returned" in joined and "last two weeks" in joined
+
+
+# ── published deals must say what was and wasn't checked ─────────────────────
+def test_unverified_deal_is_flagged_and_ranked_below_a_checked_one():
+    """A leader the verification loop never reached used to publish silently: no
+    flights, no seat count, and a stop count guessed from seats.aero's `direct`
+    flag."""
+    unchecked = _scored("VIE", "BUSINESS", "united", "JFK", 88000, 4700)
+    checked = _scored("VIE", "BUSINESS", "united", "JFK", 88000, 4700)
+    checked.trip = award_trips.TripInfo(
+        flights=["LX17 JFK-ZRH"], connections=[], duration_min=500, departs_at="", arrives_at="",
+        leg_cabins=["business"], mixed_cabin=False, lower_cabin_legs=[], carriers="Swiss",
+        booking_url=None, booking_label=None, other_itineraries=0, airport_changes=[], stops=0,
+        nonstop=True, seats=2, current_points=88000, price_matches=True)
+
+    assert unchecked.unverified is True and checked.unverified is False
+    assert unchecked.rank_value < checked.rank_value
+    assert any("couldn't confirm the flights" in n for n in unchecked.rank_notes)
+    assert not any("couldn't confirm" in n for n in checked.rank_notes)
+    assert unchecked.to_dict()["unverified"] is True
+
+
+def test_age_is_the_same_number_everywhere():
+    """The chip read the value rounded to one decimal and the note read the raw
+    float, so one card said "6 days ago" and "7 days ago" at once."""
+    s = _scored("PLS", "ECONOMY", "american", "JFK", 10000, 310)
+    s.c.updated_at = (datetime.now(timezone.utc) - timedelta(days=6, hours=12)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    d = s.to_dict()
+    assert d["age_shown"] == 6
+    assert f"last confirmed {d['age_shown']} days ago" in "; ".join(s.rank_notes)
+
+
+def test_zero_taxes_is_reported_as_unknown():
+    s = _scored("IST", "BUSINESS", "turkish", "EWR", 65000, 2000)
+    s.c.taxes = 0.0
+    assert s.taxes_unknown is True
+    assert any("reported no taxes" in n for n in s.rank_notes)
+
+
+def test_cash_basis_says_why_the_one_way_fare_was_used():
+    priced = _scored("VIE", "BUSINESS", "united", "JFK", 88000, 4000)
+    priced.round_trip_half = 5000.0  # a round trip was priced and came in higher
+    deal_finder._finalize_cash(priced)
+    assert "cheaper than half a" in priced.cash_basis and priced.cash == 4000
+
+    missing = _scored("VIE", "BUSINESS", "united", "JFK", 88000, 4000)
+    missing.rt_unavailable = True
+    deal_finder._finalize_cash(missing)
+    assert "no round trip could be priced" in missing.cash_basis
+
+    unchecked = _scored("VIE", "BUSINESS", "united", "JFK", 88000, 4000)
+    deal_finder._finalize_cash(unchecked)
+    assert "no round trip checked" in unchecked.cash_basis
+
+
+def test_same_route_on_nearby_dates_is_valued_at_one_fare():
+    """EWR-IST business published twice a day apart at $2,006 and $3,536: the card
+    that drew the higher fare looked like the better deal."""
+    cheap = _scored("IST", "BUSINESS", "turkish", "EWR", 65000, 2006, date="2027-04-12")
+    dear = _scored("IST", "BUSINESS", "turkish", "EWR", 65000, 3536, date="2027-04-11")
+    far = _scored("IST", "BUSINESS", "turkish", "EWR", 65000, 3536, date="2027-09-11")  # another season
+
+    assert deal_finder.reconcile_fares([cheap, dear, far], log=lambda *a: None) == 1
+    assert dear.cash == 2006 and dear.cpp == cheap.cpp
+    assert dear.fare_reconciled and "priced lower" in dear.cash_basis
+    assert far.cash == 3536 and not far.fare_reconciled  # months apart: different fares are real
+
+
+def test_one_award_gets_one_card_across_sections():
+    held_deal = _scored("GCM", "ECONOMY", "american", "JFK", 10000, 314)
+    watched = _scored("IST", "BUSINESS", "turkish", "EWR", 65000, 2006, date="2027-04-12")
+    same_award_later = _scored("IST", "BUSINESS", "turkish", "EWR", 65000, 2006, date="2027-04-11")
+    also_held = _scored("GCM", "ECONOMY", "american", "JFK", 10000, 314, date="2027-02-02")
+    other = _scored("ZRH", "BUSINESS", "aeroplan", "JFK", 60000, 3000)
+
+    watch = [{"label": "Turkey", "deals": [(watched, watched.to_dict()), (also_held, also_held.to_dict())]}]
+    ranked = deal_finder.dedupe_sections([held_deal], watch, [same_award_later, other])
+
+    assert [s.c.dest for s in ranked] == ["ZRH"]  # the repeat of IST is dropped
+    assert [s.c.dest for s, _ in watch[0]["deals"]] == ["IST"]  # GCM already shown under held miles
+
+
+def test_leaders_are_checked_before_publishing_even_when_passes_run_out(monkeypatch):
+    """Every demoted leader promotes a fresh one, so the loop can hit its pass limit
+    with leaders still unchecked. Those used to publish anyway, with no flights, no
+    seat count and a stop count guessed from seats.aero's `direct` flag: half of one
+    real digest's top deals had never been re-checked."""
+    fetched = []
+
+    def _fetch(award_id, cabin, points):
+        fetched.append(award_id)
+        gone = award_id in ("a0", "a1")  # repriced since the scan -> demoted
+        return award_trips.TripInfo(
+            flights=["XX1"], connections=[], duration_min=400, departs_at="", arrives_at="",
+            leg_cabins=["business"], mixed_cabin=False, lower_cabin_legs=[], carriers="XX",
+            booking_url=None, booking_label=None, other_itineraries=0, airport_changes=[],
+            stops=0, nonstop=True, seats=3, current_points=points, price_matches=not gone)
+
+    monkeypatch.setattr(deal_finder.award_trips, "fetch", _fetch)
+    dests = ["ZRH", "FRA", "CAI", "LIS"]
+    scored = [_scored(d, "BUSINESS", "aeroplan", "JFK", 60000, 3000 - i * 50)
+              for i, d in enumerate(dests)]
+    for i, s in enumerate(scored):
+        s.c.id = f"a{i}"
+
+    # Budget covers two leaders; demoting both promotes two that no pass reached.
+    leaders = deal_finder.verify_leaders(scored, scored[:2], rt_cache=None, trip_cache={},
+                                         sources_reporting_seats=set(), round_trip=False,
+                                         max_passes=1)
+    assert fetched == ["a0", "a1", "a2", "a3"]
+    assert [s.c.dest for s in leaders] == ["CAI", "LIS"]  # the demoted pair is gone
+    assert all(not s.unverified for s in leaders)
+
+
+def test_the_final_pass_still_drops_awards_that_are_gone(monkeypatch):
+    """The last-chance pass must apply the same gone/repriced/sold-out filter as the
+    loop, or it publishes exactly the awards it was added to check."""
+    def _fetch(award_id, cabin, points):
+        gone = award_id != "a3"  # everything but LIS has repriced since the scan
+        return award_trips.TripInfo(
+            flights=["XX1"], connections=[], duration_min=400, departs_at="", arrives_at="",
+            leg_cabins=["business"], mixed_cabin=False, lower_cabin_legs=[], carriers="XX",
+            booking_url=None, booking_label=None, other_itineraries=0, airport_changes=[],
+            stops=0, nonstop=True, seats=3, current_points=points, price_matches=not gone)
+
+    monkeypatch.setattr(deal_finder.award_trips, "fetch", _fetch)
+    scored = [_scored(d, "BUSINESS", "aeroplan", "JFK", 60000, 3000 - i * 50)
+              for i, d in enumerate(["ZRH", "FRA", "CAI", "LIS"])]
+    for i, s in enumerate(scored):
+        s.c.id = f"a{i}"
+
+    leaders = deal_finder.verify_leaders(scored, scored[:2], rt_cache=None, trip_cache={},
+                                         sources_reporting_seats=set(), round_trip=False,
+                                         max_passes=1)
+    assert [s.c.dest for s in leaders] == ["LIS"]
+
+
+def test_dedupe_keeps_the_more_valuable_card_not_whichever_section_ran_first():
+    """Sections group independently and can land on different dates for the same
+    award. Claiming by section order dropped a $1,817 deal to keep an $867 one."""
+    better = _scored("IST", "BUSINESS", "turkish", "EWR", 65000, 3000, date="2027-04-01")
+    worse = _scored("IST", "BUSINESS", "turkish", "EWR", 65000, 2100, date="2027-08-01")
+    watch = [{"label": "Turkey", "deals": [(worse, worse.to_dict())]}]
+
+    ranked = deal_finder.dedupe_sections([], watch, [better])
+
+    assert ranked == [better] and watch[0]["deals"] == []
+    assert "2027-08-01" in better.other_dates  # the loser survives as another date

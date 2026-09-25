@@ -32,3 +32,23 @@ def test_active_transfer_bonus_reduces_points_needed(tmp_path, monkeypatch):
     assert round(chase["pts_needed"]) == 50000 and "bonus" in chase
     assert bilt["pts_needed"] == 60000 and "bonus" not in bilt  # expired bonus ignored
     assert "+20% transfer bonus" in p.summary
+
+
+def test_a_transfer_bonus_beats_the_flexible_pool_tiebreak(monkeypatch):
+    """A bonus can save 20,000 points on one award; pool "flexibility" is a
+    tiebreak. Sorting flexibility first would spend Chase at 1:1 while a Bilt
+    Rent Day bonus sat unused."""
+    monkeypatch.setattr(funding, "active_bonus",
+                        lambda pool_key, program: ({"bonus_pct": 25, "ends": "2026-10-31"}
+                                                   if pool_key == "bilt" else None))
+    p = funding.plan("Air Canada Aeroplan", 100000, {"chase_ur": 200000, "bilt": 200000}, {})
+    assert p.pools[0]["pool"].key == "bilt"
+    assert "+25% transfer bonus" in p.summary
+
+
+def test_covered_accounts_for_the_1000_point_transfer_increment():
+    """Balance clears pts_needed but not the rounded-up transfer the summary
+    actually instructs, which read as "covered" next to "not enough"."""
+    p = funding.plan("United MileagePlus", 58900, {"chase_ur": 58900}, {})  # 1:1, no bonus
+    top = p.pools[0]
+    assert top["covered"] is False and "not enough" in p.summary

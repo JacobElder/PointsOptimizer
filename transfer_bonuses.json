@@ -1,5 +1,5 @@
 {
-  "_help": "Active transfer bonuses. bonus_pct 20 means 1,000 card points -> 1,200 partner points. Partner must match cards_data.py exactly. Expired entries are ignored automatically. Check roame.travel/guides/points-transfer-bonuses or awardtravelfinder.com/transfer-bonuses; Bilt runs Rent Day bonuses on the 1st of each month. Bilt runs Rent Day bonuses on the 1st of each month only (one day) — check on the 1st.",
+  "_help": "Active transfer bonuses. bonus_pct 20 means 1,000 card points -> 1,200 partner points. Partner must match cards_data.py exactly. Expired entries are ignored automatically. Check roame.travel/guides/points-transfer-bonuses or awardtravelfinder.com/transfer-bonuses; Bilt runs Rent Day bonuses on the 1st of each month. A partner not in that pool's list in cards_data.py can never match, so it is a data error, not a no-op.",
   "bonuses": [
     {
       "pool": "chase_ur",
@@ -24,14 +24,6 @@
       "ends": "2026-09-30",
       "verified": "2026-09-16",
       "starts": "2026-09-01"
-    },
-    {
-      "pool": "citi_ty",
-      "partner": "JAL Mileage Bank",
-      "bonus_pct": 30,
-      "starts": "2026-09-20",
-      "ends": "2026-10-24",
-      "verified": "2026-09-23"
     },
     {
       "pool": "citi_ty",

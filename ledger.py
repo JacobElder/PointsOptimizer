@@ -66,7 +66,7 @@ def _find_gist_id() -> str | None:
     global _gist_id
     if _gist_id:
         return _gist_id
-    for page in range(1, 6):
+    for page in range(1, 51):  # page to exhaustion: a miss here reads as "no gist yet"
         gists = _gh("GET", "/gists", params={"per_page": 100, "page": page})
         for g in gists:
             if GIST_FILENAME in (g.get("files") or {}):
@@ -100,7 +100,17 @@ def _gist_read() -> dict | None:
     try:
         gid = _find_gist_id()
         if gid is None:
-            data = {"cards": _load_local_balances(), "programs": _load_local_program_balances(),
+            cards, programs = _load_local_balances(), _load_local_program_balances()
+            if not cards and not programs:
+                # Nothing to seed it with. The daily CI runner has no local files, so
+                # creating here would publish an EMPTY gist; GitHub lists newest first,
+                # the app would then find that one instead of the real balances, and
+                # the next save would PATCH the empty copy.
+                logger.warning("No balances gist found and no local balances to create one from; "
+                               "using local files")
+                _gist_unavailable = True
+                return None
+            data = {"cards": cards, "programs": programs,
                     "updated_at": datetime.now(timezone.utc).isoformat(timespec="seconds")}
             _gist_write(data)
             return data

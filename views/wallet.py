@@ -137,11 +137,13 @@ for pool_key, pool in POOLS.items():
             hotels = [p for p in pool.partners if p.kind == "hotel"]
             cols = st.columns(2)
             with cols[0]:
-                st.markdown("*Airlines*")
+                if airlines:
+                    st.markdown("*Airlines*")
                 for p in airlines:
                     st.write(f"- {p.name} ({p.ratio})")
             with cols[1]:
-                st.markdown("*Hotels*")
+                if hotels:  # several pools have none: a bare heading looked broken
+                    st.markdown("*Hotels*")
                 for p in hotels:
                     st.write(f"- {p.name} ({p.ratio})")
 

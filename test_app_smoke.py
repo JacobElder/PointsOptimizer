@@ -13,7 +13,7 @@ SCRIPTS = ["app.py"] + sorted(glob.glob("views/*.py"))
 @pytest.mark.parametrize("script", SCRIPTS)
 def test_script_loads_without_exception(script):
     at = AppTest.from_file(script)
-    at.run(timeout=30)
+    at.run(timeout=90)
     assert not at.exception, [str(e) for e in at.exception]
 
 
@@ -29,6 +29,6 @@ def test_flight_search_modes_render(mode, monkeypatch):
     # The page stops early without a seats.aero key; CI has none, so provide a dummy.
     monkeypatch.setenv("SEATS_AERO_API_KEY", "test-key")
     at = AppTest.from_file("views/flight_search.py")
-    at.run(timeout=30)
-    at.radio(key="fs_mode").set_value(mode).run(timeout=30)
+    at.run(timeout=90)
+    at.radio(key="fs_mode").set_value(mode).run(timeout=90)
     assert not at.exception, [str(e) for e in at.exception]

@@ -18,6 +18,12 @@ import seats_aero
 TRIPS_URL = "https://seats.aero/partnerapi/trips/{id}"
 
 
+class QuotaExhausted(Exception):
+    """seats.aero rate-limited us (429). Every further call this run would fail
+    too, so the caller stops instead of burning the rest of a shared daily quota
+    on lookups that cannot succeed."""
+
+
 class LookupFailed(Exception):
     """The trip lookup itself failed (network, rate limit, bad response).
 
@@ -63,6 +69,8 @@ def fetch(availability_id: str, cabin: str, points: int, session: requests.Sessi
     try:
         resp = http.get(TRIPS_URL.format(id=availability_id),
                         headers={"Partner-Authorization": seats_aero._get_api_key()}, timeout=30)
+        if resp.status_code == 429:
+            raise QuotaExhausted("seats.aero returned 429 (daily quota or rate limit)")
         resp.raise_for_status()
         payload = resp.json()
     except (requests.RequestException, ValueError, seats_aero.NotConfigured) as e:

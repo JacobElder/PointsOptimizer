@@ -88,12 +88,19 @@ def _digest_card(d: dict) -> str:
         chips += _chip("Sent before", "#f3f4f6", "#4b5563")
 
     cabin = d["cabin"].replace("_", " ").title()
-    stops = "Nonstop" if d.get("direct") else "Connecting"
+    # seats.aero's `direct` flag only means "one flight number" -- EWR-JNB is
+    # flagged direct and stops twice -- so without trip details the stop count is
+    # genuinely unknown and saying "Nonstop" would be a guess presented as fact.
+    stops = "Stops not confirmed"
     if d.get("trip"):
         n = len(d["trip"].get("connections") or [])
         stops = "Nonstop" if not n else f"{n} stop{'s' if n > 1 else ''}"
     bar = d.get("watch_bar", d["great_floor"])
-    surplus = d.get("watch_surplus_usd", d["surplus_usd"])
+    # The sentence below compares with the program's BASELINE value, so the dollar
+    # figure has to be the baseline surplus. watch_surplus_usd measures against the
+    # watchlist bar instead and is for ranking only: printing it here told the user
+    # a $930 deal was worth $33.
+    surplus = d["surplus_usd"]
 
     trip = d.get("trip") or {}
     if trip.get("mixed_cabin"):
@@ -102,15 +109,20 @@ def _digest_card(d: dict) -> str:
         chips += _chip("🚕 Airport change: " + ", ".join(trip["airport_changes"]), "#fee2e2", "#991b1b")
     if d.get("slow"):
         chips += _chip("🐢 Long itinerary", "#fef3c7", "#92400e")
-    age = d.get("age_days")
-    if age is not None and age > 5:
-        chips += _chip(f"Last confirmed {age:.0f} days ago — check before you transfer", "#f3f4f6", "#4b5563")
-    if d.get("trip_unverified"):
-        chips += _chip("Couldn't re-check this one just now", "#f3f4f6", "#4b5563")
+    shown = d.get("age_shown")
+    if shown is None and d.get("age_days") is not None:
+        shown = int(d["age_days"])
+    if shown is not None and shown > 5:
+        chips += _chip(f"Last confirmed {shown} days ago — check before you transfer", "#f3f4f6", "#4b5563")
+    if d.get("unverified"):
+        chips += _chip("⚠️ Flights and seats not confirmed — check before you transfer", "#fef3c7", "#92400e")
     if d.get("rt_unavailable"):
         chips += _chip("No round-trip fare to compare against", "#fef3c7", "#92400e")
 
-    rows = _row("Award", f"<b>{d['points']:,} points</b> + ${d['taxes_usd']:,.0f} taxes &amp; fees")
+    unknown_taxes = bool(d.get("taxes_unknown"))
+    taxes = (f"${d['taxes_usd']:,.0f} taxes &amp; fees" if not unknown_taxes
+             else "taxes not reported — check them on the airline's site")
+    rows = _row("Award", f"<b>{d['points']:,} points</b> + {taxes}")
     fare = f"<b>${d['cash_price']:,.0f}</b> <span style='color:#6b7280'>· {_esc(d.get('cash_basis') or 'cash fare')}</span>"
     extras = []
     if d.get("round_trip_half") is not None and d.get("one_way_cash") and d["cash_price"] < d["one_way_cash"]:
@@ -220,10 +232,19 @@ def _digest_card(d: dict) -> str:
 
 def _digest_text(d: dict) -> str:
     import places
+    trip = d.get("trip") or {}
+    if trip:
+        n = len(trip.get("connections") or [])
+        stops = "Nonstop" if not n else f"{n} stop{'s' if n > 1 else ''}"
+    else:
+        stops = "stops not confirmed"  # seats.aero's `direct` flag is not a stop count
+    taxes = ("taxes not reported" if d.get("taxes_unknown")
+             else f"${d['taxes_usd']:,.0f} taxes")
     lines = [
-        f"{places.airport_label(d['origin'])} -> {places.airport_label(d['dest'])}  |  {d['cpp']:.2f} cents/pt",
-        f"  {d['program']} · {d['cabin'].replace('_', ' ').title()} · {'Nonstop' if d.get('direct') else 'Connecting'}",
-        f"  Award: {d['points']:,} points + ${d['taxes_usd']:,.0f} taxes",
+        f"{places.airport_label(d['origin'])} -> {places.airport_label(d['dest'])}  |  "
+        + ("about " if d.get("taxes_unknown") else "") + f"{d['cpp']:.2f} cents/pt",
+        f"  {d['program']} · {d['cabin'].replace('_', ' ').title()} · {stops}",
+        f"  Award: {d['points']:,} points + {taxes}",
         f"  Cash fare: ${d['cash_price']:,.0f} ({d.get('cash_basis') or 'cash fare'})",
         f"  Date: {places.nice_date(d['date'])}"
         + (f" (+{len(d['other_dates'])} more)" if d.get("other_dates") else ""),
@@ -231,6 +252,28 @@ def _digest_text(d: dict) -> str:
     if d.get("bookable_now"):
         lines.append(f"  Bookable now with the {d['held_miles']:,} miles you already hold")
     return "\n".join(lines)
+
+
+def _safe_card(d: dict) -> str:
+    """One malformed deal must not cost the whole email: the digest is written
+    either way, so a dropped card is recoverable and a lost email is not."""
+    try:
+        return _digest_card(d)
+    except Exception:  # noqa: BLE001
+        return _row_fallback(d)
+
+
+def _safe_text(d: dict) -> str:
+    try:
+        return _digest_text(d)
+    except Exception:  # noqa: BLE001
+        return f"  {d.get('origin', '?')} -> {d.get('dest', '?')}: couldn't render this deal"
+
+
+def _row_fallback(d: dict) -> str:
+    return (f'<div style="font-family:{_FONT}; font-size:13px; color:#6b7280; padding:10px 0;">'
+            f"Couldn't render {_esc(str(d.get('origin', '?')))} &rarr; {_esc(str(d.get('dest', '?')))} "
+            f"— see the site for this one.</div>")
 
 
 def send_digest_email(sections: list[tuple[str, str, list[dict]]], subject: str, intro: str) -> None:
@@ -263,8 +306,8 @@ def build_digest(sections: list[tuple[str, str, list[dict]]], intro: str) -> tup
           <div style="font-size:19px; font-weight:800; color:#111827;">{_esc(title)}</div>
           <div style="font-size:13px; color:#6b7280; margin-top:2px;">{_esc(subtitle)}</div>
         </div>
-        {''.join(_digest_card(d) for d in deals)}"""
-        text += [title.upper(), ""] + [_digest_text(d) + "\n" for d in deals]
+        {''.join(_safe_card(d) for d in deals)}"""
+        text += [title.upper(), ""] + [_safe_text(d) + "\n" for d in deals]
     html_body = f"""
     <div style="background:#f3f4f6; padding:24px 12px;">
       <div style="max-width:640px; margin:0 auto; font-family:{_FONT};">
@@ -274,7 +317,8 @@ def build_digest(sections: list[tuple[str, str, list[dict]]], intro: str) -> tup
         <div style="font-size:12px; color:#9ca3af; line-height:18px; margin-top:24px;">
           CPP = (cash fare − award taxes) ÷ points. Award space changes fast: confirm on the airline's
           site before transferring points (transfers can't be undone). A deal is a standout when it beats
-          what that program's points are normally worth by 60%.
+          what that program's points are normally worth by enough to be worth the transfer: 60% in
+          economy, 25% in business and first. Each card names the bar it had to clear.
         </div>
       </div>
     </div>"""

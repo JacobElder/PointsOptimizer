@@ -12,7 +12,7 @@ _airlines: dict | None = None
 
 # OpenFlights city names that are wrong or unhelpful for a traveller.
 _CITY_OVERRIDES = {
-    "GCM": "Grand Cayman", "UVF": "Vieux Fort", "SJU": "San Juan", "STT": "St. Thomas",
+    "GCM": "Grand Cayman", "SJU": "San Juan", "STT": "St. Thomas",
     "SXM": "St. Maarten", "PLS": "Providenciales", "NAS": "Nassau", "AUA": "Aruba",
     "CUR": "Curaçao", "BGI": "Barbados", "ANU": "Antigua", "PUJ": "Punta Cana",
     "HKT": "Phuket", "KIX": "Osaka", "NRT": "Tokyo", "HND": "Tokyo", "PVG": "Shanghai",
