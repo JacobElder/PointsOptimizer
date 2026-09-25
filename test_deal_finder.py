@@ -649,3 +649,37 @@ def test_dedupe_keeps_the_more_valuable_card_not_whichever_section_ran_first():
 
     assert ranked == [better] and watch[0]["deals"] == []
     assert "2027-08-01" in better.other_dates  # the loser survives as another date
+
+
+def test_verification_spends_calls_on_what_gets_published(monkeypatch):
+    """Verify-then-pick spent a lookup on every runner-up (~213 calls to publish ~34
+    cards) and still shipped unchecked deals. Pick-then-verify checks the selection
+    and backfills only what drops out."""
+    fetched = []
+    gone = {"ZRH", "FRA"}  # the first picks have repriced since the scan
+
+    def _fetch(award_id, cabin, points):
+        fetched.append(award_id)
+        return award_trips.TripInfo(
+            flights=["XX1"], connections=[], duration_min=400, departs_at="", arrives_at="",
+            leg_cabins=["business"], mixed_cabin=False, lower_cabin_legs=[], carriers="XX",
+            booking_url=None, booking_label=None, other_itineraries=0, airport_changes=[],
+            stops=0, nonstop=True, seats=3, current_points=points,
+            price_matches=award_id.split(":")[0] not in gone)
+
+    monkeypatch.setattr(deal_finder.award_trips, "fetch", _fetch)
+    dests = ["ZRH", "FRA", "CAI", "LIS", "ATH", "MAD", "LIM", "GIG", "NBO", "CPT"]
+    scored = [_scored(d, "BUSINESS", "aeroplan", "JFK", 60000, 3000 - i * 20)
+              for i, d in enumerate(dests)]
+    for s in scored:
+        s.c.id = f"{s.c.dest}:id"
+
+    published = deal_finder.verify_selection(
+        scored, lambda ls: ls[:3], rt_cache=None, trip_cache={},
+        sources_reporting_seats=set(), round_trip=False)
+
+    assert len(published) == 3
+    assert all(not s.unverified for s in published)  # nothing unchecked reaches the reader
+    assert not any(s.c.dest in gone for s in published)  # the repriced pair is out
+    # 3 picked + 2 backfills, not a lookup for all ten.
+    assert len(fetched) == 5

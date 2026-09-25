@@ -979,15 +979,71 @@ def verify_leaders(scored: list[Scored], candidates: list[Scored], rt_cache: dic
     return leaders
 
 
+def verify_selection(scored: list[Scored], select, rt_cache: dict | None, trip_cache: dict | None,
+                    sources_reporting_seats: set[str], round_trip: bool, bar_fn=None,
+                    max_rounds: int = 12) -> list[Scored]:
+    """Verify what will actually be published, then backfill whatever drops out.
+
+    The alternative -- verify a wide candidate set, then choose from it -- spends a
+    call on every runner-up (~213 lookups to publish ~34 cards) and still leaves
+    gaps, because each demoted leader promotes a fresh unchecked one and the pass
+    limit cuts the churn off. Here the loop asks what would be published, checks
+    exactly that, and repeats only for the ones that dropped, so it terminates when
+    the published set is verified rather than when it runs out of passes.
+
+    `select` takes the current leaders and returns the deals that would be published.
+    """
+    bar_fn = bar_fn or (lambda s: s.floor)
+    selection: list[Scored] = []
+    for round_no in range(max_rounds):
+        kept = [s for s in scored if not s.dropped and s.cpp is not None and s.cpp >= bar_fn(s)]
+        selection = select(group_leaders(kept, bar_fn))
+        # Biggest dollar claims first: if a budget does bind, the headline deal is
+        # the one that got checked, not the one that didn't.
+        pending = [s for s in sorted(selection, key=lambda s: -s.rank_value)
+                   if (trip_cache is not None and s.trip is None and not s.trip_checked)
+                   or (round_trip and rt_cache is not None and s.round_trip_half is None
+                       and not s.rt_unavailable)]
+        if not pending:
+            break
+        # Checking a deal can only ever LOWER its score (a connecting itinerary, a
+        # mixed cabin, a slower routing), so an unchecked runner-up keeps leapfrogging
+        # the one just checked. On the last round check the selection and stop, rather
+        # than churning until the budget runs out.
+        _verify(pending if round_no < max_rounds - 1 else selection,
+                rt_cache, trip_cache, sources_reporting_seats, round_trip)
+    return [s for s in selection if not s.dropped]
+
+
+def _verify(deals, rt_cache, trip_cache, sources_reporting_seats, round_trip) -> None:
+    if round_trip and rt_cache is not None:
+        for s in deals:
+            apply_round_trip(s, rt_cache)
+    if trip_cache is not None:
+        attach_trips(deals, trip_cache)
+        for s in deals:
+            if not still_bookable(s, sources_reporting_seats):
+                s.dropped = True
+            elif round_trip and rt_cache is not None and s.trip is not None:
+                apply_round_trip(s, rt_cache)  # cached offers: re-match now stops are known
+
+
+SELECT_THEN_VERIFY = True  # False restores the verify-a-wide-candidate-set order
+
+
 def shortlist(scored: list[Scored], top: int, min_economy: int = 5, rt_cache: dict | None = None,
               round_trip: bool = False, trip_cache: dict | None = None,
               sources_reporting_seats: set[str] | None = None) -> list[Scored]:
     leaders = group_leaders(scored)
     if round_trip or trip_cache is not None:
-        premium = [s for s in leaders if s.c.cabin in ("BUSINESS", "FIRST")][: top + ROUND_TRIP_CHECK_EXTRA]
-        economy = [s for s in leaders if s.c.cabin not in ("BUSINESS", "FIRST")][: max(min_economy + 5, top)]
-        leaders = verify_leaders(scored, premium + economy, rt_cache, trip_cache,
-                                 sources_reporting_seats or set(), round_trip)
+        if SELECT_THEN_VERIFY:
+            return verify_selection(scored, lambda ls: pick_top(ls, top, min_economy), rt_cache,
+                                    trip_cache, sources_reporting_seats or set(), round_trip)
+        else:
+            premium = [s for s in leaders if s.c.cabin in ("BUSINESS", "FIRST")][: top + ROUND_TRIP_CHECK_EXTRA]
+            economy = [s for s in leaders if s.c.cabin not in ("BUSINESS", "FIRST")][: max(min_economy + 5, top)]
+            leaders = verify_leaders(scored, premium + economy, rt_cache, trip_cache,
+                                     sources_reporting_seats or set(), round_trip)
     return pick_top(leaders, top, min_economy)
 
 
@@ -996,8 +1052,13 @@ def held_miles_report(scored: list[Scored], rt_cache: dict, round_trip: bool = T
                       sources_reporting_seats: set[str] | None = None) -> list[Scored]:
     """Best deals bookable outright with miles already sitting in a program."""
     mine = [s for s in scored if s.bookable_now]
-    leaders = verify_leaders(mine, group_leaders(mine)[: HELD_MILES_DEALS + 4], rt_cache, trip_cache,
-                             sources_reporting_seats or set(), round_trip)
+    if SELECT_THEN_VERIFY:
+        return verify_selection(
+            mine, lambda ls: sorted(ls, key=lambda s: -s.rank_value)[:HELD_MILES_DEALS],
+            rt_cache, trip_cache, sources_reporting_seats or set(), round_trip)
+    else:
+        leaders = verify_leaders(mine, group_leaders(mine)[: HELD_MILES_DEALS + 4], rt_cache, trip_cache,
+                                 sources_reporting_seats or set(), round_trip)
     return sorted(leaders, key=lambda s: -s.rank_value)[:HELD_MILES_DEALS]
 
 
@@ -1011,9 +1072,17 @@ def watch_report(scored: list[Scored], watchlist: list[WatchEntry], rt_cache: di
         def bar(s, w=w):
             return w.bar_for(s.c.cabin, s.c.program)
 
-        leaders = verify_leaders(mine, group_leaders(mine, bar)[: WATCH_DEALS_PER_ENTRY + 4], rt_cache,
-                                 trip_cache, sources_reporting_seats or set(), round_trip, bar)
-        leaders.sort(key=lambda s: -(s.surplus_vs(bar(s)) * (s.rank_value / s.surplus if s.surplus else 1)))
+        def _watch_pick(ls, bar=bar):
+            ls = sorted(ls, key=lambda s: -(s.surplus_vs(bar(s)) * (s.rank_value / s.surplus if s.surplus else 1)))
+            return ls[:WATCH_DEALS_PER_ENTRY]
+
+        if SELECT_THEN_VERIFY:
+            leaders = verify_selection(mine, _watch_pick, rt_cache, trip_cache,
+                                       sources_reporting_seats or set(), round_trip, bar)
+        else:
+            leaders = verify_leaders(mine, group_leaders(mine, bar)[: WATCH_DEALS_PER_ENTRY + 4], rt_cache,
+                                     trip_cache, sources_reporting_seats or set(), round_trip, bar)
+            leaders.sort(key=lambda s: -(s.surplus_vs(bar(s)) * (s.rank_value / s.surplus if s.surplus else 1)))
         deals = []
         for s in leaders[:WATCH_DEALS_PER_ENTRY]:
             d = s.to_dict()
