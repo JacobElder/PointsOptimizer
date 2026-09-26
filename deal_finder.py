@@ -62,7 +62,14 @@ ROUND_TRIP_STAY_DAYS = 7
 ROUND_TRIP_FALLBACK_STAYS = (7, 4, 2)  # shorter stays when the 7-night return is past the booking window
 NO_ROUND_TRIP_PENALTY = 0.6  # a one-way-only valuation is usually too generous
 UNVERIFIED_PENALTY = 0.6  # never re-checked live: stops, seats and current price unknown
-RECONCILE_WINDOW_DAYS = 21  # dates close enough that one route's fares should agree
+# Measured on the real quote store: the haircut from pooling dates is nearly flat
+# from a 2-day window (6.8% mean) to 21 days (8.8%), so this is day-to-day fare
+# volatility, not seasonality. It only climbs past ~21 days (30 days: 10.5%), and
+# 14 pools 93% as many awards as 21 with a lower median distortion.
+RECONCILE_WINDOW_DAYS = 14
+RECONCILE_OUTLIER_FLOOR = 0.4  # a lone quote below this share of the cluster median is suspect
+SLOW_MIN_EXTRA_MIN = 300  # a short hop may add this much for a connection before it's "slow"
+SLOW_MAX_EXTRA_MIN = 360  # ...and no itinerary may add more than this, however long the flight
 UNKNOWN_TAXES_PENALTY = 0.85  # taxes reported as $0: CPP is computed without them
 MAX_TRIP_LOOKUPS = 260  # seats.aero calls for live re-verification, on top of the ~210-call scan
 ROUND_TRIP_CHECK_EXTRA = 15  # also round-trip-check this many runners-up, since leaders can drop out
@@ -206,11 +213,23 @@ class Scored:
 
     @property
     def slow(self) -> bool:
-        """Itinerary takes far longer than flying the distance nonstop would."""
+        """Itinerary takes far longer than flying the distance nonstop would.
+
+        A pure ratio is blind on ultra-long-haul: 1.8x a 17-hour flight allows a
+        30-hour trip, so EWR-HKG via Lome AND Addis Ababa (28h10m, eleven hours
+        of detour) passed unflagged. The extra time is capped in hours as well as
+        proportionally, with a floor so a short hop that adds one connection
+        isn't flagged for it.
+
+        Anchored to how the industry defines a reasonable routing: IATA's Maximum
+        Permitted Mileage is 120% of the shortest operated distance, and award
+        routings are typically allowed up to ~150% of it.
+        """
         if not self.trip or not self.trip.duration_min or not self.c.distance:
             return False
         nonstop_min = self.c.distance / 500 * 60 + 45
-        return self.trip.duration_min > max(1.8 * nonstop_min, nonstop_min + 300)
+        extra = self.trip.duration_min - nonstop_min
+        return extra > max(SLOW_MIN_EXTRA_MIN, min(0.5 * nonstop_min, SLOW_MAX_EXTRA_MIN))
 
     @property
     def rank_notes(self) -> list[str]:
@@ -910,12 +929,18 @@ def _days_between(a: str, b: str) -> int:
 def _apply_cheapest_fare(cluster: list[Scored]) -> int:
     if len(cluster) < 2:
         return 0
-    low_ow = min(s.one_way_cash for s in cluster)
+    fares = sorted(s.one_way_cash for s in cluster)
+    median = fares[len(fares) // 2]
+    # One bad scrape shouldn't drag a whole route down: a fare far below the
+    # cluster's median is treated as suspect rather than as the price to beat.
+    credible = [f for f in fares if f >= median * RECONCILE_OUTLIER_FLOOR]
+    low_ow = min(credible) if credible else fares[0]
     changed = 0
     for s in cluster:
         before = s.cash
-        if s.one_way_cash > low_ow:
-            s.fare_reconciled = True
+        if s.one_way_cash <= low_ow:
+            continue  # already at or under the cluster's floor: never raise a fare
+        s.fare_reconciled = True
         # Only the one-way fare is pooled. A round-trip half belongs to its own
         # departure date and stay length (7/4/2 nights depending on how close the
         # return falls to the booking wall), so borrowing one would print a figure
@@ -1185,6 +1210,12 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
     del cands  # the scan's raw rows aren't needed once scored
     price_stats = price_promising(scored, max_lookups, log=log, max_watch_lookups=max_watch_lookups,
                                   watchlist=watchlist)
+    # Before anything is chosen. group_leaders picks one date per destination by
+    # surplus, so whichever date drew the highest fare wins the group and the losing
+    # dates are discarded as "other dates" -- reconciling afterwards could correct
+    # the number on the card but never the choice of card. Uses fares already
+    # fetched, so it costs no lookups.
+    pre_reconciled = reconcile_fares([s for s in scored if s.cash is not None], log=log)
     reuse = reuse_holdout(scored, HOLDOUT_LOOKUPS, log=log)
     drift = estimate_drift(price_stats.pop("estimate_errors", []))
     _warn_on_health(price_stats, scan_stats, max_lookups, log)
@@ -1222,7 +1253,8 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
         shortlisted = {id(s): s for s in ranked + held}
         shortlisted.update({id(s): s for g in watch for s, _ in g["deals"]})
         reprice_stats = reprice_fresh(list(shortlisted.values()), log=log)
-        reconcile_fares(list(shortlisted.values()), log=log)
+        # Again after fresh re-pricing, which moves fares on the shortlist only.
+        pre_reconciled += reconcile_fares(list(shortlisted.values()), log=log)
         # Re-pricing and reconciliation can push a deal below its bar: rebuild the
         # lists rather than publishing a deal that no longer qualifies.
         ranked = pick_top([s for s in ranked if s.cpp is not None and s.cpp >= s.floor], top)
@@ -1338,6 +1370,7 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
             "gone_or_repriced": sum(1 for k, v in trip_cache.items() if k != "__stop__" and v is None),
             "lookup_failed": sum(1 for k, v in trip_cache.items() if k != "__stop__" and v == "failed"),
             "budget": MAX_TRIP_LOOKUPS,
+            "fares_reconciled": pre_reconciled,
             "hit_budget": bool(trip_cache.get("__stop__")),
         },
         "held_miles": [{k: v for k, v in d.items() if k not in public} for _, d in held_pairs],

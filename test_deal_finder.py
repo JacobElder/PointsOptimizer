@@ -683,3 +683,46 @@ def test_verification_spends_calls_on_what_gets_published(monkeypatch):
     assert not any(s.c.dest in gone for s in published)  # the repriced pair is out
     # 3 picked + 2 backfills, not a lookup for all ten.
     assert len(fetched) == 5
+
+
+def test_ultra_long_haul_detours_are_flagged_as_slow():
+    """A pure ratio is blind on ultra-long-haul: 1.8x a 17-hour flight allows a
+    30-hour trip, so EWR-HKG via Lome and Addis Ababa (28h10m) passed unflagged."""
+    def _trip(minutes):
+        return award_trips.TripInfo(
+            flights=["ET515"], connections=["LFW", "ADD"], duration_min=minutes,
+            departs_at="", arrives_at="", leg_cabins=["business"], mixed_cabin=False,
+            lower_cabin_legs=[], carriers="ET", booking_url=None, booking_label=None,
+            other_itineraries=0, airport_changes=[], stops=2, nonstop=False, seats=2,
+            current_points=110000, price_matches=True)
+
+    hkg = _scored("HKG", "BUSINESS", "united", "EWR", 110000, 3700)
+    hkg.c.distance = 8050  # ~16.9h nonstop
+    hkg.trip = _trip(28 * 60 + 10)
+    assert hkg.slow is True
+    assert any("slower than flying direct" in n for n in hkg.rank_notes)
+
+    # A long flight with one sane connection is not "slow": EWR-DXB via Cairo.
+    dxb = _scored("DXB", "BUSINESS", "aeroplan", "EWR", 90000, 3100)
+    dxb.c.distance = 6800  # ~14.3h nonstop
+    dxb.trip = _trip(18 * 60)
+    assert dxb.slow is False
+
+    # Short hop: one connection may add a few hours without being called slow.
+    pls = _scored("PLS", "ECONOMY", "american", "JFK", 10000, 310)
+    pls.c.distance = 1300
+    pls.trip = _trip(7 * 60)
+    assert pls.slow is False
+
+
+def test_one_bad_quote_does_not_drag_a_whole_route_down():
+    """Reconciliation takes the cheapest nearby fare, so a single bad scrape would
+    otherwise re-value every date on the route against a price that isn't real."""
+    normal = [_scored("IST", "BUSINESS", "turkish", "EWR", 65000, 2000,
+                      date=f"2027-04-{d:02d}") for d in (10, 11, 12)]
+    bad = _scored("IST", "BUSINESS", "turkish", "EWR", 65000, 200, date="2027-04-13")
+
+    deal_finder.reconcile_fares(normal + [bad], log=lambda *a: None)
+
+    assert all(s.cash == 2000 for s in normal)  # the $200 outlier is ignored
+    assert bad.cash == 200  # ...but the outlier keeps its own (low) value
