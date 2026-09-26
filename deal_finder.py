@@ -148,6 +148,7 @@ class Scored:
     quote_basis: str = ""  # how the one-way fare was chosen, before round-trip comparison
     taxes_basis: str = ""  # set when the taxes are an estimate, saying where it came from
     same_carrier_cash: float | None = None
+    same_carrier_code: str | None = None  # which airline that reference fare is on
     one_way_cash: float | None = None
     round_trip_half: float | None = None
     cpp: float | None = None
@@ -325,6 +326,7 @@ class Scored:
             "taxes": round(c.taxes, 2), "currency": c.taxes_currency, "taxes_usd": round(self.taxes_usd, 2),
             "cash_price": self.cash, "cash_is_approx": self.cash_approx, "cash_cabin": price_cabin(c.cabin),
             "cash_basis": self.cash_basis, "same_carrier_cash": self.same_carrier_cash,
+            "same_carrier_code": self.same_carrier_code,
             "one_way_cash": self.one_way_cash, "round_trip_half": self.round_trip_half,
             "cpp": round(self.cpp, 3) if self.cpp is not None else None,
             "great_floor": self.floor, "baseline_cpp": self.baseline, "surplus_usd": round(self.surplus, 0) if self.surplus is not None else None,
@@ -432,14 +434,32 @@ def _apply_quote(s: Scored, q: cash_quotes.Quote) -> None:
     fare at any number of stops -- the conservative choice, since a connecting
     award shouldn't get credit for a pricier nonstop-grade fare.
     """
-    comp = cash_quotes.comparable_fare(q, s.nonstop, s.c.airlines)
+    # Once the itinerary is known, match against the carriers actually flying it
+    # rather than every carrier seats.aero listed as a possibility.
+    carriers = _trip_carrier_codes(s) or s.c.airlines
+    comp = cash_quotes.comparable_fare(q, s.nonstop, carriers)
     if comp is None:
         return
     s.quote = q
+    s.fare_reconciled = False  # this date's own fare replaces any pooled one
     s.cash_approx, s.cash_basis, s.same_carrier_cash = q.approx, comp.basis, comp.same_carrier_price
+    s.same_carrier_code = comp.same_carrier_code
     s.quote_basis = comp.basis
     s.one_way_cash = comp.price
     _finalize_cash(s)
+
+
+def _trip_carrier_codes(s: Scored) -> str:
+    """Carrier codes from the confirmed flight numbers ("LO2084 EWR-KRK" -> LO)."""
+    if not s.trip or not s.trip.flights:
+        return ""
+    codes = []
+    for f in s.trip.flights:
+        head = f.split()[0] if f.split() else ""
+        code = "".join(ch for ch in head[:3] if ch.isalpha())[:2]
+        if code and code not in codes:
+            codes.append(code)
+    return ",".join(codes)
 
 
 def _pricing_priority(s: Scored) -> float:
@@ -489,7 +509,7 @@ RETURN_MIN_NIGHTS = 3
 RETURN_MAX_NIGHTS = 21
 
 
-def scan_return_legs(deals: list[Scored], config: dict, log=print) -> list:
+def scan_return_legs(deals: list[Scored], config: dict, log=print) -> tuple[list, bool]:
     """Scan the way home for the destinations we are about to publish.
 
     The main scan only asks seats.aero for departures FROM your origins, so the
@@ -499,7 +519,7 @@ def scan_return_legs(deals: list[Scored], config: dict, log=print) -> list:
     a second full scan.
     """
     if not deals:
-        return []
+        return [], False
     dests = sorted({d.c.dest for d in deals})
     sources = sorted({d.c.source for d in deals})
     dates = [datetime.strptime(d.c.date, "%Y-%m-%d").date() for d in deals]
@@ -511,15 +531,18 @@ def scan_return_legs(deals: list[Scored], config: dict, log=print) -> list:
     left = award_scanner.remaining_calls()
     if left is not None and left < RETURN_SCAN_MIN_CALLS:
         log(f"Skipping the return-leg scan: only {left} seats.aero calls left today.")
-        return []
+        return [], False
     try:
         cands, stats = award_scanner.scan(cfg, extra_sources=sources)
     except (seats_aero.SearchFailed, seats_aero.NotConfigured) as e:
         log(f"Return-leg scan failed ({e}); cards will say returns weren't checked.")
-        return []
+        return [], False
+    # A scan cut short by the quota or the page cap covered only some routes, so it
+    # can't support "there is no return award" on the ones it never reached.
+    complete = not stats.get("quota_exhausted") and not stats.get("truncated")
     log(f"Return legs: {len(cands):,} awards home from {len(dests)} destinations "
-        f"in {stats['calls']} calls")
-    return cands
+        f"in {stats['calls']} calls" + ("" if complete else " (cut short: partial coverage)"))
+    return cands, complete
 
 
 def attach_return_options(deals: list[Scored], scored: list[Scored],
@@ -787,7 +810,8 @@ def attach_trips(scored: list[Scored], cache: dict, log=None) -> None:
         if k not in cache:
             if cache.get("__stop__") or _trip_calls(cache) >= MAX_TRIP_LOOKUPS:
                 cache.setdefault("__stop__", True)
-                continue  # leave it unverified: the card is flagged for it
+                _mark_unchecked(s)  # flagged and kept, NOT treated as gone
+                continue
             try:
                 cache[k] = award_trips.fetch(s.c.id, s.c.cabin, s.c.points)
             except award_trips.QuotaExhausted as e:
@@ -795,6 +819,7 @@ def attach_trips(scored: list[Scored], cache: dict, log=None) -> None:
                 if log:
                     log(f"::warning::seats.aero rate-limited trip lookups ({e}): the rest of this "
                         "run's deals are published unverified and flagged as such.")
+                _mark_unchecked(s)
                 continue
             except award_trips.LookupFailed:
                 cache[k] = "failed"  # don't retry within a run, don't call it gone either
@@ -803,6 +828,18 @@ def attach_trips(scored: list[Scored], cache: dict, log=None) -> None:
         s.trip = None if s.trip_unverified else cache[k]
         if s.trip is not None and s.quote is not None:
             _apply_quote(s, s.quote)  # redo the fare match now that the real stop count is known
+
+
+def _mark_unchecked(s: Scored) -> None:
+    """Out of budget or rate-limited: the award is unverified, not gone.
+
+    still_bookable drops anything with trip=None that wasn't marked, so skipping
+    these silently deleted them from the digest -- the opposite of publishing them
+    with "flights and seats not confirmed".
+    """
+    s.trip_checked = True
+    s.trip_unverified = True
+    s.trip = None
 
 
 def _trip_calls(cache: dict) -> int:
@@ -1271,9 +1308,11 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
     # Each scan sees tens of thousands of awards, so what this account actually
     # encounters keeps the tax table current as surcharges change.
     try:
-        award_taxes.save(award_taxes.learn(cands))
-    except OSError as e:
-        log(f"Couldn't update the award tax table ({e}); using the saved one.")
+        award_taxes.save(award_taxes.learn(cands, award_taxes.load(strict=True)))
+    except (OSError, award_taxes.Unreadable) as e:
+        # Never write a fresh table over one we couldn't read: that would delete the
+        # curated figures and send every zero-tax program back to $0.
+        log(f"::warning::Couldn't update the award tax table ({e}); leaving it untouched.")
     scored = score_candidates(cands, model, watchlist, program_balances)
     # Programs scanned only because you hold miles there (e.g. American, Delta) can't be
     # topped up from your cards, so keep those awards only when your miles fully cover them.
@@ -1350,12 +1389,14 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
     # NB: not `reported` -- that name holds the 14-day email history and is written
     # to the digest; clobbering it broke the digest write.
     reported_deals = ranked + held + [s for g in watch for s, _ in g["deals"]]
-    return_cands = scan_return_legs(reported_deals, config, log=log) if round_trip else []
+    return_cands, returns_covered = ((scan_return_legs(reported_deals, config, log=log))
+                                     if round_trip else ([], False))
     with_returns = attach_return_options(reported_deals, scored, return_cands)
     log(f"Return legs found for {with_returns} of {len(reported_deals)} reported deals")
-    returns_checked = bool(return_cands)
     for s in reported_deals:
-        s.returns_checked = returns_checked
+        # Only claim there's no return award where the scan actually covered that
+        # route: a partial scan otherwise turns "we didn't look" into "there isn't one".
+        s.returns_checked = returns_covered
 
     # Serialize now: watch_report regroups some of the same objects and rewrites
     # their other_dates/alternatives for its own subset.
@@ -1373,7 +1414,8 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
     log(f"Round-trip checks: {len(rt_cache)} ({sum(1 for v in rt_cache.values() if v)} priced); "
         f"flight details: {len(trip_cache)} checked, "
         f"{sum(1 for v in trip_cache.values() if v is None)} gone/repriced, "
-        f"{sum(1 for v in trip_cache.values() if v and v.mixed_cabin)} mixed cabin")
+        f"{sum(1 for v in trip_cache.values() if isinstance(v, award_trips.TripInfo) and v.mixed_cabin)}"
+        " mixed cabin")
     watch_out, watch_pairs = [], []
     for g in watch:
         rebuilt = []

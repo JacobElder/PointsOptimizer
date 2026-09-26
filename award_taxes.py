@@ -30,11 +30,22 @@ def _key(source: str, cabin: str) -> str:
     return f"{source}|{(cabin or '').upper()}"
 
 
-def load() -> dict:
+class Unreadable(Exception):
+    """The table exists but couldn't be read. Distinct from "no table yet":
+    writing a fresh one over an unreadable file destroys the curated figures,
+    and the workflow commits that loss to the repo."""
+
+
+def load(strict: bool = False) -> dict:
+    """strict=True raises Unreadable instead of quietly returning an empty table."""
+    if not os.path.exists(TAXES_PATH):
+        return {"learned": {}, "curated": {}}
     try:
         with open(TAXES_PATH) as f:
             return json.load(f)
-    except (OSError, json.JSONDecodeError):
+    except (OSError, json.JSONDecodeError) as e:
+        if strict:
+            raise Unreadable(str(e)) from e
         return {"learned": {}, "curated": {}}
 
 
@@ -87,22 +98,32 @@ def _observed_usd(c) -> float | None:
         return None
 
 
+def _program_name(source: str) -> str:
+    """The program's real name: a slug like "virginatlantic" must never reach a card."""
+    try:
+        import seats_aero
+        return seats_aero.SOURCE_TO_PARTNER.get(source, source)
+    except Exception:  # noqa: BLE001
+        return source
+
+
 def estimate(source: str, cabin: str, data: dict | None = None) -> tuple[float | None, str]:
     """(usd, how we got it). (None, reason) when there's nothing to go on."""
     data = data if data is not None else load()
     k = _key(source, cabin)
 
+    name = _program_name(source)
     learned = (data.get("learned") or {}).get(k)
     if learned and learned.get("usd"):
-        return float(learned["usd"]), f"typical for {source} in this cabin ({learned['n']} awards seen)"
+        return float(learned["usd"]), f"typical for {name} in this cabin, from {learned['n']} awards we've seen"
 
     curated = (data.get("curated") or {}).get(k)
     if curated and curated.get("usd"):
         return float(curated["usd"]), curated.get("note") or "published figure for this program"
 
-    # Same program, any cabin: taxes track the route and carrier more than the cabin.
-    for table in ("learned", "curated"):
-        for key, row in (data.get(table) or {}).items():
-            if key.split("|")[0] == source and row.get("usd"):
-                return float(row["usd"]), f"typical for {source}"
+    # Deliberately no cross-cabin fallback. Carrier surcharges scale hard with
+    # cabin -- Virgin Atlantic economy taxes are $5.60 while Upper Class runs into
+    # the hundreds -- so lending economy's figure to a business award understates
+    # the cost by enough to turn a Skip into a Book, while labelling it "typical".
+    # Better to admit we don't know and take the larger ranking penalty.
     return None, "no estimate available"

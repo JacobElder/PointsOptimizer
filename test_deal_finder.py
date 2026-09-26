@@ -754,7 +754,12 @@ def test_the_tax_table_learns_from_each_scan(tmp_path, monkeypatch):
     award_taxes.save(data)
 
     usd, basis = award_taxes.estimate("turkish", "BUSINESS", award_taxes.load())
-    assert usd == 202.5 and "6 awards seen" in basis  # median of 200..205
+    assert usd == 202.5 and "6 awards" in basis  # median of 200..205
+    assert "turkish" not in basis  # the program's name, never the seats.aero slug
+
+    # A business award must never inherit an economy median: surcharges scale with
+    # cabin, and a borrowed figure can turn a Skip into a Book.
+    assert award_taxes.estimate("turkish", "ECONOMY", award_taxes.load())[0] is None
 
     # Too few observations to trust: the curated figure still wins.
     thin = award_taxes.learn(cands[:2], {"learned": {}, "curated": {
@@ -772,12 +777,13 @@ def test_return_legs_scan_the_way_back(monkeypatch):
     def _scan(cfg, **kw):
         seen.update(cfg)
         back = _scored("JFK", "BUSINESS", "aeroplan", "ZRH", 65000, 3000, date="2027-03-18")
-        return [back.c], {"calls": 9}
+        return [back.c], {"calls": 9, "quota_exhausted": False, "truncated": []}
 
     monkeypatch.setattr(deal_finder.award_scanner, "scan", _scan)
     monkeypatch.setattr(deal_finder.award_scanner, "remaining_calls", lambda *a, **k: 900)
 
-    cands = deal_finder.scan_return_legs([out], {"origins": ["JFK", "EWR"]}, log=lambda *a: None)
+    cands, covered = deal_finder.scan_return_legs([out], {"origins": ["JFK", "EWR"]}, log=lambda *a: None)
+    assert covered is True
     assert seen["origins"] == ["ZRH"] and seen["destinations"] == ["JFK", "EWR"]  # scanned backwards
     assert seen["start_date"] == "2027-03-13" and seen["end_date"] == "2027-03-31"
 
@@ -790,4 +796,61 @@ def test_return_scan_is_skipped_when_the_quota_is_low():
     out = _scored("ZRH", "BUSINESS", "aeroplan", "JFK", 60000, 3000)
     import unittest.mock as m
     with m.patch.object(deal_finder.award_scanner, "remaining_calls", lambda *a, **k: 20):
-        assert deal_finder.scan_return_legs([out], {"origins": ["JFK"]}, log=lambda *a: None) == []
+        assert deal_finder.scan_return_legs([out], {"origins": ["JFK"]}, log=lambda *a: None) == ([], False)
+
+
+def test_a_failed_lookup_does_not_kill_the_whole_run(tmp_path, monkeypatch):
+    """trip_cache holds TripInfo | None | "failed" | the __stop__ sentinel, and the
+    truthy ones raised AttributeError in a log line that runs BEFORE the email and
+    before the digest is written: one flaky lookup out of ~250 threw away the run."""
+    import test_run_end_to_end as E
+    awards = [E._award("ZRH", "BUSINESS", "aeroplan", 60000, 60),
+              E._award("LIS", "ECONOMY", "flyingblue", 20000, 90)]
+    E._fake_pipeline(tmp_path, monkeypatch, awards)
+    monkeypatch.setattr(deal_finder.award_trips, "fetch",
+                        lambda *a, **k: (_ for _ in ()).throw(award_trips.LookupFailed("network")))
+
+    out = deal_finder.run(max_lookups=10, top=5, send_email=False, log=lambda m: None)
+    assert "top" in out  # the run completed and the digest was written
+
+
+def test_running_out_of_budget_flags_deals_instead_of_deleting_them(monkeypatch):
+    """The budget path returned before marking the award checked, so still_bookable
+    saw trip=None and called it gone -- silently emptying sections rather than
+    publishing them with "flights and seats not confirmed"."""
+    monkeypatch.setattr(deal_finder, "MAX_TRIP_LOOKUPS", 1)
+    calls = []
+
+    def _fetch(aid, cabin, points):
+        calls.append(aid)
+        return award_trips.TripInfo(
+            flights=["XX1"], connections=[], duration_min=400, departs_at="", arrives_at="",
+            leg_cabins=["business"], mixed_cabin=False, lower_cabin_legs=[], carriers="XX",
+            booking_url=None, booking_label=None, other_itineraries=0, airport_changes=[],
+            stops=0, nonstop=True, seats=2, current_points=points, price_matches=True)
+
+    monkeypatch.setattr(deal_finder.award_trips, "fetch", _fetch)
+    scored = [_scored(d, "BUSINESS", "aeroplan", "JFK", 60000, 3000 - i * 20)
+              for i, d in enumerate(["ZRH", "FRA", "CAI"])]
+    for s in scored:
+        s.c.id = f"{s.c.dest}:id"
+
+    published = deal_finder.verify_selection(
+        scored, lambda ls: ls[:3], rt_cache=None, trip_cache={},
+        sources_reporting_seats=set(), round_trip=False)
+
+    assert len(calls) == 1  # budget spent
+    assert len(published) == 3  # ...and nothing was deleted for lacking a lookup
+    assert sum(1 for s in published if s.unverified) == 2  # the rest are flagged
+
+
+def test_a_reconciled_fare_loses_its_label_when_the_real_fare_replaces_it():
+    """_apply_quote overwrites one_way_cash with this date's own fare, undoing the
+    reconciliation -- the label used to survive, so the card claimed a cheaper
+    nearby fare while showing the dearer one."""
+    s = _scored("VIE", "BUSINESS", "united", "EWR", 88000, 3485)
+    s.fare_reconciled = True
+    deal_finder._apply_quote(s, cash_quotes.Quote("EWR", "VIE", "BUSINESS", s.c.date,
+                                                  3485.0, None, "test", ""))
+    assert s.fare_reconciled is False
+    assert "priced lower" not in s.cash_basis

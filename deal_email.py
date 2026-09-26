@@ -129,14 +129,14 @@ def _digest_card(d: dict) -> str:
     rows = _row("Award", f"<b>{d['points']:,} points</b> + {taxes}")
     fare = f"<b>${d['cash_price']:,.0f}</b> <span style='color:#6b7280'>· {_esc(d.get('cash_basis') or 'cash fare')}</span>"
     extras = []
-    if d.get("round_trip_half") is not None and d.get("one_way_cash") and d["cash_price"] < d["one_way_cash"]:
-        extras.append(f"one-way ${d['one_way_cash']:,.0f}")
-    own = d.get("same_carrier_cash")
-    if own and d.get("airlines"):
-        carrier = places.airline_names(d["airlines"]).split(",")[0]
-        extras.append(f"on {_esc(carrier)} itself: ${own:,.0f}"
-                      + (f", which would make this {(own - d['taxes_usd']) / d['points'] * 100:.2f}&cent;/pt"
-                         if own < d["cash_price"] else ""))
+    own, code = d.get("same_carrier_cash"), d.get("same_carrier_code")
+    # cash_basis already carries the one-way figure, so it isn't repeated here; and
+    # a same-carrier fare only earns a line when it would change the picture.
+    if own and d["points"] and own < d["cash_price"] * 0.98:
+        carrier = places.airline_names(code) if code else ""
+        who = _esc(carrier) if carrier else "the airline flying it"
+        extras.append(f"on {who} itself the fare is ${own:,.0f}, which would make this "
+                      f"{(own - d['taxes_usd']) / d['points'] * 100:.2f}&cent;/pt")
     if d["cabin"] == "FIRST":
         extras.append("first class compared with the business fare")
     if d.get("cash_is_approx"):
@@ -174,9 +174,13 @@ def _digest_card(d: dict) -> str:
     dates = f"<b>{places.nice_date(d['date'])}</b>"
     others = d.get("other_dates") or []
     if others:
-        shown = ", ".join(places.nice_date(x, weekday=False) for x in others[:6])
+        shown = ", ".join(places.nice_date(x, weekday=False, year=x[:4] != d["date"][:4])
+                          for x in others[:6])
         more = f" and {len(others) - 6} more" if len(others) > 6 else ""
-        note = ("<br>Available on this many dates means it's standard pricing, not a flash sale — no rush."
+        seats_left = (d.get("trip") or {}).get("seats") or 0
+        note = ("<br>Available on this many dates means it's standard pricing, not a flash sale."
+                + (" This date is down to its last seats, though."
+                   if 0 < seats_left <= 2 else " No rush.")
                 if len(others) > 30 else "")
         dates += f"<br><span style='font-size:12px; color:#6b7280'>Also: {shown}{more}{note}</span>"
     rows += _row("Dates", dates)
@@ -219,7 +223,7 @@ def _digest_card(d: dict) -> str:
               </div>
             </td>
             <td valign="top" align="right" style="font-family:{_FONT}; white-space:nowrap; padding-left:12px;">
-              <div style="font-size:26px; font-weight:800; color:#15803d; line-height:28px;">{d['cpp']:.2f}&cent;</div>
+              <div style="font-size:26px; font-weight:800; color:#15803d; line-height:28px;">{"up to " if d.get("taxes_unknown") else ""}{d['cpp']:.2f}&cent;</div>
               <div style="font-size:11px; color:#6b7280;">per point</div>
             </td>
           </tr>

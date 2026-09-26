@@ -96,10 +96,16 @@ def md_safe(text: str) -> str:
     return str(text).replace("$", "\\$")
 
 
-def nice_date(iso: str, weekday: bool = True) -> str:
-    """'2026-12-28' -> 'Mon, Dec 28, 2026'."""
+def nice_date(iso: str, weekday: bool = True, year: bool = False) -> str:
+    """'2026-12-28' -> 'Mon, Dec 28, 2026'.
+
+    `year` forces the year into the short form: a list of alternative dates under
+    an August 2027 headline could otherwise open with "Sep 29" meaning 2026.
+    """
     try:
         d = datetime.strptime(iso, "%Y-%m-%d")
     except (TypeError, ValueError):
         return str(iso)
-    return d.strftime("%a, %b %-d, %Y" if weekday else "%b %-d")
+    if weekday:
+        return d.strftime("%a, %b %-d, %Y")
+    return d.strftime("%b %-d, %Y" if year else "%b %-d")

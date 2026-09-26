@@ -68,6 +68,7 @@ class Comparable:
     basis: str  # human-readable: what the cash fare is
     same_carrier_price: float | None  # cheapest fare on the award's own airline(s), for reference
     nonstop_price: float | None = None  # cheapest nonstop fare, for reference
+    same_carrier_code: str | None = None  # which carrier that fare is on, so it can be named
 
 
 def _codes(carriers: str | None) -> set[str]:
@@ -97,10 +98,17 @@ def comparable_fare(quote: "Quote", direct: bool | None = None, carriers: str | 
         basis = "cheapest fare with at most 1 stop"
     else:
         pool, basis = offers, "cheapest fare, any stops"
-    same = [o[0] for o in offers if wanted & _codes(o[2])] if wanted else []
+    # Keep the carrier alongside the price: the award's `airlines` field is a list
+    # of candidates ("BT, EN, LO, OS, SN, UA"), so naming its first entry claimed a
+    # fare was on Air Baltic when the match was on LOT and Air Baltic doesn't fly
+    # the route.
+    same = [(o[0], sorted(wanted & _codes(o[2]))) for o in offers if wanted & _codes(o[2])] if wanted else []
     nonstop = [o[0] for o in offers if o[1] == 0]
-    return Comparable(min(o[0] for o in pool), basis, min(same) if same else None,
-                      min(nonstop) if nonstop else None)
+    best_same = min(same, key=lambda x: x[0]) if same else None
+    return Comparable(min(o[0] for o in pool), basis,
+                      best_same[0] if best_same else None,
+                      min(nonstop) if nonstop else None,
+                      best_same[1][0] if best_same and best_same[1] else None)
 
 
 class OutOfWindow(Exception):
