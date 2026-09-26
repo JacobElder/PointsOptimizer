@@ -166,6 +166,7 @@ class Scored:
     return_option: dict | None = None  # a return award found in the same scan
     dropped: bool = False  # re-verification says it's gone, repriced, or sold out
     fare_reconciled: bool = False  # revalued at a cheaper fare found on a nearby date
+    returns_checked: bool = False  # the way home was actually scanned for this deal
 
     @property
     def age_days(self) -> float | None:
@@ -339,6 +340,7 @@ class Scored:
             "taxes_basis": self.taxes_basis, "rank_notes": self.rank_notes,
             "history_pct": round(self.history_pct, 2) if self.history_pct is not None else None,
             "history_days": self.history_days, "return_option": self.return_option,
+            "returns_checked": self.returns_checked,
             "ranked_value_usd": round(self.rank_value) if self.surplus is not None else None,
             "held_miles": self.held_miles, "bookable_now": self.bookable_now,
             "top_up_needed": max(c.points - self.held_miles, 0) if self.held_miles else None,
@@ -482,33 +484,78 @@ def _warn_on_health(price: dict, scan: dict, budget: int, log) -> None:
             "freshness limit: its cache may be lagging.")
 
 
+RETURN_SCAN_MIN_CALLS = 120  # don't start a return scan without headroom for it
 RETURN_MIN_NIGHTS = 3
 RETURN_MAX_NIGHTS = 21
 
 
-def attach_return_options(deals: list[Scored], scored: list[Scored]) -> int:
-    """Find each reported one-way a matching return award from the same scan.
+def scan_return_legs(deals: list[Scored], config: dict, log=print) -> list:
+    """Scan the way home for the destinations we are about to publish.
 
-    Costs nothing (the awards are already scanned) and answers the obvious
-    question a one-way deal raises: what would the whole trip cost?
+    The main scan only asks seats.aero for departures FROM your origins, so the
+    return direction was never in it: every card said "no matching return award
+    found in this scan" when the scan had never looked that way. A day's cards
+    cover ~12 program/cabin combinations, so this costs tens of calls rather than
+    a second full scan.
     """
-    index: dict[tuple, list[Scored]] = {}
+    if not deals:
+        return []
+    dests = sorted({d.c.dest for d in deals})
+    sources = sorted({d.c.source for d in deals})
+    dates = [datetime.strptime(d.c.date, "%Y-%m-%d").date() for d in deals]
+    cfg = {**config,
+           "origins": dests, "destinations": list(config["origins"]),
+           "cabins": sorted({d.c.cabin for d in deals}), "sources": sources,
+           "start_date": (min(dates) + timedelta(days=RETURN_MIN_NIGHTS)).isoformat(),
+           "end_date": (max(dates) + timedelta(days=RETURN_MAX_NIGHTS)).isoformat()}
+    left = award_scanner.remaining_calls()
+    if left is not None and left < RETURN_SCAN_MIN_CALLS:
+        log(f"Skipping the return-leg scan: only {left} seats.aero calls left today.")
+        return []
+    try:
+        cands, stats = award_scanner.scan(cfg, extra_sources=sources)
+    except (seats_aero.SearchFailed, seats_aero.NotConfigured) as e:
+        log(f"Return-leg scan failed ({e}); cards will say returns weren't checked.")
+        return []
+    log(f"Return legs: {len(cands):,} awards home from {len(dests)} destinations "
+        f"in {stats['calls']} calls")
+    return cands
+
+
+def attach_return_options(deals: list[Scored], scored: list[Scored],
+                          extra_candidates: list | None = None) -> int:
+    """Pair each reported one-way with a matching return award.
+
+    Answers the obvious question a one-way deal raises: what would the whole trip
+    cost on points?
+    """
+    tax_table = award_taxes.load()
+
+    def taxes_for(c) -> float:
+        usd = c.taxes * valuation.fx_rate(c.taxes_currency)
+        if usd <= 0:
+            usd = award_taxes.estimate(c.source, c.cabin, tax_table)[0] or 0.0
+        return usd
+
+    index: dict[tuple, list[tuple]] = {}
     for s in scored:
         if s.c.seats >= 0:
-            index.setdefault((s.c.source, s.c.origin, s.c.dest, s.c.cabin), []).append(s)
+            index.setdefault((s.c.source, s.c.origin, s.c.dest, s.c.cabin), []).append((s.c, s.taxes_usd))
+    for c in extra_candidates or []:
+        index.setdefault((c.source, c.origin, c.dest, c.cabin), []).append((c, taxes_for(c)))
     found = 0
     for d in deals:
         out_date = datetime.strptime(d.c.date, "%Y-%m-%d").date()
         window = [(out_date + timedelta(days=RETURN_MIN_NIGHTS)).isoformat(),
                   (out_date + timedelta(days=RETURN_MAX_NIGHTS)).isoformat()]
         options = [r for r in index.get((d.c.source, d.c.dest, d.c.origin, d.c.cabin), [])
-                   if window[0] <= r.c.date <= window[1]]
+                   if window[0] <= r[0].date <= window[1]]
         if not options:
             continue
-        best = min(options, key=lambda r: r.c.points)
-        d.return_option = {"date": best.c.date, "points": best.c.points,
-                           "taxes_usd": round(best.taxes_usd, 2), "program": best.c.program,
-                           "round_trip_points": d.c.points + best.c.points}
+        cand, taxes_usd = min(options, key=lambda r: r[0].points)
+        d.return_option = {"date": cand.date, "points": cand.points,
+                           "taxes_usd": round(taxes_usd, 2), "program": cand.program,
+                           "round_trip_points": d.c.points + cand.points}
         found += 1
     return found
 
@@ -1303,8 +1350,12 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
     # NB: not `reported` -- that name holds the 14-day email history and is written
     # to the digest; clobbering it broke the digest write.
     reported_deals = ranked + held + [s for g in watch for s, _ in g["deals"]]
-    with_returns = attach_return_options(reported_deals, scored)
+    return_cands = scan_return_legs(reported_deals, config, log=log) if round_trip else []
+    with_returns = attach_return_options(reported_deals, scored, return_cands)
     log(f"Return legs found for {with_returns} of {len(reported_deals)} reported deals")
+    returns_checked = bool(return_cands)
+    for s in reported_deals:
+        s.returns_checked = returns_checked
 
     # Serialize now: watch_report regroups some of the same objects and rewrites
     # their other_dates/alternatives for its own subset.

@@ -760,3 +760,34 @@ def test_the_tax_table_learns_from_each_scan(tmp_path, monkeypatch):
     thin = award_taxes.learn(cands[:2], {"learned": {}, "curated": {
         "turkish|BUSINESS": {"usd": 219.0, "note": "published figure"}}})
     assert award_taxes.estimate("turkish", "BUSINESS", thin)[0] == 219.0
+
+
+def test_return_legs_scan_the_way_back(monkeypatch):
+    """The main scan only asks for departures FROM your origins, so the return
+    direction was never in it -- yet every card said no return was "found in this
+    scan", as though we had looked."""
+    out = _scored("ZRH", "BUSINESS", "aeroplan", "JFK", 60000, 3000, date="2027-03-10")
+    seen = {}
+
+    def _scan(cfg, **kw):
+        seen.update(cfg)
+        back = _scored("JFK", "BUSINESS", "aeroplan", "ZRH", 65000, 3000, date="2027-03-18")
+        return [back.c], {"calls": 9}
+
+    monkeypatch.setattr(deal_finder.award_scanner, "scan", _scan)
+    monkeypatch.setattr(deal_finder.award_scanner, "remaining_calls", lambda *a, **k: 900)
+
+    cands = deal_finder.scan_return_legs([out], {"origins": ["JFK", "EWR"]}, log=lambda *a: None)
+    assert seen["origins"] == ["ZRH"] and seen["destinations"] == ["JFK", "EWR"]  # scanned backwards
+    assert seen["start_date"] == "2027-03-13" and seen["end_date"] == "2027-03-31"
+
+    assert deal_finder.attach_return_options([out], [], cands) == 1
+    assert out.return_option["round_trip_points"] == 125000
+
+
+def test_return_scan_is_skipped_when_the_quota_is_low():
+    """It costs tens of calls; the digest matters more than the extra detail."""
+    out = _scored("ZRH", "BUSINESS", "aeroplan", "JFK", 60000, 3000)
+    import unittest.mock as m
+    with m.patch.object(deal_finder.award_scanner, "remaining_calls", lambda *a, **k: 20):
+        assert deal_finder.scan_return_legs([out], {"origins": ["JFK"]}, log=lambda *a: None) == []

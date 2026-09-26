@@ -220,7 +220,9 @@ def _deal_card(d: dict, rank: int | None, bar: float | None, surplus: float | No
                                 f"${ret['taxes_usd']:,.0f} — {ret['round_trip_points']:,} points round trip "
                                 f"on {ret['program']}"))
             elif d.get("points") and (d.get("cabin") in ("BUSINESS", "FIRST") or d["points"] > 30000):
-                st.caption("↩️ One way only — no matching return award turned up in this scan.")
+                st.caption("↩️ One way only — no return award on these dates in this program."
+                           if d.get("returns_checked")
+                           else "↩️ One way. The way back wasn't checked on this run.")
             if d.get("alternatives"):
                 st.markdown("**🔁 Other ways**")
                 st.caption(safe(" · ".join(d["alternatives"])))

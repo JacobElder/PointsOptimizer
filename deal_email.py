@@ -168,7 +168,9 @@ def _digest_card(d: dict) -> str:
                                f"<span style='font-size:12px; color:#6b7280'>"
                                f"{ret['round_trip_points']:,} points round trip on {_esc(ret['program'])}</span>")
     elif d["cabin"] in ("BUSINESS", "FIRST") or d["points"] > 30000:
-        rows += _row("Return", "No matching return award found in this scan — this is a one way")
+        rows += _row("Return", "No return award on these dates in this program — this is a one way"
+                     if d.get("returns_checked")
+                     else "One way. We didn't check the way back on this run.")
     dates = f"<b>{places.nice_date(d['date'])}</b>"
     others = d.get("other_dates") or []
     if others:
