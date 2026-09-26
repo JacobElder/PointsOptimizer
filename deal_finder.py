@@ -1126,24 +1126,43 @@ def verify_selection(scored: list[Scored], select, rt_cache: dict | None, trip_c
     `select` takes the current leaders and returns the deals that would be published.
     """
     bar_fn = bar_fn or (lambda s: s.floor)
-    selection: list[Scored] = []
-    for round_no in range(max_rounds):
+
+    def current_selection():
         kept = [s for s in scored if not s.dropped and s.cpp is not None and s.cpp >= bar_fn(s)]
-        selection = select(group_leaders(kept, bar_fn))
-        # Biggest dollar claims first: if a budget does bind, the headline deal is
-        # the one that got checked, not the one that didn't.
+        return select(group_leaders(kept, bar_fn))
+
+    selection: list[Scored] = current_selection()
+    for round_no in range(max_rounds):
+        # Stage 1, free: settle the round-trip checks before spending anything.
+        # An award that hasn't had one is ranked on its one-way fare, which runs
+        # well above half a round trip -- 61% of published cards are valued on the
+        # round trip, median x0.84 of the one-way -- so every unchecked runner-up
+        # is over-ranked and leapfrogs whatever was just checked. Letting that
+        # settle on free Google lookups is what stops it churning through the
+        # seats.aero quota.
+        if round_trip and rt_cache is not None:
+            for _ in range(max_rounds):
+                pending_rt = [s for s in selection
+                              if s.round_trip_half is None and not s.rt_unavailable]
+                if not pending_rt:
+                    break
+                for s in pending_rt:
+                    apply_round_trip(s, rt_cache)
+                selection = current_selection()
+
+        # Stage 2, paid: spend seats.aero only on the settled selection.
+        # Biggest dollar claims first, so a budget that binds takes the headline last.
         pending = [s for s in sorted(selection, key=lambda s: -s.rank_value)
-                   if (trip_cache is not None and s.trip is None and not s.trip_checked)
-                   or (round_trip and rt_cache is not None and s.round_trip_half is None
-                       and not s.rt_unavailable)]
+                   if trip_cache is not None and s.trip is None and not s.trip_checked]
         if not pending:
             break
-        # Checking a deal can only ever LOWER its score (a connecting itinerary, a
-        # mixed cabin, a slower routing), so an unchecked runner-up keeps leapfrogging
-        # the one just checked. On the last round check the selection and stop, rather
-        # than churning until the budget runs out.
-        _verify(pending if round_no < max_rounds - 1 else selection,
-                rt_cache, trip_cache, sources_reporting_seats, round_trip)
+        attach_trips(pending, trip_cache, log=None)
+        for s in pending:
+            if not still_bookable(s, sources_reporting_seats):
+                s.dropped = True
+            elif round_trip and rt_cache is not None and s.trip is not None:
+                apply_round_trip(s, rt_cache)  # cached offers: re-match now stops are known
+        selection = current_selection()
     return [s for s in selection if not s.dropped]
 
 
