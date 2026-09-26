@@ -1330,6 +1330,16 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
         "estimate_drift": drift,
         "reuse_error": reuse,
         "round_trip_checks": len(rt_cache),
+        # How much seats.aero re-verification actually cost, and what it caught.
+        # Without this the digest can't answer "were the published deals checked,
+        # and what did it take?" -- which is the whole point of the section.
+        "verification": {
+            "trip_lookups": _trip_calls(trip_cache),
+            "gone_or_repriced": sum(1 for k, v in trip_cache.items() if k != "__stop__" and v is None),
+            "lookup_failed": sum(1 for k, v in trip_cache.items() if k != "__stop__" and v == "failed"),
+            "budget": MAX_TRIP_LOOKUPS,
+            "hit_budget": bool(trip_cache.get("__stop__")),
+        },
         "held_miles": [{k: v for k, v in d.items() if k not in public} for _, d in held_pairs],
         "watchlist": [{**g, "deals": [{k: v for k, v in d.items() if k not in public} for d in g["deals"]]}
                       for g in watch_out],

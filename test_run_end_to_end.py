@@ -148,3 +148,13 @@ def test_full_run_produces_a_sane_digest(tmp_path, monkeypatch):
 
 
 import pytest  # noqa: E402  (kept last so the module reads top-down)
+
+
+def test_digest_records_what_verification_cost(tmp_path, monkeypatch):
+    """Without this the digest can't answer "were these checked, and what did it
+    take?" -- the question the unverified flag exists to raise."""
+    _fake_pipeline(tmp_path, monkeypatch, [_award("ZRH", "BUSINESS", "aeroplan", 60000, 60)])
+    out = deal_finder.run(max_lookups=10, top=5, send_email=False, log=lambda m: None)
+    v = out["verification"]
+    assert v["trip_lookups"] >= 1 and v["hit_budget"] is False
+    assert v["gone_or_repriced"] == 0 and v["lookup_failed"] == 0
