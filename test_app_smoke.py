@@ -14,6 +14,9 @@ SCRIPTS = ["app.py"] + sorted(glob.glob("views/*.py"))
 def test_script_loads_without_exception(script):
     at = AppTest.from_file(script)
     at.run(timeout=90)
+    # deal_card swallows a rendering failure into a warning, so `not at.exception`
+    # can't see a broken card: every card on the page could degrade and CI stay green.
+    assert not [w for w in at.warning if "Couldn't show" in str(w.value)]
     assert not at.exception, [str(e) for e in at.exception]
 
 

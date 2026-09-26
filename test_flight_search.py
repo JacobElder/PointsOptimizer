@@ -12,6 +12,16 @@ not abort the whole result set.
 """
 
 import pytest
+
+import flight_search
+
+
+@pytest.fixture(autouse=True)
+def _allow_mocked_serpapi_calls(monkeypatch):
+    """conftest caps SerpApi at 0 so a stray live lookup can't spend the real 250/month
+    allowance. These tests exercise that code path deliberately, against a fake HTTP
+    layer, so they opt back in."""
+    monkeypatch.setattr(flight_search, "SERPAPI_MAX_CALLS", 100)
 import requests
 
 import flight_search

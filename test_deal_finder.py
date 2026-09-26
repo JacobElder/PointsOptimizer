@@ -932,3 +932,106 @@ def test_economy_and_premium_get_their_own_slots():
     # Premium economy counts as a cabin you'd buy, not as "up front".
     assert deal_finder.is_premium(_scored("X", "PREMIUM_ECONOMY", "alaska", "JFK", 50000, 1800)) is False
     assert deal_finder.is_premium({"cabin": "FIRST"}) is True
+
+
+def test_score_candidates_substitutes_an_estimate_for_zero_taxes(monkeypatch, tmp_path):
+    """The production wiring, not just the properties. Deleting the substitution in
+    score_candidates left every $0-tax award back at its inflated CPP with the whole
+    suite green: Turkish business reads 3.08c at $0 against 2.74c at the real ~$219."""
+    monkeypatch.setattr(award_taxes, "TAXES_PATH", str(tmp_path / "taxes.json"))
+    award_taxes.save({"learned": {}, "curated": {
+        "turkish|BUSINESS": {"usd": 219.0, "note": "published figure"}}})
+
+    c = _scored("IST", "BUSINESS", "turkish", "EWR", 65000, 2000).c
+    c.taxes, c.taxes_currency = 0.0, "USD"
+    out = deal_finder.score_candidates([c], fare_model.FareModel())
+    assert out, "the award was dropped instead of scored"
+    s = out[0]
+    assert s.taxes_usd == 219.0 and s.taxes_estimated is True
+    assert "published figure" in s.taxes_basis
+
+    # A program with no figure at all stays honestly unknown rather than free.
+    c2 = _scored("GRU", "BUSINESS", "american", "JFK", 60000, 2000).c
+    c2.taxes, c2.taxes_currency = 0.0, "USD"
+    s2 = deal_finder.score_candidates([c2], fare_model.FareModel())[0]
+    assert s2.taxes_usd == 0.0 and s2.taxes_unknown is True and s2.taxes_estimated is False
+
+
+def test_an_unreadable_tax_table_is_never_overwritten(monkeypatch, tmp_path):
+    """The workflow commits program_taxes.json, so writing a fresh table over one we
+    couldn't read would permanently delete the curated figures seeded from 337 past
+    bookings, and every zero-tax program would silently revert to $0."""
+    path = tmp_path / "taxes.json"
+    path.write_text('{"curated": {"turkish|BUSINESS": {"usd": 219.0}}, TRUNCATED')
+    monkeypatch.setattr(award_taxes, "TAXES_PATH", str(path))
+
+    with pytest.raises(award_taxes.Unreadable):
+        award_taxes.load(strict=True)
+    assert award_taxes.load() == {"learned": {}, "curated": {}}  # lenient for readers
+    assert "219.0" in path.read_text()  # the file on disk is untouched
+
+
+def test_the_tax_median_resists_one_bad_scrape(monkeypatch, tmp_path):
+    """A mean would let a single mis-scraped row move the figure by hundreds."""
+    monkeypatch.setattr(award_taxes, "TAXES_PATH", str(tmp_path / "taxes.json"))
+    cands = [_scored("IST", "BUSINESS", "turkish", "EWR", 65000, 2000).c for _ in range(6)]
+    for i, c in enumerate(cands):
+        c.taxes, c.taxes_currency = (5000.0 if i == 0 else 200.0 + i), "USD"
+
+    data = award_taxes.learn(cands, {"learned": {}, "curated": {}})
+    usd = data["learned"]["turkish|BUSINESS"]["usd"]
+    assert usd == 203.5  # median of 201..205 + one 5000 outlier
+    assert usd < 300, "the mean would be ~1,002 here"
+
+
+def test_a_partial_return_scan_does_not_claim_there_is_no_return():
+    """A scan cut short by the quota or the page cap covered only some routes, so it
+    can't support "no return award on these dates" on the ones it never reached."""
+    out = _scored("ZRH", "BUSINESS", "aeroplan", "JFK", 60000, 3000, date="2027-03-10")
+
+    for stats, expected in (({"calls": 9, "quota_exhausted": False, "truncated": []}, True),
+                            ({"calls": 9, "quota_exhausted": True, "truncated": []}, False),
+                            ({"calls": 9, "quota_exhausted": False, "truncated": ["aeroplan"]}, False)):
+        import unittest.mock as m
+        with m.patch.object(deal_finder.award_scanner, "scan", lambda cfg, **k: ([], stats)), \
+             m.patch.object(deal_finder.award_scanner, "remaining_calls", lambda *a, **k: 900):
+            _, covered = deal_finder.scan_return_legs([out], {"origins": ["JFK"]}, log=lambda *a: None)
+        assert covered is expected
+
+
+def test_verification_does_not_churn_through_the_quota(monkeypatch):
+    """Settling the free round-trip checks first is worth ~half the seats.aero calls;
+    nothing measured the lookup count, so removing the split stayed green."""
+    lookups = []
+
+    def _fetch(aid, cabin, points):
+        lookups.append(aid)
+        return award_trips.TripInfo(
+            flights=["XX1"], connections=["ABC"], duration_min=900, departs_at="", arrives_at="",
+            leg_cabins=[cabin.lower()], mixed_cabin=False, lower_cabin_legs=[], carriers="XX",
+            booking_url=None, booking_label=None, other_itineraries=0, airport_changes=[],
+            stops=1, nonstop=False, seats=2, current_points=points, price_matches=True)
+
+    def _rt(origin, dest, dep, ret, cabin):
+        # The round trip beats the one-way on most routes, which is what re-ranks
+        # unchecked runners-up above whatever was just checked.
+        seg = deal_finder.flight_search.FlightSegment(
+            "X", "X1", origin, origin, f"{dep} 10:00", dest, dest, f"{dep} 20:00", 600, "XX")
+        price = 3000 * (0.9 if dest < "M" else 1.6)
+        return [deal_finder.flight_search.FlightOffer(price, cabin, 600, [seg], [], "t")]
+
+    monkeypatch.setattr(deal_finder.award_trips, "fetch", _fetch)
+    monkeypatch.setattr(deal_finder.flight_search, "search_round_trip_offers", _rt)
+    scored = [_scored(d, "BUSINESS", "aeroplan", "JFK", 60000, 3000)
+              for d in ["ZRH", "FRA", "CAI", "LIS", "ATH", "MAD", "LIM", "GIG", "NBO", "CPT"]]
+    for s in scored:
+        s.c.id = f"{s.c.dest}:id"
+
+    published = deal_finder.verify_selection(
+        scored, lambda ls: ls[:4], rt_cache={}, trip_cache={},
+        sources_reporting_seats=set(), round_trip=True)
+
+    assert len(published) == 4
+    # One lookup per published card, plus a little slack for genuine churn. The
+    # interleaved version spent roughly double.
+    assert len(lookups) <= 6, f"spent {len(lookups)} lookups to publish 4 cards"

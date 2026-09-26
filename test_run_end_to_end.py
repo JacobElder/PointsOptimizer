@@ -65,7 +65,15 @@ def test_resend_reports_again_without_wiping_the_email_history(tmp_path, monkeyp
     monkeypatch.setattr(deal_finder, "_load_digest", lambda: {
         "reported": {"old|JFK|LIS|ECONOMY|20000|2027-02-02": "2099-01-01T00:00:00"}})
 
-    out = deal_finder.run(max_lookups=10, top=5, send_email=False, resend=True, log=lambda m: None)
+    # The email path must actually run: with send_email=False the block that touches
+    # `reported` is never reached, so the test could not see the wipe it is named for.
+    sent = []
+    monkeypatch.setattr(deal_finder.deal_email, "is_configured", lambda: True)
+    monkeypatch.setattr(deal_finder.deal_email, "send_digest_email",
+                        lambda sections, subject, intro: sent.append(subject))
+
+    out = deal_finder.run(max_lookups=10, top=5, send_email=True, resend=True, log=lambda m: None)
+    assert sent, "no email was sent, so the history code never ran"
 
     zrh = next(d for d in out["top"] if d["dest"] == "ZRH")
     assert zrh["new"] is True  # resend ignores the cooldown

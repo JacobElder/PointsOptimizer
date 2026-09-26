@@ -113,7 +113,13 @@ def _gist_read() -> dict | None:
             data = {"cards": cards, "programs": programs,
                     "updated_at": datetime.now(timezone.utc).isoformat(timespec="seconds")}
             _gist_write(data)
-            return data
+            gid = _find_gist_id()
+            if gid is None:
+                return data
+            # Fall through and read it back, so _gist_seen_at is recorded. Returning
+            # here left it None, and the guard below is skipped when it is None --
+            # so the first save after seeding could silently overwrite a concurrent
+            # write from the site or the daily run.
         gist = _gh("GET", f"/gists/{gid}")
         data = json.loads(gist["files"][GIST_FILENAME]["content"])
         _gist_unavailable = False

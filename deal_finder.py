@@ -1129,7 +1129,8 @@ def verify_leaders(scored: list[Scored], candidates: list[Scored], rt_cache: dic
 
 def verify_selection(scored: list[Scored], select, rt_cache: dict | None, trip_cache: dict | None,
                     sources_reporting_seats: set[str], round_trip: bool, bar_fn=None,
-                    max_rounds: int = 12, max_trip_lookups: int | None = None) -> list[Scored]:
+                    max_rounds: int = 12, max_trip_lookups: int | None = None,
+                    log=None) -> list[Scored]:
     """Verify what will actually be published, then backfill whatever drops out.
 
     The alternative -- verify a wide candidate set, then choose from it -- spends a
@@ -1172,7 +1173,7 @@ def verify_selection(scored: list[Scored], select, rt_cache: dict | None, trip_c
                    if trip_cache is not None and s.trip is None and not s.trip_checked]
         if not pending:
             break
-        attach_trips(pending, trip_cache, log=None, budget=max_trip_lookups)
+        attach_trips(pending, trip_cache, log=log, budget=max_trip_lookups)
         for s in pending:
             if not still_bookable(s, sources_reporting_seats):
                 s.dropped = True
@@ -1182,12 +1183,12 @@ def verify_selection(scored: list[Scored], select, rt_cache: dict | None, trip_c
     return [s for s in selection if not s.dropped]
 
 
-def _verify(deals, rt_cache, trip_cache, sources_reporting_seats, round_trip) -> None:
+def _verify(deals, rt_cache, trip_cache, sources_reporting_seats, round_trip, log=None) -> None:
     if round_trip and rt_cache is not None:
         for s in deals:
             apply_round_trip(s, rt_cache)
     if trip_cache is not None:
-        attach_trips(deals, trip_cache)
+        attach_trips(deals, trip_cache, log=log)
         for s in deals:
             if not still_bookable(s, sources_reporting_seats):
                 s.dropped = True
@@ -1201,13 +1202,13 @@ SELECT_THEN_VERIFY = True  # False restores the verify-a-wide-candidate-set orde
 def shortlist(scored: list[Scored], top: int, min_economy: int = 5, rt_cache: dict | None = None,
               round_trip: bool = False, trip_cache: dict | None = None,
               sources_reporting_seats: set[str] | None = None,
-              max_trip_lookups: int | None = None) -> list[Scored]:
+              max_trip_lookups: int | None = None, log=None) -> list[Scored]:
     leaders = group_leaders(scored)
     if round_trip or trip_cache is not None:
         if SELECT_THEN_VERIFY:
             return verify_selection(scored, lambda ls: pick_top(ls, top, min_economy), rt_cache,
                                     trip_cache, sources_reporting_seats or set(), round_trip,
-                                    max_trip_lookups=max_trip_lookups)
+                                    max_trip_lookups=max_trip_lookups, log=log)
         else:
             premium = [s for s in leaders if s.c.cabin in ("BUSINESS", "FIRST")][: top + ROUND_TRIP_CHECK_EXTRA]
             economy = [s for s in leaders if s.c.cabin not in ("BUSINESS", "FIRST")][: max(min_economy + 5, top)]
@@ -1398,7 +1399,7 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
     rt_cache: dict = {}
     trip_cache: dict = {}
     ranked = shortlist(scored, top, rt_cache=rt_cache, round_trip=round_trip, trip_cache=trip_cache,
-                       sources_reporting_seats=sources_reporting_seats)
+                       sources_reporting_seats=sources_reporting_seats, log=log)
     held = held_miles_report(scored, rt_cache, round_trip=round_trip, trip_cache=trip_cache,
                              sources_reporting_seats=sources_reporting_seats)
     watch = watch_report(scored, watchlist, rt_cache, round_trip=round_trip, trip_cache=trip_cache,

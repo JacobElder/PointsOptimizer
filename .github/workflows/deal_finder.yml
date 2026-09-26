@@ -68,11 +68,22 @@ jobs:
         run: |
           git config user.name "Deal Radar bot"
           git config user.email "deal-radar-bot@users.noreply.github.com"
+          # Never commit a file that doesn't parse: a truncated write, or a clean
+          # line-level rebase merge of two runs' output, would be pushed to the
+          # public repo and read by the site.
+          for f in deal_digest.json cash_quotes.json award_history.json program_taxes.json; do
+            python -c "import json,sys; json.load(open(sys.argv[1]))" "$f" || {
+              echo "::error::$f is not valid JSON; refusing to commit it."; exit 1; }
+          done
           git add deal_digest.json cash_quotes.json award_history.json program_taxes.json
           git diff --cached --quiet && exit 0
           git commit -m "Deal Finder: daily digest [skip ci]"
-          # These two files are regenerated output, so on a conflict this run's
-          # copies win -- never throw away a whole run's work over a merge.
+          # deal_digest.json is regenerated output, so on a conflict this run's copy
+          # wins. The other three are CUMULATIVE stores -- saved quotes, price
+          # history, and hand-curated tax figures -- so preferring this run's copy
+          # can discard work done elsewhere. Acceptable today because only this
+          # workflow writes them in CI, but a local `make find` or a hand edit
+          # landing in the same window would be lost.
           cp deal_digest.json /tmp/digest.json
           cp cash_quotes.json /tmp/quotes.json
           cp award_history.json /tmp/history.json
