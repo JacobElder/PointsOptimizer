@@ -145,7 +145,10 @@ def save(quotes: list[dict]) -> None:
     fd, tmp = tempfile.mkstemp(dir=directory, prefix=".cash_quotes-", suffix=".tmp")
     try:
         with os.fdopen(fd, "w") as f:
-            json.dump({"quotes": quotes}, f, indent=1)
+            # Compact: indent=1 on ~4,000 quotes cost 47% of the file in whitespace
+            # (2.78 MB -> 1.47 MB), which the daily commit, the Streamlit container's
+            # download and every parse all paid for. award_history.py already does this.
+            json.dump({"quotes": quotes}, f, separators=(",", ":"))
             f.write("\n")
         os.replace(tmp, QUOTES_PATH)
     except BaseException:

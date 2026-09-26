@@ -151,8 +151,10 @@ def test_full_run_produces_a_sane_digest(tmp_path, monkeypatch):
     assert all(d["dest"] != "CDG" for d in out["top"] + watch_deals)
 
     # The digest is valid JSON on disk with the history recorded alongside.
-    assert json.load(open(deal_finder.DIGEST_PATH))["top"]
-    assert json.load(open(deal_finder.award_history.HISTORY_PATH))
+    with open(deal_finder.DIGEST_PATH) as f:
+        assert json.load(f)["top"]
+    with open(deal_finder.award_history.HISTORY_PATH) as f:
+        assert json.load(f)
 
 
 import pytest  # noqa: E402  (kept last so the module reads top-down)

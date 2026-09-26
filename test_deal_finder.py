@@ -449,10 +449,12 @@ def test_history_only_records_changes(tmp_path):
                                      distance=3400, updated_at="")
     award_history.record([c], path=path)
     import json
-    hist = json.load(open(path))
+    with open(path) as f:
+        hist = json.load(f)
     day = list(hist)[0]
     hist["2020-01-01"] = hist.pop(day)  # pretend yesterday recorded the same price
-    json.dump(hist, open(path, "w"))
+    with open(path, "w") as f:
+        json.dump(hist, f)
     again = award_history.record([c], path=path)
     assert again[list(again)[-1]] == {}, "an unchanged price should not be recorded again"
 

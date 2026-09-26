@@ -1,0 +1,5 @@
+# Test-only dependencies. Pinned to a major: a pytest major bump otherwise lands
+# straight in CI with nothing holding it, and the AppTest smoke tests are the whole
+# surface for the Streamlit pages.
+-r requirements.txt
+pytest>=9,<10
