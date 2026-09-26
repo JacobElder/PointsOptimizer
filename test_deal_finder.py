@@ -854,3 +854,64 @@ def test_a_reconciled_fare_loses_its_label_when_the_real_fare_replaces_it():
                                                   3485.0, None, "test", ""))
     assert s.fare_reconciled is False
     assert "priced lower" not in s.cash_basis
+
+
+def test_dedupe_does_not_leave_a_duplicate_in_the_held_section():
+    """keep()'s answer was thrown away for held miles, so when a watchlist card for
+    the same program/route/cabin outranked the held one, BOTH were published."""
+    held_card = _scored("CUN", "ECONOMY", "jetblue", "EWR", 4700, 185, date="2026-12-15")
+    better_watch = _scored("CUN", "ECONOMY", "jetblue", "EWR", 4700, 400, date="2026-12-20")
+    watch = [{"label": "Cancún", "deals": [(better_watch, better_watch.to_dict())]}]
+    held = [held_card]
+
+    ranked = deal_finder.dedupe_sections(held, watch, [])
+
+    published = held + [s for s, _ in watch[0]["deals"]] + ranked
+    keys = [deal_finder._section_key(s) for s in published]
+    assert len(keys) == len(set(keys)), "the same award was published twice"
+    assert len(published) == 1 and published[0] is better_watch
+
+
+def test_price_history_is_known_before_deals_are_chosen(tmp_path, monkeypatch):
+    """rank_value reads history_pct, so computing it after selection left it None
+    through every round: the nudge reordered an already-chosen set and never
+    influenced which awards got a seats.aero lookup."""
+    import test_run_end_to_end as E
+    seen = []
+    real_pick = deal_finder.pick_top
+
+    def _spy(leaders, top, min_economy=5):
+        seen.append([s.history_pct for s in leaders])
+        return real_pick(leaders, top, min_economy)
+
+    monkeypatch.setattr(deal_finder, "pick_top", _spy)
+    monkeypatch.setattr(deal_finder.award_history, "percentile", lambda *a, **k: (0.9, 20))
+    E._fake_pipeline(tmp_path, monkeypatch, [E._award("ZRH", "BUSINESS", "aeroplan", 60000, 60)])
+
+    deal_finder.run(max_lookups=10, top=5, send_email=False, log=lambda m: None)
+
+    assert seen, "pick_top never ran"
+    assert any(p is not None for row in seen for p in row), "history was still unset at selection"
+
+
+def test_an_interactive_page_cannot_spend_the_whole_daily_quota(monkeypatch):
+    """One click on the roadmap preview shared the scheduled run's 1,000/day
+    allowance with no ceiling of its own."""
+    calls = []
+    monkeypatch.setattr(deal_finder.award_trips, "fetch",
+                        lambda aid, cabin, points: calls.append(aid) or award_trips.TripInfo(
+                            flights=["XX1"], connections=[], duration_min=400, departs_at="",
+                            arrives_at="", leg_cabins=["business"], mixed_cabin=False,
+                            lower_cabin_legs=[], carriers="XX", booking_url=None,
+                            booking_label=None, other_itineraries=0, airport_changes=[],
+                            stops=0, nonstop=True, seats=2, current_points=points,
+                            price_matches=True))
+    scored = [_scored(f"D{i:02d}", "BUSINESS", "aeroplan", "JFK", 60000, 3000)
+              for i in range(20)]
+    for i, s in enumerate(scored):
+        s.c.id = f"id{i}"
+
+    cache: dict = {}
+    deal_finder.attach_trips(scored, cache, budget=3)
+    assert len(calls) == 3
+    assert all(s.unverified for s in scored[3:])  # the rest are flagged, not deleted

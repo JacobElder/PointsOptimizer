@@ -74,6 +74,7 @@ SLOW_MAX_EXTRA_MIN = 360  # ...and no itinerary may add more than this, however 
 UNKNOWN_TAXES_PENALTY = 0.85  # taxes reported as $0 and nothing to estimate from
 ESTIMATED_TAXES_PENALTY = 0.95  # taxes estimated from similar awards, not this one's
 MAX_TRIP_LOOKUPS = 260  # seats.aero calls for live re-verification, on top of the ~210-call scan
+INTERACTIVE_TRIP_LOOKUPS = 40  # a button press shares the same 1,000/day as the scheduled run
 ROUND_TRIP_CHECK_EXTRA = 15  # also round-trip-check this many runners-up, since leaders can drop out
 WATCH_DEALS_PER_ENTRY = 2
 HOLDOUT_LOOKUPS = 5  # deliberate duplicates near an existing quote, to measure reuse error
@@ -795,7 +796,7 @@ def apply_round_trip(s: Scored, rt_cache: dict, today: date_cls | None = None) -
 
 
 # ── trip details ─────────────────────────────────────────────────────────────
-def attach_trips(scored: list[Scored], cache: dict, log=None) -> None:
+def attach_trips(scored: list[Scored], cache: dict, log=None, budget: int | None = None) -> None:
     """Fetch flight-level detail (1 seats.aero call per award, cached per run).
 
     Budgeted: a long watchlist multiplies the candidate set (one entry adds up to
@@ -808,7 +809,7 @@ def attach_trips(scored: list[Scored], cache: dict, log=None) -> None:
             continue
         k = (s.c.id, s.c.cabin, s.c.points)
         if k not in cache:
-            if cache.get("__stop__") or _trip_calls(cache) >= MAX_TRIP_LOOKUPS:
+            if cache.get("__stop__") or _trip_calls(cache) >= (budget or MAX_TRIP_LOOKUPS):
                 cache.setdefault("__stop__", True)
                 _mark_unchecked(s)  # flagged and kept, NOT treated as gone
                 continue
@@ -986,8 +987,7 @@ def dedupe_sections(held: list[Scored], watch: list[dict], ranked: list[Scored])
             winner.other_dates.sort()
         return False
 
-    for s in held:
-        keep(s)
+    held[:] = [s for s in held if keep(s)]
     for g in watch:
         g["deals"] = [(s, d) for s, d in g["deals"] if keep(s)]
     return [s for s in ranked if keep(s)]
@@ -1113,7 +1113,7 @@ def verify_leaders(scored: list[Scored], candidates: list[Scored], rt_cache: dic
 
 def verify_selection(scored: list[Scored], select, rt_cache: dict | None, trip_cache: dict | None,
                     sources_reporting_seats: set[str], round_trip: bool, bar_fn=None,
-                    max_rounds: int = 12) -> list[Scored]:
+                    max_rounds: int = 12, max_trip_lookups: int | None = None) -> list[Scored]:
     """Verify what will actually be published, then backfill whatever drops out.
 
     The alternative -- verify a wide candidate set, then choose from it -- spends a
@@ -1156,7 +1156,7 @@ def verify_selection(scored: list[Scored], select, rt_cache: dict | None, trip_c
                    if trip_cache is not None and s.trip is None and not s.trip_checked]
         if not pending:
             break
-        attach_trips(pending, trip_cache, log=None)
+        attach_trips(pending, trip_cache, log=None, budget=max_trip_lookups)
         for s in pending:
             if not still_bookable(s, sources_reporting_seats):
                 s.dropped = True
@@ -1184,12 +1184,14 @@ SELECT_THEN_VERIFY = True  # False restores the verify-a-wide-candidate-set orde
 
 def shortlist(scored: list[Scored], top: int, min_economy: int = 5, rt_cache: dict | None = None,
               round_trip: bool = False, trip_cache: dict | None = None,
-              sources_reporting_seats: set[str] | None = None) -> list[Scored]:
+              sources_reporting_seats: set[str] | None = None,
+              max_trip_lookups: int | None = None) -> list[Scored]:
     leaders = group_leaders(scored)
     if round_trip or trip_cache is not None:
         if SELECT_THEN_VERIFY:
             return verify_selection(scored, lambda ls: pick_top(ls, top, min_economy), rt_cache,
-                                    trip_cache, sources_reporting_seats or set(), round_trip)
+                                    trip_cache, sources_reporting_seats or set(), round_trip,
+                                    max_trip_lookups=max_trip_lookups)
         else:
             premium = [s for s in leaders if s.c.cabin in ("BUSINESS", "FIRST")][: top + ROUND_TRIP_CHECK_EXTRA]
             economy = [s for s in leaders if s.c.cabin not in ("BUSINESS", "FIRST")][: max(min_economy + 5, top)]
@@ -1369,6 +1371,14 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
     # a wiped history would re-email every deal again on the next normal run.
     already = {} if resend else reported
 
+    # BEFORE selection. rank_value reads history_pct, so setting it afterwards left
+    # it None through every selection round: the nudge only reordered a set already
+    # chosen without it, and never influenced which awards got a lookup.
+    for s in scored:  # how unusual is this price for this route/cabin/month?
+        s.history_pct, s.history_days = award_history.percentile(
+            hist_series, award_history.key_for(s.c.source, s.c.origin, s.c.dest, s.c.cabin, s.c.date),
+            s.c.points)
+
     rt_cache: dict = {}
     trip_cache: dict = {}
     ranked = shortlist(scored, top, rt_cache=rt_cache, round_trip=round_trip, trip_cache=trip_cache,
@@ -1377,11 +1387,6 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
                              sources_reporting_seats=sources_reporting_seats)
     watch = watch_report(scored, watchlist, rt_cache, round_trip=round_trip, trip_cache=trip_cache,
                          sources_reporting_seats=sources_reporting_seats)
-
-    for s in scored:  # how unusual is this price for this route/cabin/month?
-        s.history_pct, s.history_days = award_history.percentile(
-            hist_series, award_history.key_for(s.c.source, s.c.origin, s.c.dest, s.c.cabin, s.c.date),
-            s.c.points)
 
     if FRESH_PRICE_SHORTLIST:
         shortlisted = {id(s): s for s in ranked + held}
@@ -1538,8 +1543,13 @@ def preview_sources(sources: list[str], max_lookups: int = 60, top: int = 10, lo
     log(f"Found {stats['candidates']:,} awards in {', '.join(sources)} ({stats['calls']} seats.aero calls). Pricing…")
     scored = [s for s in score_candidates(cands, fare_model.FareModel()) if s.c.source in sources]
     price_promising(scored, max_lookups, log=log)
-    ranked = shortlist(scored, top, rt_cache={}, round_trip=True, trip_cache={})
-    return {"deals": [s.to_dict() for s in ranked], "candidates": stats["candidates"], "calls": stats["calls"]}
+    # A fresh cache would let one click spend the whole MAX_TRIP_LOOKUPS budget on
+    # top of its own scan, starving the scheduled run that the digest depends on.
+    trip_cache: dict = {}
+    ranked = shortlist(scored, top, rt_cache={}, round_trip=True, trip_cache=trip_cache,
+                       max_trip_lookups=INTERACTIVE_TRIP_LOOKUPS)
+    return {"deals": [s.to_dict() for s in ranked], "candidates": stats["candidates"],
+            "calls": stats["calls"] + _trip_calls(trip_cache)}
 
 
 def _line(i: int, d: dict) -> str:

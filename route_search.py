@@ -89,7 +89,9 @@ def search(origin: str, dest: str, cabins: list[str], start: date | None = None,
         deal_finder.apply_round_trip(s, rt_cache)
     deals = sorted(deals, key=lambda s: -s.cpp)[:top]
     log("Getting flight details…")
-    deal_finder.attach_trips(deals[:ROUND_TRIP_CHECKS + 4], {})
+    # Budgeted: this page shares the 1,000/day allowance with the scheduled digest.
+    deal_finder.attach_trips(deals[:ROUND_TRIP_CHECKS + 4], {},
+                             budget=deal_finder.INTERACTIVE_TRIP_LOOKUPS)
     # Mixed-cabin awards are worth less than their CPP suggests: list them after full-cabin ones.
     deals.sort(key=lambda s: (bool(s.trip and s.trip.mixed_cabin), -s.cpp))
     for s in deals:
