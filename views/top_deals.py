@@ -25,7 +25,7 @@ with st.expander("🔄 Scan now", expanded=not digest):
              "Full (~9 min): everything, including every watchlist destination"],
             label_visibility="collapsed",
         )
-        st.caption("Uses about 150–200 of your 1,000 daily seats.aero calls. Cash prices are free. "
+        st.caption("Uses about 250–500 of your 1,000 daily seats.aero calls. Quick cuts the Google Flights pricing, not the seats.aero scan. Cash prices are free. "
                    "No email is sent from here.")
         if st.button("Scan now", type="primary"):
             quick = mode.startswith("Quick")
