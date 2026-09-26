@@ -915,3 +915,20 @@ def test_an_interactive_page_cannot_spend_the_whole_daily_quota(monkeypatch):
     deal_finder.attach_trips(scored, cache, budget=3)
     assert len(calls) == 3
     assert all(s.unverified for s in scored[3:])  # the rest are flagged, not deleted
+
+
+def test_economy_and_premium_get_their_own_slots():
+    """A business award is valued against a business fare, a median 3.9x the economy
+    fare on the same route, so one dollar ranking always ends up all-premium."""
+    premium = [_scored(f"P{i:02d}", "BUSINESS", "aeroplan", "JFK", 100000, 6000)
+               for i in range(12)]
+    economy = [_scored(f"E{i:02d}", "ECONOMY", "jetblue", "JFK", 12000, 500)
+               for i in range(12)]
+
+    picked = deal_finder.pick_top(premium + economy, top=10)
+
+    n_prem = sum(1 for s in picked if deal_finder.is_premium(s))
+    assert n_prem == 5 and len(picked) - n_prem == 5
+    # Premium economy counts as a cabin you'd buy, not as "up front".
+    assert deal_finder.is_premium(_scored("X", "PREMIUM_ECONOMY", "alaska", "JFK", 50000, 1800)) is False
+    assert deal_finder.is_premium({"cabin": "FIRST"}) is True

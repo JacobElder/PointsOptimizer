@@ -908,12 +908,28 @@ def _cap_per_program(leaders: list[Scored], cap: int) -> list[Scored]:
     return out
 
 
-def pick_top(leaders: list[Scored], top: int, min_economy: int = 5) -> list[Scored]:
-    # Dollar surplus always favours premium cabins; reserve slots for economy. The
-    # per-program cap applies within each cabin bucket, or one program's business
-    # deals would consume the cap before economy is considered at all.
-    premium = _cap_per_program([s for s in leaders if s.c.cabin in ("BUSINESS", "FIRST")], MAX_PER_PROGRAM)
-    economy = _cap_per_program([s for s in leaders if s.c.cabin not in ("BUSINESS", "FIRST")], MAX_PER_PROGRAM)
+def is_premium(d) -> bool:
+    """Business and first. Premium economy sits with economy: it is a cabin you'd
+    plausibly buy, and its fares are a small multiple of economy rather than the
+    median 3.9x business commands."""
+    cabin = d.c.cabin if isinstance(d, Scored) else d.get("cabin", "")
+    return cabin in ("BUSINESS", "FIRST")
+
+
+def pick_top(leaders: list[Scored], top: int, min_economy: int | None = None) -> list[Scored]:
+    """Half the slots to each cabin group, so they don't compete on one dollar axis.
+
+    A business award is valued against a business fare, which runs a median 3.9x
+    the economy fare on the same route and date -- so ranking by dollars saved,
+    premium wins every time, whether or not you would ever have bought that cabin.
+    The two groups are chosen separately and reported separately.
+    """
+    if min_economy is None:
+        min_economy = max(1, top // 2)
+    # The per-program cap applies within each group, or one program's business deals
+    # would consume the cap before economy is considered at all.
+    premium = _cap_per_program([s for s in leaders if is_premium(s)], MAX_PER_PROGRAM)
+    economy = _cap_per_program([s for s in leaders if not is_premium(s)], MAX_PER_PROGRAM)
     n_econ = min(len(economy), min_economy)
     picked = premium[: max(top - n_econ, 0)] + economy[: top - min(len(premium), max(top - n_econ, 0))]
     return sorted(picked, key=lambda s: -s.rank_value)[:top]
@@ -1481,7 +1497,13 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
                 [("✅ Book now with miles you already have",
                   "Covered by miles already in your airline accounts: no transfer needed.", held_new),
                  ("⭐ Your watchlist", "Destinations you asked to watch, in their best seasons.", watch_new),
-                 ("🏆 Top deals", "The best value across all your routes, ranked by dollars saved.", top_new)],
+                 ("🏆 Best in economy and premium economy",
+                  "Cabins you'd realistically buy, so the dollars saved are dollars you'd "
+                  "otherwise have spent.", [d for d in top_new if not is_premium(d)]),
+                 ("🥂 Best in business and first",
+                  "Bigger numbers, but measured against fares that run several times the "
+                  "economy price — worth it if you'd fly up front, not cash you'd have spent.",
+                  [d for d in top_new if is_premium(d)])],
                 subject=(f"✈️ {n_unique} new award deal{'s' if n_unique != 1 else ''}: "
                          f"{places.city(lead['dest'])} {lead['cpp']:.1f}¢/pt"
                          + (f", {len(held_new)} bookable with miles you have" if held_new else "")),

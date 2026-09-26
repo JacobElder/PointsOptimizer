@@ -51,6 +51,8 @@ def render_digest(digest: dict | None = None) -> None:
             # Only the bar is watchlist-specific. watch_surplus_usd measures against
             # that bar, and the card's sentence compares with the program's baseline.
             deal_card(d, bar=d.get("watch_bar"))
+    economy_top = [d for d in top if not deal_finder.is_premium(d)]
+    premium_top = [d for d in top if deal_finder.is_premium(d)]
     st.header(f"🏆 Top {len(top)} of {scan.get('candidates', 0):,} awards")
     programs = ", ".join(sorted(seats_aero.SOURCE_TO_PARTNER.get(x, x) for x in scan.get("sources", [])))
     st.caption(
@@ -69,8 +71,21 @@ def render_digest(digest: dict | None = None) -> None:
                    f"{drift['median_pct']}% off real fares this run, {drift['p90_pct']}% at the 90th "
                    f"percentile, over {drift['n']} lookups."
                    + ("" if ok else " That's high: the deals picked for pricing may be poorly chosen."))
-    for i, d in enumerate(top):
-        deal_card(d, rank=i + 1)
+    # Split by cabin: a business award is valued against a business fare, which runs
+    # a median 3.9x the economy fare on the same route, so on one dollar ranking
+    # premium always wins whether or not you'd have bought that cabin.
+    if economy_top:
+        st.subheader("Economy and premium economy")
+        st.caption("Cabins you'd realistically buy, so the dollars saved are dollars "
+                   "you'd otherwise have spent.")
+        for i, d in enumerate(economy_top):
+            deal_card(d, rank=i + 1)
+    if premium_top:
+        st.subheader("🥂 Business and first")
+        st.caption("Bigger numbers, but measured against fares several times the economy "
+                   "price — worth it if you'd fly up front, not cash you'd have spent.")
+        for i, d in enumerate(premium_top):
+            deal_card(d, rank=i + 1)
 
 
 @st.cache_data(ttl=60, show_spinner=False)
