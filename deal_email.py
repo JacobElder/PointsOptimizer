@@ -119,9 +119,13 @@ def _digest_card(d: dict) -> str:
     if d.get("rt_unavailable"):
         chips += _chip("No round-trip fare to compare against", "#fef3c7", "#92400e")
 
-    unknown_taxes = bool(d.get("taxes_unknown"))
-    taxes = (f"${d['taxes_usd']:,.0f} taxes &amp; fees" if not unknown_taxes
-             else "taxes not reported — check them on the airline's site")
+    if d.get("taxes_unknown"):
+        taxes = "taxes not reported — check them on the airline's site"
+    elif d.get("taxes_estimated"):
+        taxes = (f"about ${d['taxes_usd']:,.0f} taxes &amp; fees "
+                 f"<span style='color:#92400e'>(estimated — seats.aero reported none)</span>")
+    else:
+        taxes = f"${d['taxes_usd']:,.0f} taxes &amp; fees"
     rows = _row("Award", f"<b>{d['points']:,} points</b> + {taxes}")
     fare = f"<b>${d['cash_price']:,.0f}</b> <span style='color:#6b7280'>· {_esc(d.get('cash_basis') or 'cash fare')}</span>"
     extras = []
@@ -239,10 +243,11 @@ def _digest_text(d: dict) -> str:
     else:
         stops = "stops not confirmed"  # seats.aero's `direct` flag is not a stop count
     taxes = ("taxes not reported" if d.get("taxes_unknown")
+             else f"about ${d['taxes_usd']:,.0f} taxes (estimated)" if d.get("taxes_estimated")
              else f"${d['taxes_usd']:,.0f} taxes")
     lines = [
         f"{places.airport_label(d['origin'])} -> {places.airport_label(d['dest'])}  |  "
-        + ("about " if d.get("taxes_unknown") else "") + f"{d['cpp']:.2f} cents/pt",
+        + ("about " if d.get("taxes_unknown") or d.get("taxes_estimated") else "") + f"{d['cpp']:.2f} cents/pt",
         f"  {d['program']} · {d['cabin'].replace('_', ' ').title()} · {stops}",
         f"  Award: {d['points']:,} points + {taxes}",
         f"  Cash fare: ${d['cash_price']:,.0f} ({d.get('cash_basis') or 'cash fare'})",

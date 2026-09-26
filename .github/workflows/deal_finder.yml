@@ -68,7 +68,7 @@ jobs:
         run: |
           git config user.name "Deal Radar bot"
           git config user.email "deal-radar-bot@users.noreply.github.com"
-          git add deal_digest.json cash_quotes.json award_history.json
+          git add deal_digest.json cash_quotes.json award_history.json program_taxes.json
           git diff --cached --quiet && exit 0
           git commit -m "Deal Finder: daily digest [skip ci]"
           # These two files are regenerated output, so on a conflict this run's
@@ -76,6 +76,7 @@ jobs:
           cp deal_digest.json /tmp/digest.json
           cp cash_quotes.json /tmp/quotes.json
           cp award_history.json /tmp/history.json
+          cp program_taxes.json /tmp/taxes.json
           for i in 1 2 3 4; do
             git push origin HEAD:main && exit 0
             if ! git pull --rebase origin main; then
@@ -85,7 +86,8 @@ jobs:
               cp /tmp/digest.json deal_digest.json
               cp /tmp/quotes.json cash_quotes.json
               cp /tmp/history.json award_history.json
-              git add deal_digest.json cash_quotes.json award_history.json
+              cp /tmp/taxes.json program_taxes.json
+              git add deal_digest.json cash_quotes.json award_history.json program_taxes.json
               git diff --cached --quiet && exit 0
               git commit -m "Deal Finder: daily digest [skip ci]"
             fi

@@ -4,6 +4,7 @@ from datetime import datetime, timedelta, timezone
 import pytest
 
 import award_scanner
+import award_taxes
 import award_trips
 import cash_quotes
 import deal_finder
@@ -533,11 +534,24 @@ def test_age_is_the_same_number_everywhere():
     assert f"last confirmed {d['age_shown']} days ago" in "; ".join(s.rank_notes)
 
 
-def test_zero_taxes_is_reported_as_unknown():
+def test_zero_taxes_becomes_a_labelled_estimate_not_free():
+    """seats.aero reports $0 for some programs and $0 is never real -- 0 of 337 real
+    bookings carried it. Left at zero it inflates CPP, always in the deal's favour."""
+    table = {"curated": {"turkish|BUSINESS": {"usd": 219.0, "note": "published figure"}}}
+    usd, basis = award_taxes.estimate("turkish", "BUSINESS", table)
+    assert usd == 219.0 and "published" in basis
+
     s = _scored("IST", "BUSINESS", "turkish", "EWR", 65000, 2000)
-    s.c.taxes = 0.0
-    assert s.taxes_unknown is True
-    assert any("reported no taxes" in n for n in s.rank_notes)
+    s.taxes_usd, s.taxes_basis = 219.0, "published figure"
+    assert s.taxes_estimated is True and s.taxes_unknown is False
+    assert any("estimated $219" in n for n in s.rank_notes)
+
+    # Nothing to estimate from: say so rather than showing a confident $0.
+    blank = _scored("XXX", "BUSINESS", "nowhere", "EWR", 65000, 2000)
+    blank.taxes_usd, blank.taxes_basis = 0.0, ""
+    assert blank.taxes_unknown is True and blank.taxes_estimated is False
+    assert any("reported no taxes" in n for n in blank.rank_notes)
+    assert award_taxes.estimate("nowhere", "BUSINESS", {"learned": {}, "curated": {}})[0] is None
 
 
 def test_cash_basis_says_why_the_one_way_fare_was_used():
@@ -726,3 +740,23 @@ def test_one_bad_quote_does_not_drag_a_whole_route_down():
 
     assert all(s.cash == 2000 for s in normal)  # the $200 outlier is ignored
     assert bad.cash == 200  # ...but the outlier keeps its own (low) value
+
+
+def test_the_tax_table_learns_from_each_scan(tmp_path, monkeypatch):
+    """Surcharges change, so the table tracks what this account's scans actually
+    see rather than a number typed in once."""
+    monkeypatch.setattr(award_taxes, "TAXES_PATH", str(tmp_path / "taxes.json"))
+    cands = [_scored("IST", "BUSINESS", "turkish", "EWR", 65000, 2000).c for _ in range(6)]
+    for i, c in enumerate(cands):
+        c.taxes, c.taxes_currency = 200.0 + i, "USD"
+
+    data = award_taxes.learn(cands, {"learned": {}, "curated": {}})
+    award_taxes.save(data)
+
+    usd, basis = award_taxes.estimate("turkish", "BUSINESS", award_taxes.load())
+    assert usd == 202.5 and "6 awards seen" in basis  # median of 200..205
+
+    # Too few observations to trust: the curated figure still wins.
+    thin = award_taxes.learn(cands[:2], {"learned": {}, "curated": {
+        "turkish|BUSINESS": {"usd": 219.0, "note": "published figure"}}})
+    assert award_taxes.estimate("turkish", "BUSINESS", thin)[0] == 219.0

@@ -1,0 +1,61 @@
+{
+ "_help": "Award taxes when seats.aero reports $0. learned = medians from this account's own scans (auto-updated each run); curated = figures entered by hand for programs that never report one. Estimates are always labelled on the card.",
+ "curated": {
+  "aeroplan|BUSINESS": {
+   "n": 97,
+   "note": "median of 97 past bookings on this account",
+   "usd": 72.91
+  },
+  "aeroplan|ECONOMY": {
+   "n": 44,
+   "note": "median of 44 past bookings on this account",
+   "usd": 59.57
+  },
+  "alaska|ECONOMY": {
+   "n": 4,
+   "note": "median of 4 past bookings on this account",
+   "usd": 18.4
+  },
+  "emirates|ECONOMY": {
+   "n": 4,
+   "note": "median of 4 past bookings on this account",
+   "usd": 123.0
+  },
+  "flyingblue|BUSINESS": {
+   "n": 13,
+   "note": "median of 13 past bookings on this account",
+   "usd": 74.75
+  },
+  "flyingblue|ECONOMY": {
+   "n": 75,
+   "note": "median of 75 past bookings on this account",
+   "usd": 33.5
+  },
+  "jetblue|ECONOMY": {
+   "n": 43,
+   "note": "median of 43 past bookings on this account",
+   "usd": 49.6
+  },
+  "turkish|BUSINESS": {
+   "note": "Turkish charges ~$219 one-way US-IST in business (published award fares)",
+   "source": "https://thriftytraveler.com/guides/points/turkish-airlines-miles-and-smiles/",
+   "usd": 219.0
+  },
+  "turkish|ECONOMY": {
+   "note": "Turkish economy award taxes ex-US, scaled from the business figure",
+   "source": "https://thriftytraveler.com/guides/points/turkish-airlines-miles-and-smiles/",
+   "usd": 120.0
+  },
+  "united|ECONOMY": {
+   "n": 24,
+   "note": "median of 24 past bookings on this account",
+   "usd": 5.6
+  },
+  "virginatlantic|ECONOMY": {
+   "n": 33,
+   "note": "median of 33 past bookings on this account",
+   "usd": 5.6
+  }
+ },
+ "learned": {}
+}

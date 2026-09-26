@@ -140,8 +140,10 @@ def _deal_card(d: dict, rank: int | None, bar: float | None, surplus: float | No
         mark = {"BOOK": "🟢 Book", "BORDERLINE": "🟡 Borderline", "SKIP": "🔴 Skip"}.get(verdict, "")
         lead = f"{mark} · " if mark else ""
         bits = [f"**{cpp:.2f}¢ per point**" if cpp is not None else "no value yet",
-                (f"{points:,} points + ${taxes:,.0f} taxes" if not d.get("taxes_unknown")
-                 else f"{points:,} points + taxes not reported") if points else None,
+                (f"{points:,} points + taxes not reported" if d.get("taxes_unknown")
+                 else f"{points:,} points + about ${taxes:,.0f} taxes (estimated)"
+                 if d.get("taxes_estimated")
+                 else f"{points:,} points + ${taxes:,.0f} taxes") if points else None,
                 f"vs a ${cash:,.0f} cash fare" if cash else None]
         st.markdown(safe(lead + " · ".join(b for b in bits if b)))
         baseline = d.get("baseline_cpp") or valuation.baseline_cpp(program, d.get("cabin", ""))

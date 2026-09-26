@@ -38,6 +38,7 @@ from datetime import datetime, timedelta, timezone
 
 import award_history
 import award_scanner
+import award_taxes
 import award_trips
 import cash_quotes
 import deal_email
@@ -70,7 +71,8 @@ RECONCILE_WINDOW_DAYS = 14
 RECONCILE_OUTLIER_FLOOR = 0.4  # a lone quote below this share of the cluster median is suspect
 SLOW_MIN_EXTRA_MIN = 300  # a short hop may add this much for a connection before it's "slow"
 SLOW_MAX_EXTRA_MIN = 360  # ...and no itinerary may add more than this, however long the flight
-UNKNOWN_TAXES_PENALTY = 0.85  # taxes reported as $0: CPP is computed without them
+UNKNOWN_TAXES_PENALTY = 0.85  # taxes reported as $0 and nothing to estimate from
+ESTIMATED_TAXES_PENALTY = 0.95  # taxes estimated from similar awards, not this one's
 MAX_TRIP_LOOKUPS = 260  # seats.aero calls for live re-verification, on top of the ~210-call scan
 ROUND_TRIP_CHECK_EXTRA = 15  # also round-trip-check this many runners-up, since leaders can drop out
 WATCH_DEALS_PER_ENTRY = 2
@@ -144,6 +146,7 @@ class Scored:
     cash_approx: bool = False
     cash_basis: str = ""
     quote_basis: str = ""  # how the one-way fare was chosen, before round-trip comparison
+    taxes_basis: str = ""  # set when the taxes are an estimate, saying where it came from
     same_carrier_cash: float | None = None
     one_way_cash: float | None = None
     round_trip_half: float | None = None
@@ -194,13 +197,18 @@ class Scored:
         return self.trip is None
 
     @property
-    def taxes_unknown(self) -> bool:
-        """seats.aero reported no taxes at all, which is never literally true.
+    def taxes_estimated(self) -> bool:
+        """seats.aero reported nothing and we substituted a typical figure."""
+        return bool(self.taxes_basis) and self.taxes_usd > 0
 
-        Even a $0-surcharge award carries US departure tax. A missing figure
-        flatters CPP, so say so instead of showing a confident "$0".
+    @property
+    def taxes_unknown(self) -> bool:
+        """No figure from seats.aero and nothing to estimate from either.
+
+        Even a $0-surcharge award carries US departure tax, so a missing figure
+        left at zero flatters CPP. Say so instead of showing a confident "$0".
         """
-        return self.c.taxes == 0
+        return self.taxes_usd <= 0
 
     @property
     def nonstop(self) -> bool | None:
@@ -251,6 +259,9 @@ class Scored:
             notes.append("we couldn't confirm the flights, stops or seats on this one")
         if self.taxes_unknown:
             notes.append("seats.aero reported no taxes, so the real cost may be higher")
+        elif self.taxes_estimated:
+            notes.append(f"seats.aero reported no taxes, so this uses an estimated "
+                         f"${self.taxes_usd:,.0f} ({self.taxes_basis})")
         return notes
 
     @property
@@ -276,6 +287,8 @@ class Scored:
             v *= UNVERIFIED_PENALTY
         if self.taxes_unknown:
             v *= UNKNOWN_TAXES_PENALTY  # CPP was computed as if the taxes were $0
+        elif self.taxes_estimated:
+            v *= ESTIMATED_TAXES_PENALTY  # a figure, but not this award's own
         return v
 
     @property
@@ -322,7 +335,8 @@ class Scored:
             "trip": self.trip.as_dict() if self.trip else None, "slow": self.slow,
             "rt_unavailable": self.rt_unavailable, "nonstop": self.nonstop,
             "trip_unverified": self.trip_unverified, "unverified": self.unverified,
-            "taxes_unknown": self.taxes_unknown, "rank_notes": self.rank_notes,
+            "taxes_unknown": self.taxes_unknown, "taxes_estimated": self.taxes_estimated,
+            "taxes_basis": self.taxes_basis, "rank_notes": self.rank_notes,
             "history_pct": round(self.history_pct, 2) if self.history_pct is not None else None,
             "history_days": self.history_days, "return_option": self.return_option,
             "ranked_value_usd": round(self.rank_value) if self.surplus is not None else None,
@@ -335,6 +349,7 @@ def score_candidates(cands: list[award_scanner.AwardCandidate], model: fare_mode
                      watchlist: list[WatchEntry] | None = None,
                      program_balances: dict[str, int] | None = None) -> list[Scored]:
     est_cache: dict[tuple, fare_model.Estimate] = {}
+    tax_table = award_taxes.load()
     out = []
     # An award whose estimated value is far below its bar can never be priced or
     # reported; dropping it here keeps ~150k awards' worth of state manageable.
@@ -345,10 +360,18 @@ def score_candidates(cands: list[award_scanner.AwardCandidate], model: fare_mode
             est_cache[k] = model.estimate(*k)
         est = est_cache[k]
         taxes_usd = c.taxes * valuation.fx_rate(c.taxes_currency)
+        # seats.aero reports 0 for some programs, and 0 is never real: every award
+        # carries at least US departure tax. Left as zero it inflates CPP, always in
+        # the deal's favour.
+        taxes_basis = ""
+        if taxes_usd <= 0:
+            est_tax, taxes_basis = award_taxes.estimate(c.source, c.cabin, tax_table)
+            taxes_usd = est_tax or 0.0
         floor = valuation.great_floor(c.cabin, c.program)
         est_cpp = valuation.compute_cpp(est.median_price, taxes_usd, c.points) or 0.0
         # P(cash fare is high enough for this award to clear the bar)
         s = Scored(c, taxes_usd, est, floor, est_cpp, est.prob_at_least(floor * c.points / 100 + taxes_usd))
+        s.taxes_basis = taxes_basis
         s.held_miles = (program_balances or {}).get(c.program, 0)
         s.watch = [w for w in (watchlist or []) if w.matches(c)]
         if s.watch:
@@ -1198,6 +1221,12 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
     # Programs that never report seat counts (American always says 0) must not be
     # treated as sold out; only trust a 0 from a program that reports seats elsewhere.
     sources_reporting_seats = {c.source for c in cands if c.seats > 0}
+    # Each scan sees tens of thousands of awards, so what this account actually
+    # encounters keeps the tax table current as surcharges change.
+    try:
+        award_taxes.save(award_taxes.learn(cands))
+    except OSError as e:
+        log(f"Couldn't update the award tax table ({e}); using the saved one.")
     scored = score_candidates(cands, model, watchlist, program_balances)
     # Programs scanned only because you hold miles there (e.g. American, Delta) can't be
     # topped up from your cards, so keep those awards only when your miles fully cover them.
