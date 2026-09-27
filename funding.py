@@ -4,10 +4,13 @@ from __future__ import annotations
 
 import json
 import os
+import statistics
+from functools import lru_cache
 from dataclasses import dataclass, field
 from datetime import date
 
 import ledger
+import valuation
 from cards_data import POOLS, pool_is_active, rank_funding_pools, transfer_ratio_multiplier
 
 BONUSES_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "transfer_bonuses.json")
@@ -102,3 +105,57 @@ def plan(program: str, points: int, balances: dict[str, int] | None = None,
     # pool" tiebreak instead of sitting below it.
     pools.sort(key=lambda r: (not r["covered"], not r.get("bonus"), r["flexibility"], r["pts_needed"]))
     return PayPlan(program, int(points), held, top_up, pools)
+
+
+@lru_cache(maxsize=None)
+def pool_point_cents(pool_key: str, cabin: str) -> float:
+    """What one card point is normally worth when moved to an airline, in cents.
+
+    The median of the pool's airline partners' baselines for the cabin (Chase UR:
+    1.3 economy, ~2.0 business). Needed to compare awards in different programs
+    funded from the same card: valuing each at its own airline's baseline made an
+    83,000-point United transfer look better than a 63,000-point Aeroplan one for
+    the same flight, only because United miles are "normally worth" less.
+    """
+    names = [pt.name for pt in POOLS[pool_key].partners if pt.kind == "airline"]
+    if not names:
+        return valuation.baseline_cpp("", cabin)
+    return statistics.median(valuation.baseline_cpp(n, cabin) for n in names)
+
+
+@lru_cache(maxsize=4096)
+def _cheapest_transfer(program: str, top_up: int, on: date) -> tuple[str, float] | None:
+    best = None
+    for pool in POOLS.values():
+        if not (pool.transferable and pool_is_active(pool.key)):
+            continue
+        for pt in pool.partners:
+            if pt.name != program:
+                continue
+            bonus = active_bonus(pool.key, program, on)
+            needed = top_up / (transfer_ratio_multiplier(pt.ratio_on(on))
+                               * (1 + (bonus["bonus_pct"] / 100 if bonus else 0)))
+            if best is None or needed < best[1]:
+                best = (pool.key, needed)
+    return best
+
+
+def opportunity_cost_usd(program: str, cabin: str, points: int, held_miles: int = 0,
+                         on: date | None = None) -> float:
+    """Dollar value of what you'd actually give up to book this award.
+
+    Miles already in the program are valued at that program's baseline. The rest
+    comes from the card pool needing the fewest points (transfer bonuses applied),
+    valued at what that card's points are normally worth -- one yardstick for every
+    program the card reaches. Programs no card reaches fall back to their own baseline.
+    """
+    held = min(int(held_miles), int(points))
+    top_up = int(points) - held
+    cost = held * valuation.baseline_cpp(program, cabin) / 100
+    if top_up:
+        best = _cheapest_transfer(program, top_up, on or date.today())
+        if best:
+            cost += _round_up(best[1]) * pool_point_cents(best[0], cabin) / 100
+        else:
+            cost += top_up * valuation.baseline_cpp(program, cabin) / 100
+    return cost

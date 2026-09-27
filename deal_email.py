@@ -117,7 +117,7 @@ def _digest_card(d: dict) -> str:
     if d.get("unverified"):
         chips += _chip("⚠️ Flights and seats not confirmed — check before you transfer", "#fef3c7", "#92400e")
     if d.get("rt_unavailable"):
-        chips += _chip("No round-trip fare to compare against", "#fef3c7", "#92400e")
+        chips += _chip("Fare estimated: no round-trip price found", "#fef3c7", "#92400e")
 
     if d.get("taxes_unknown"):
         taxes = "taxes not reported — check them on the airline's site"
@@ -166,7 +166,9 @@ def _digest_card(d: dict) -> str:
         rows += _row("Return", f"{_esc(places.nice_date(ret['date']))} for <b>{ret['points']:,} points</b>"
                                f" + ${ret['taxes_usd']:,.0f}<br>"
                                f"<span style='font-size:12px; color:#6b7280'>"
-                               f"{ret['round_trip_points']:,} points round trip on {_esc(ret['program'])}</span>")
+                               f"{ret['round_trip_points']:,} points round trip on {_esc(ret['program'])}</span>"
+                               + (f"<br><span style='font-size:12px; color:#92400e'>⚠️ {_esc(ret['note'])}</span>"
+                                  if ret.get("note") else ""))
     elif d["cabin"] in ("BUSINESS", "FIRST") or d["points"] > 30000:
         rows += _row("Return", "No return award on these dates in this program — this is a one way"
                      if d.get("returns_checked")
@@ -287,13 +289,14 @@ def _row_fallback(d: dict) -> str:
             f"— see the site for this one.</div>")
 
 
-def send_digest_email(sections: list[tuple[str, str, list[dict]]], subject: str, intro: str) -> None:
+def send_digest_email(sections: list[tuple[str, str, list[dict]]], subject: str, intro: str,
+                      warning: str | None = None) -> None:
     """sections: (title, subtitle, deals). Empty sections are skipped."""
     sections = [s for s in sections if s[2]]
     if not sections:
         return
     address, app_password = _get_credentials()
-    html_body, text = build_digest(sections, intro)
+    html_body, text = build_digest(sections, intro, warning)
     msg = EmailMessage()
     msg["Subject"] = subject
     msg["From"] = address
@@ -306,11 +309,15 @@ def send_digest_email(sections: list[tuple[str, str, list[dict]]], subject: str,
         smtp.send_message(msg)
 
 
-def build_digest(sections: list[tuple[str, str, list[dict]]], intro: str) -> tuple[str, str]:
-    """(html, plain text) for the digest email."""
+def build_digest(sections: list[tuple[str, str, list[dict]]], intro: str,
+                 warning: str | None = None) -> tuple[str, str]:
+    """(html, plain text) for the digest email. `warning` is a run-wide caveat shown first."""
     sections = [s for s in sections if s[2]]
     body = ""
-    text = [intro, ""]
+    text = ([f"WARNING: {warning}", ""] if warning else []) + [intro, ""]
+    banner = (f'<div style="background:#fef3c7; color:#92400e; border-radius:8px; padding:10px 12px; '
+              f'font-size:14px; line-height:20px; margin-top:10px;">⚠️ {_esc(warning)}</div>'
+              if warning else "")
     for title, subtitle, deals in sections:
         body += f"""
         <div style="font-family:{_FONT}; margin:28px 0 12px;">
@@ -323,6 +330,7 @@ def build_digest(sections: list[tuple[str, str, list[dict]]], intro: str) -> tup
     <div style="background:#f3f4f6; padding:24px 12px;">
       <div style="max-width:640px; margin:0 auto; font-family:{_FONT};">
         <div style="font-size:24px; font-weight:800; color:#111827;">✈️ Deal Finder</div>
+        {banner}
         <div style="font-size:14px; color:#4b5563; line-height:21px; margin-top:6px;">{_esc(intro)}</div>
         {body}
         <div style="font-size:12px; color:#9ca3af; line-height:18px; margin-top:24px;">

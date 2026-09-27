@@ -32,6 +32,7 @@ import argparse
 import json
 import os
 import sys
+import time
 from dataclasses import dataclass, field
 from datetime import date as date_cls
 from datetime import datetime, timedelta, timezone
@@ -45,6 +46,7 @@ import deal_email
 import fare_model
 import seats_aero
 import flight_search
+import funding
 import ledger
 import valuation
 
@@ -61,7 +63,19 @@ REPORT_COOLDOWN_DAYS = 14
 SERPAPI_CAP = 5
 ROUND_TRIP_STAY_DAYS = 7
 ROUND_TRIP_FALLBACK_STAYS = (7, 4, 2)  # shorter stays when the 7-night return is past the booking window
-NO_ROUND_TRIP_PENALTY = 0.6  # a one-way-only valuation is usually too generous
+# When no round trip can be priced, value the award at this share of the one-way
+# fare instead of the full one-way fare. Measured on 210 published deals whose round
+# trip WAS priced (digest history, Sep 2026): half a round trip ran a median 0.81x
+# the one-way fare (economy 0.84, business 0.79) and was the cheaper of the two 78% of
+# the time. Using the raw one-way fare let a lookup outage (Sep 27: Google answered 8
+# of 48 round-trip checks) publish deals at ~1.25x their value, six below their bar.
+RT_HALF_ESTIMATE_RATIO = 0.81
+# The estimate already removes the typical overstatement; this only discounts for
+# the uncertainty that remains (the ratio's interquartile range is 0.67-0.92).
+NO_ROUND_TRIP_PENALTY = 0.85
+RT_RETRY_MAX = 60  # round-trip lookups re-tried at the end of the run, after the ones that failed
+RT_RETRY_PAUSE_S = 2.0  # spacing between retries: failures come in bursts when Google throttles
+RT_OUTAGE_SHARE = 0.3  # above this share of reported deals on an estimate, the email says so
 UNVERIFIED_PENALTY = 0.6  # never re-checked live: stops, seats and current price unknown
 # Measured on the real quote store: the haircut from pooling dates is nearly flat
 # from a 2-day window (6.8% mean) to 21 days (8.8%), so this is day-to-day fare
@@ -159,7 +173,7 @@ class Scored:
     held_miles: int = 0  # miles you already hold in this award's program
     trip: award_trips.TripInfo | None = None
     quote: cash_quotes.Quote | None = None
-    rt_unavailable: bool = False  # couldn't price a round trip (date too far out)
+    rt_unavailable: bool = False  # couldn't price a round trip (lookup failed, or date too far out)
     rt_stay_nights: int = ROUND_TRIP_STAY_DAYS
     trip_unverified: bool = False  # the live re-check failed; not proof the award is gone
     trip_checked: bool = False  # a live re-check was attempted at all (failed or not)
@@ -255,7 +269,7 @@ class Scored:
         if (self.age_days or 0) > 5:
             notes.append(f"last confirmed {self.age_shown} days ago")
         if self.rt_unavailable:
-            notes.append("no round-trip fare could be priced, so this uses the one-way fare")
+            notes.append("no round-trip fare could be priced, so the fare is an estimate")
         if self.trip_unverified:
             notes.append("couldn't re-check it with seats.aero just now")
         elif self.unverified:
@@ -318,6 +332,20 @@ class Scored:
         if self.cash is None:
             return None
         return (self.cash - self.taxes_usd) - self.c.points * bar / 100
+
+    @property
+    def funded_surplus(self) -> float | None:
+        """Dollar surplus over what you'd actually spend: your held miles, then the
+        card points needed (bonuses applied), valued on one yardstick per card.
+
+        Chooses between programs for the same trip. surplus_vs() values each award at
+        its own program's baseline, so a United award (miles "worth" 1.68c) beat an
+        Aeroplan one (2.10c) needing 20,000 fewer Chase points for the same flight.
+        """
+        if self.cash is None:
+            return None
+        return (self.cash - self.taxes_usd) - funding.opportunity_cost_usd(
+            self.c.program, self.c.cabin, self.c.points, self.held_miles)
 
     def to_dict(self) -> dict:
         c = self.c
@@ -408,6 +436,13 @@ def _finalize_cash(s: Scored) -> None:
         s.cash_basis = (f"half of a {s.rt_stay_nights}-night round trip "
                         f"(the one-way fare is ${s.one_way_cash:,.0f})")
         _set_cash(s, s.round_trip_half)
+    elif s.round_trip_half is None and s.rt_unavailable:
+        # Not the one-way fare: that overstates a typical deal by ~1.25x, and when a
+        # lookup outage hits every deal at once it decides which deals clear their bar.
+        s.cash_basis = (f"estimated at {RT_HALF_ESTIMATE_RATIO:.0%} of the one-way fare "
+                        f"(${s.one_way_cash:,.0f}), the typical half of a round trip, "
+                        "since no round trip could be priced")
+        _set_cash(s, s.one_way_cash * RT_HALF_ESTIMATE_RATIO)
     else:
         # Say WHY the one-way fare won. "Cheapest fare, any stops" alone covered
         # three different situations -- a round trip priced higher, none priced,
@@ -423,8 +458,6 @@ def _one_way_basis(s: Scored) -> str:
         base += " on a nearby date, which priced lower than this one"
     if s.round_trip_half is not None:
         return f"{base} — cheaper than half a {s.rt_stay_nights}-night round trip"
-    if s.rt_unavailable:
-        return f"{base} — no round trip could be priced, so this may flatter the deal"
     return f"{base} — no round trip checked, so this may flatter the deal"
 
 
@@ -546,6 +579,21 @@ def scan_return_legs(deals: list[Scored], config: dict, log=print) -> tuple[list
     return cands, complete
 
 
+RETURN_POINTS_WARN_MULTIPLE = 2.0  # a return this many times the outbound's points is flagged
+RETURN_TAXES_WARN_USD = 300  # ...as is one whose taxes exceed both this and 3x the outbound's
+
+
+def _return_note(d: Scored, points: int, taxes_usd: float) -> str:
+    """Say when the only return found is a poor pairing, so the round-trip total isn't
+    read as the trip's real cost (JFK-ANU: 9,500 out, 100,000 back)."""
+    if points >= RETURN_POINTS_WARN_MULTIPLE * d.c.points:
+        return (f"the return costs {points / d.c.points:.0f}x the outbound's points; "
+                "other dates or programs are likely cheaper")
+    if taxes_usd > max(RETURN_TAXES_WARN_USD, 3 * d.taxes_usd):
+        return f"high fees on the way back (${taxes_usd:,.0f}); another program may avoid them"
+    return ""
+
+
 def attach_return_options(deals: list[Scored], scored: list[Scored],
                           extra_candidates: list | None = None) -> int:
     """Pair each reported one-way with a matching return award.
@@ -579,7 +627,8 @@ def attach_return_options(deals: list[Scored], scored: list[Scored],
         cand, taxes_usd = min(options, key=lambda r: r[0].points)
         d.return_option = {"date": cand.date, "points": cand.points,
                            "taxes_usd": round(taxes_usd, 2), "program": cand.program,
-                           "round_trip_points": d.c.points + cand.points}
+                           "round_trip_points": d.c.points + cand.points,
+                           "note": _return_note(d, cand.points, taxes_usd)}
         found += 1
     return found
 
@@ -760,39 +809,109 @@ def _price_one(s: Scored, state: dict, stats: dict, log, allow_live: bool = True
 def apply_round_trip(s: Scored, rt_cache: dict, today: date_cls | None = None) -> bool:
     """Value the award against min(one-way fare, half a round trip).
 
-    Tries a 7-night stay, then shorter ones so trips near the edge of the
-    booking window still get checked; a one-way-only valuation is usually far
-    too generous (one-way fares run 1.5-2x half a round trip), so when no round
-    trip can be priced the deal is marked and ranked down instead.
+    Uses a 7-night stay, or a shorter one when the 7-night return is past the
+    booking window. A one-way-only valuation is usually too generous, so when no
+    round trip can be priced the fare is estimated from the one-way fare
+    (RT_HALF_ESTIMATE_RATIO) and the deal is marked and ranked down.
     """
     if s.cash is None:
         return False
+    stays = _rt_stays(s, today)
+    if not stays:
+        return _mark_rt_unavailable(s)
+    stay = stays[0]
+    key = _rt_key(s, stay)
+    if key not in rt_cache:
+        rt_cache[key] = _fetch_round_trip(s, stay)
+    return _use_round_trip(s, rt_cache[key], stay)
+
+
+def _rt_stays(s: Scored, today: date_cls | None = None) -> list[int]:
     today = today or datetime.now(timezone.utc).date()
     depart = datetime.strptime(s.c.date, "%Y-%m-%d").date()
-    stays = [n for n in ROUND_TRIP_FALLBACK_STAYS
-             if (depart + timedelta(days=n) - today).days <= cash_quotes.MAX_LOOKAHEAD_DAYS]
-    if not stays:
-        s.rt_unavailable = True
-        return False
-    stay = stays[0]
-    ret = depart + timedelta(days=stay)
-    key = (s.c.origin, s.c.dest, s.c.date, price_cabin(s.c.cabin), stay)
-    if key not in rt_cache:
-        try:
-            rt_cache[key] = flight_search.search_round_trip_offers(
-                s.c.origin, s.c.dest, s.c.date, ret.isoformat(), price_cabin(s.c.cabin))
-        except flight_search.SearchFailed:
-            rt_cache[key] = None
-    offers = rt_cache[key]
+    return [n for n in ROUND_TRIP_FALLBACK_STAYS
+            if (depart + timedelta(days=n) - today).days <= cash_quotes.MAX_LOOKAHEAD_DAYS]
+
+
+def _rt_key(s: Scored, stay: int) -> tuple:
+    return (s.c.origin, s.c.dest, s.c.date, price_cabin(s.c.cabin), stay)
+
+
+def _fetch_round_trip(s: Scored, stay: int):
+    ret = datetime.strptime(s.c.date, "%Y-%m-%d").date() + timedelta(days=stay)
+    try:
+        return flight_search.search_round_trip_offers(
+            s.c.origin, s.c.dest, s.c.date, ret.isoformat(), price_cabin(s.c.cabin))
+    except flight_search.SearchFailed:
+        return None
+
+
+def _mark_rt_unavailable(s: Scored) -> bool:
+    s.rt_unavailable = True
+    _finalize_cash(s)  # values it at the estimate rather than the one-way fare
+    return False
+
+
+def _use_round_trip(s: Scored, offers, stay: int) -> bool:
     if not offers:
-        s.rt_unavailable = True
-        return False
+        return _mark_rt_unavailable(s)
     pool = ([o for o in offers if o.stops <= 1] if s.nonstop else offers) or offers
     s.round_trip_half = min(o.price_usd for o in pool) / 2
     s.rt_stay_nights = stay
     s.rt_unavailable = False
     _finalize_cash(s)
     return True
+
+
+def rt_outage_note(deals: list[dict]) -> str | None:
+    """A warning when too many published deals are valued on an estimated fare.
+
+    Each card already says so, but a run where most round-trip lookups failed
+    changes how far the whole list can be trusted, which one card can't convey.
+    """
+    estimated = sum(1 for d in deals if d.get("rt_unavailable"))
+    if not deals or estimated <= RT_OUTAGE_SHARE * len(deals):
+        return None
+    return (f"Google Flights returned no round-trip fare for {estimated} of these {len(deals)} "
+            f"deals, so their values are estimates ({RT_HALF_ESTIMATE_RATIO:.0%} of the one-way "
+            "fare, the typical ratio). Check the cash fare before you transfer.")
+
+
+def retry_round_trips(deals: list[Scored], rt_cache: dict, log=print,
+                      max_lookups: int = RT_RETRY_MAX, pause_s: float | None = None) -> dict:
+    """Second attempt at the round trips that failed, for the deals about to be published.
+
+    Google's empty answers come in bursts (Sep 27: 40 of 48 round-trip checks came
+    back empty, then worked minutes later from another machine), so a failure early
+    in the run says little about the same query at the end of it. Each deal tries
+    its usual stay again, then the shorter ones, which are different queries.
+    """
+    pause_s = RT_RETRY_PAUSE_S if pause_s is None else pause_s
+    stats = {"retried": 0, "recovered": 0}
+    for s in deals:
+        if not s.rt_unavailable or s.round_trip_half is not None or s.cash is None:
+            continue
+        for stay in _rt_stays(s):
+            key = _rt_key(s, stay)
+            if rt_cache.get(key):
+                break  # priced already, via another deal on the same flight
+            if stats["retried"] >= max_lookups:
+                break
+            if stats["retried"] and pause_s:
+                time.sleep(pause_s)
+            stats["retried"] += 1
+            rt_cache[key] = _fetch_round_trip(s, stay)
+            if rt_cache[key]:
+                break
+        for stay in _rt_stays(s):
+            if rt_cache.get(_rt_key(s, stay)):
+                _use_round_trip(s, rt_cache[_rt_key(s, stay)], stay)
+                stats["recovered"] += 1
+                break
+    if stats["retried"]:
+        log(f"Round-trip retries: {stats['recovered']} of the failed checks recovered "
+            f"({stats['retried']} lookups)")
+    return stats
 
 
 # ── trip details ─────────────────────────────────────────────────────────────
@@ -873,7 +992,9 @@ def group_leaders(scored: list[Scored], bar_fn=None) -> list[Scored]:
     confirmed = [s for s in scored if s.cpp is not None and s.cpp >= bar_fn(s)]
     best: dict[tuple, Scored] = {}
     seen: dict[tuple, set] = {}
-    for s in sorted(confirmed, key=lambda s: -s.surplus_vs(bar_fn(s))):
+    # The leader is whichever option costs you least for what it's worth, in the
+    # points you'd actually spend; the groups are then ranked by surplus as before.
+    for s in sorted(confirmed, key=lambda s: -s.funded_surplus):
         g = best.get(s.group_key)
         combo = (s.c.source, s.c.origin)
         if g is None:
@@ -1405,6 +1526,11 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
     watch = watch_report(scored, watchlist, rt_cache, round_trip=round_trip, trip_cache=trip_cache,
                          sources_reporting_seats=sources_reporting_seats)
 
+    if round_trip:
+        about_to_publish = {id(s): s for s in ranked + held}
+        about_to_publish.update({id(s): s for g in watch for s, _ in g["deals"]})
+        retry_round_trips(list(about_to_publish.values()), rt_cache, log=log)
+
     if FRESH_PRICE_SHORTLIST:
         shortlisted = {id(s): s for s in ranked + held}
         shortlisted.update({id(s): s for g in watch for s, _ in g["deals"]})
@@ -1475,7 +1601,6 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
         watch_out.append({"label": g["label"], "matched_awards": g["matched_awards"],
                           "priced": g["priced"], "deals": [d for _, d in g["deals"]]})
 
-    import funding
     balances = ledger.load_balances()
     for _, d in top_pairs + held_pairs + watch_pairs:
         d["pay_summary"] = funding.plan(d["program"], d["points"], balances, program_balances).summary
@@ -1492,6 +1617,7 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
         top_new = [d for k, d in fresh if not k.startswith(("held:", "watch:"))]
         n_unique = len({k.split(":", 1)[-1] for k, _ in fresh})  # same award can appear in 2 sections
         lead = max((d for _, d in fresh), key=lambda d: d.get("surplus_usd") or 0)  # biggest, not first
+        outage = rt_outage_note([d for _, d in fresh])
         import places
         try:
             deal_email.send_digest_email(
@@ -1506,8 +1632,10 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
                   "economy price — worth it if you'd fly up front, not cash you'd have spent.",
                   [d for d in top_new if is_premium(d)])],
                 subject=(f"✈️ {n_unique} new award deal{'s' if n_unique != 1 else ''}: "
-                         f"{places.city(lead['dest'])} {lead['cpp']:.1f}¢/pt"
+                         f"{places.city(lead['dest'])} {'~' if lead.get('rt_unavailable') else ''}"
+                         f"{lead['cpp']:.1f}¢/pt"
                          + (f", {len(held_new)} bookable with miles you have" if held_new else "")),
+                warning=outage,
                 intro=(f"Picked from {scan_stats['candidates']:,} award seats on seats.aero. Deals are "
                        "valued at the lower of the one-way fare and half a round trip, and re-priced "
                        "today against Google Flights where a fare was available for the exact date -- "

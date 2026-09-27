@@ -1037,3 +1037,66 @@ def test_verification_does_not_churn_through_the_quota(monkeypatch):
     # One lookup per published card, plus a little slack for genuine churn. The
     # interleaved version spent roughly double.
     assert len(lookups) <= 6, f"spent {len(lookups)} lookups to publish 4 cards"
+
+
+def test_no_round_trip_values_at_the_estimate_not_the_one_way_fare(monkeypatch):
+    """Sep 27: Google answered 8 of 48 round-trip checks, and every other deal was
+    valued at its full one-way fare, so six cleared bars they would have missed."""
+    monkeypatch.setattr(deal_finder.flight_search, "search_round_trip_offers", lambda *a, **k: [])
+    s = _scored("PLS", "ECONOMY", "jetblue", "JFK", 10000, 251, date="2026-11-13")
+    from datetime import date
+    assert deal_finder.apply_round_trip(s, {}, today=date(2026, 9, 27)) is False
+    assert s.rt_unavailable and s.round_trip_half is None
+    assert s.cash == pytest.approx(251 * deal_finder.RT_HALF_ESTIMATE_RATIO)
+    assert "estimated" in s.cash_basis and "$251" in s.cash_basis
+    assert s.cpp == pytest.approx((251 * deal_finder.RT_HALF_ESTIMATE_RATIO - 50) / 10000 * 100)
+
+
+def test_retry_recovers_a_round_trip_that_failed_earlier(monkeypatch):
+    from datetime import date, timedelta
+    depart = (date.today() + timedelta(days=40)).isoformat()
+    s = _scored("CPT", "BUSINESS", "united", "EWR", 88000, 5428, date=depart)
+    answers = iter([[], [_RT(6424.0, 2)]])
+    monkeypatch.setattr(deal_finder.flight_search, "search_round_trip_offers",
+                        lambda *a, **k: next(answers))
+    cache: dict = {}
+    deal_finder.apply_round_trip(s, cache)
+    assert s.rt_unavailable
+    stats = deal_finder.retry_round_trips([s], cache, log=lambda m: None, pause_s=0)
+    assert stats == {"retried": 1, "recovered": 1}
+    assert not s.rt_unavailable and s.cash == 3212.0 and "round trip" in s.cash_basis
+
+
+def test_rt_outage_note_only_when_most_deals_are_estimated():
+    ok = [{"rt_unavailable": False}] * 3 + [{"rt_unavailable": True}]
+    assert deal_finder.rt_outage_note(ok) is None
+    note = deal_finder.rt_outage_note([{"rt_unavailable": True}] * 3 + [{"rt_unavailable": False}])
+    assert note and "3 of these 4" in note
+
+
+def test_group_leader_is_the_option_needing_fewer_card_points(monkeypatch):
+    """EWR-VIE: United 88k beat Aeroplan 75k, both from Chase, because United's miles
+    are 'normally worth' less -- a ranking artifact that cost 20,000 more Chase points."""
+    import dataclasses
+    import funding
+    monkeypatch.setattr(funding, "active_bonus", lambda *a, **k: None)
+    funding._cheapest_transfer.cache_clear()
+    united = _scored("VIE", "BUSINESS", "united", "EWR", 88000, 3500)
+    aeroplan = _scored("VIE", "BUSINESS", "aeroplan", "EWR", 75000, 3300)
+    united.c = dataclasses.replace(united.c, program="United MileagePlus")
+    aeroplan.c = dataclasses.replace(aeroplan.c, program="Air Canada Aeroplan")
+    for s in (united, aeroplan):
+        deal_finder._finalize_cash(s)
+    # On each program's own baseline United looks better...
+    assert united.surplus > aeroplan.surplus
+    # ...but in the Chase points you'd actually transfer, Aeroplan is.
+    (leader,) = deal_finder.group_leaders([united, aeroplan])
+    assert leader is aeroplan and any("United" in a for a in leader.alternatives)
+    funding._cheapest_transfer.cache_clear()
+
+
+def test_return_note_flags_a_lopsided_pairing():
+    s = _scored("ANU", "ECONOMY", "american", "JFK", 9500, 308)
+    assert "11x" in deal_finder._return_note(s, 100000, 64)
+    assert "fees" in deal_finder._return_note(s, 9500, 1015)
+    assert deal_finder._return_note(s, 10000, 64) == ""

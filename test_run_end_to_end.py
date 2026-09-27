@@ -70,7 +70,7 @@ def test_resend_reports_again_without_wiping_the_email_history(tmp_path, monkeyp
     sent = []
     monkeypatch.setattr(deal_finder.deal_email, "is_configured", lambda: True)
     monkeypatch.setattr(deal_finder.deal_email, "send_digest_email",
-                        lambda sections, subject, intro: sent.append(subject))
+                        lambda sections, subject, intro, **kw: sent.append(subject))
 
     out = deal_finder.run(max_lookups=10, top=5, send_email=True, resend=True, log=lambda m: None)
     assert sent, "no email was sent, so the history code never ran"

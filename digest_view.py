@@ -64,6 +64,10 @@ def render_digest(digest: dict | None = None) -> None:
         "dates, origins and programs are listed under it. Award space moves fast: re-check on "
         "seats.aero before transferring."
     )
+    outage = deal_finder.rt_outage_note(top + (digest.get("held_miles") or [])
+                                        + [d for g in digest.get("watchlist") or [] for d in g.get("deals") or []])
+    if outage:
+        st.warning(outage)
     drift = digest.get("estimate_drift") or {}
     if drift and {"median_pct", "p90_pct", "n"} <= set(drift):
         ok = drift["median_pct"] <= deal_finder.ESTIMATE_DRIFT_WARN_PCT
@@ -234,6 +238,8 @@ def _deal_card(d: dict, rank: int | None, bar: float | None, surplus: float | No
                 st.caption(safe(f"{places.nice_date(ret['date'])} for {ret['points']:,} points + "
                                 f"${ret['taxes_usd']:,.0f} — {ret['round_trip_points']:,} points round trip "
                                 f"on {ret['program']}"))
+                if ret.get("note"):
+                    st.caption(safe(f"⚠️ {ret['note']}"))
             elif d.get("points") and (d.get("cabin") in ("BUSINESS", "FIRST") or d["points"] > 30000):
                 st.caption("↩️ One way only — no return award on these dates in this program."
                            if d.get("returns_checked")
