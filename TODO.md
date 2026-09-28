@@ -20,7 +20,8 @@ history before 2026-09-16.
 - [ ] **Re-check `program_values.json`** a few times a year (what each program's
       points are worth). Last verified 2026-09-23 from upgradedpoints.com.
 
-- [ ] **Keep `transfer_bonuses.json` current** (current entries end Sep 30 / Oct 15, 2026).
+- [ ] **Keep `transfer_bonuses.json` current** (current entries end Sep 30 / Oct 15, 2026). The email
+      now says so when the list has nothing running or hasn't been checked in 21 days.
 - [ ] Later: move the watchlist (`scan_config.json`) into the private balances Gist so
       travel plans aren't visible in the public repo.
 - [ ] Maybe later: tune the email after a week of real use (fewer/more watchlist deals,

@@ -54,7 +54,7 @@ For the scheduled Deal Finder, add the same keys as GitHub repo secrets (Setting
 
 ## Deal Finder — how deals are found
 
-`deal_finder.py` runs daily on GitHub Actions (`.github/workflows/deal_finder.yml`) or on demand with `make find`. The cron asks for 08:00 UTC, but GitHub's shared scheduler runs hours late, so the email usually lands mid-morning US Eastern — it's a daily digest, not a fixed time.
+`deal_finder.py` runs daily on GitHub Actions (`.github/workflows/deal_finder.yml`) or on demand with `make find`. The cron asks for 08:17 and 12:17 UTC. GitHub's shared scheduler runs hours late and sometimes skips a slot, so there are two; a scheduled run exits at once if today's digest already exists (a manual run always goes ahead). The email usually lands mid-morning US Eastern — it's a daily digest, not a fixed time.
 
 1. **Scan** (`award_scanner.py`) — seats.aero Cached Search across `scan_config.json` routes (plus watchlist destinations), one query per program per cabin, in programs your **active** point pools can transfer to **plus** programs you already hold miles in. ~170,000 awards for ~240 of the 1,000 daily API calls.
 2. **Estimate** (`fare_model.py`) — predicted cash fare with uncertainty for every award, giving the probability it clears that program's standout bar.

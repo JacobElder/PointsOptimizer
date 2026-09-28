@@ -9,9 +9,11 @@ name: Deal Finder
 # optional: miles already held in airline programs, kept out of the public repo).
 on:
   schedule:
-    # GitHub's shared scheduler runs late (3-6h observed), so aim early: this has
-    # been landing 10am-1pm ET. Not a guaranteed time.
-    - cron: "0 8 * * *"
+    # GitHub's shared scheduler runs late (3-6h observed) and sometimes skips a slot
+    # entirely (Sep 28: no run at all). Two slots, off the top of the hour where load
+    # peaks; the second exits at once when the first already produced today's digest.
+    - cron: "17 8 * * *"
+    - cron: "17 12 * * *"
   workflow_dispatch:
     inputs:
       resend:
@@ -32,13 +34,32 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v5
+      # Scheduled runs only: skip when today's digest already exists (the other slot,
+      # or a manual run, got there first). A second full scan would spend another
+      # ~500 of the 1,000 seats.aero calls a day shared with your own searches, and
+      # re-email nothing new. Checkout happens when the job starts, so a run queued
+      # behind another (same concurrency group) sees the digest it just pushed.
+      # A manual run always goes ahead.
+      - name: Already ran today?
+        id: guard
+        if: github.event_name == 'schedule'
+        run: |
+          today=$(date -u +%Y-%m-%d)
+          made=$(python3 -c "import json; print(json.load(open('deal_digest.json')).get('generated_at', '')[:10])" 2>/dev/null || true)
+          if [ "$made" = "$today" ]; then
+            echo "Today's digest already exists ($made); nothing to do."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
       - uses: actions/setup-python@v6
+        if: steps.guard.outputs.skip != 'true'
         with:
           python-version: "3.12"
           cache: pip
       - name: Install dependencies
+        if: steps.guard.outputs.skip != 'true'
         run: pip install -r requirements.txt
       - name: Check secrets
+        if: steps.guard.outputs.skip != 'true'
         env:
           SEATS_AERO_API_KEY: ${{ secrets.SEATS_AERO_API_KEY }}
           GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
@@ -55,6 +76,7 @@ jobs:
             exit 1
           fi
       - name: Find deals
+        if: steps.guard.outputs.skip != 'true'
         env:
           SEATS_AERO_API_KEY: ${{ secrets.SEATS_AERO_API_KEY }}
           SERPAPI_KEY: ${{ secrets.SERPAPI_KEY }}
@@ -64,7 +86,7 @@ jobs:
           PROGRAM_BALANCES: ${{ secrets.PROGRAM_BALANCES }} # fallback when GIST_TOKEN isn't set
         run: python deal_finder.py ${{ inputs.resend && '--resend' || '' }}
       - name: Commit digest and quotes
-        if: always()
+        if: always() && steps.guard.outputs.skip != 'true'
         run: |
           git config user.name "Deal Radar bot"
           git config user.email "deal-radar-bot@users.noreply.github.com"

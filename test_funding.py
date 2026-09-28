@@ -52,3 +52,33 @@ def test_covered_accounts_for_the_1000_point_transfer_increment():
     p = funding.plan("United MileagePlus", 58900, {"chase_ur": 58900}, {})  # 1:1, no bonus
     top = p.pools[0]
     assert top["covered"] is False and "not enough" in p.summary
+
+
+def test_bonus_ending_soon_says_so_and_what_it_costs_after():
+    from datetime import date
+    import funding
+    from cards_data import POOLS
+    partner = next(pt for pt in POOLS["chase_ur"].partners if pt.name == "Air Canada Aeroplan")
+    bonus = {"bonus_pct": 20, "ends": "2026-09-30"}
+    assert funding._bonus_phrase(bonus, 75000, partner, on=date(2026, 9, 20)) == \
+        "+20% transfer bonus until Sep 30"
+    assert funding._bonus_phrase(bonus, 75000, partner, on=date(2026, 9, 28)).endswith(
+        "— 2 days left; 75,000 without it")
+    assert "ends today" in funding._bonus_phrase(bonus, 75000, partner, on=date(2026, 9, 30))
+
+
+def test_bonus_list_health_flags_empty_and_stale_lists(tmp_path, monkeypatch):
+    import json
+    from datetime import date
+    import funding
+    path = tmp_path / "bonuses.json"
+    monkeypatch.setattr(funding, "BONUSES_PATH", str(path))
+    path.write_text(json.dumps({"bonuses": [
+        {"pool": "chase_ur", "partner": "Air Canada Aeroplan", "bonus_pct": 20,
+         "starts": "2026-09-01", "ends": "2026-10-30", "verified": "2026-09-20"},
+        # A pool you can't transfer from doesn't count as a running bonus.
+        {"pool": "cap1_miles", "partner": "JAL Mileage Bank", "bonus_pct": 30,
+         "starts": "2026-09-01", "ends": "2026-12-31", "verified": "2026-09-20"}]}))
+    assert funding.bonus_list_health(date(2026, 9, 28)) is None
+    assert "last checked 25 days ago" in funding.bonus_list_health(date(2026, 10, 15))
+    assert "No transfer bonuses" in funding.bonus_list_health(date(2026, 11, 1))

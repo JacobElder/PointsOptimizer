@@ -70,7 +70,7 @@ class PayPlan:
                 if partner.changes_on and partner.ratio_after
                 and partner.ratio_on() == partner.ratio else "")
         line = (f"{prefix}{verb} {_round_up(best['pts_needed']):,} {best['pool'].currency_name}"
-                + (f" (+{bonus['bonus_pct']}% transfer bonus until {date.fromisoformat(bonus['ends']):%b %-d})"
+                + (f" ({_bonus_phrase(bonus, self.top_up, partner)})"
                    if bonus else f" ({partner.ratio_on()}{soon})"))
         if best["balance"]:
             line += f": you have {best['balance']:,}" + ("" if best["covered"] else ", not enough")
@@ -78,6 +78,50 @@ class PayPlan:
         if others:
             line += " · or " + ", ".join(r["pool"].currency_name for r in others)
         return line
+
+
+BONUS_ENDING_DAYS = 3  # a bonus ending within this many days says so, with the cost without it
+BONUS_LIST_STALE_DAYS = 21  # transfer_bonuses.json not re-checked in this long is flagged
+
+
+def _bonus_phrase(bonus: dict, top_up: int, partner, on: date | None = None) -> str:
+    """"+20% transfer bonus until Sep 30", plus the deadline and what it costs after
+    when it ends within BONUS_ENDING_DAYS: the bonus is the reason this program won,
+    and a transfer made a day late needs ~20% more points."""
+    ends = date.fromisoformat(bonus["ends"])
+    phrase = f"+{bonus['bonus_pct']}% transfer bonus until {ends:%b %-d}"
+    left = (ends - (on or date.today())).days
+    if 0 <= left <= BONUS_ENDING_DAYS:
+        when = "ends today" if left == 0 else f"{left} day{'s' if left > 1 else ''} left"
+        without = _round_up(top_up / transfer_ratio_multiplier(partner.ratio_on()))
+        phrase += f" — {when}; {without:,} without it"
+    return phrase
+
+
+def bonus_list_health(on: date | None = None) -> str | None:
+    """A note when transfer_bonuses.json has gone stale.
+
+    Expired entries are ignored silently, so once the last bonus ends every card
+    quietly shows standard ratios, and the program choice (which counts bonuses)
+    stops reflecting bonuses running now. Nothing else would say the list needs a look.
+    """
+    on = on or date.today()
+    try:
+        with open(BONUSES_PATH) as f:
+            bonuses = json.load(f).get("bonuses", [])
+    except (OSError, json.JSONDecodeError):
+        return "The transfer bonus list (transfer_bonuses.json) couldn't be read."
+    usable = [b for b in bonuses if b.get("pool") in POOLS and pool_is_active(b["pool"])]
+    if not any(str(b.get("ends", "")) >= str(on) for b in usable):
+        return ("No transfer bonuses are listed as running or upcoming. If one is on, add it to "
+                "transfer_bonuses.json so transfer amounts and program choices count it.")
+    checked = [str(b.get("verified", "")) for b in bonuses if b.get("verified")]
+    if checked:
+        age = (on - date.fromisoformat(max(checked))).days
+        if age > BONUS_LIST_STALE_DAYS:
+            return (f"The transfer bonus list was last checked {age} days ago; new bonuses "
+                    "may be missing from transfer_bonuses.json.")
+    return None
 
 
 def plan(program: str, points: int, balances: dict[str, int] | None = None,

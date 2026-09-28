@@ -1686,6 +1686,9 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
         n_unique = len({k.split(":", 1)[-1] for k, _ in fresh})  # same award can appear in 2 sections
         lead = max((d for _, d in fresh), key=lambda d: d.get("surplus_usd") or 0)  # biggest, not first
         outage = rt_outage_note([d for _, d in fresh])
+        bonus_note = funding.bonus_list_health()
+        if bonus_note:
+            log(f"::warning::{bonus_note}")
         import places
         try:
             deal_email.send_digest_email(
@@ -1708,7 +1711,8 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
                        "valued at the lower of the one-way fare and half a round trip, and re-priced "
                        "today against Google Flights where a fare was available for the exact date -- "
                        "cards that say so used a nearby date instead. Awards the estimate rated "
-                       "unpromising were never priced, so a bargain can still be missed."),
+                       "unpromising were never priced, so a bargain can still be missed."
+                       + (f" {bonus_note}" if bonus_note else "")),
             )
             emailed = n_unique
             for k, _ in fresh:
