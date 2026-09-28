@@ -1100,3 +1100,44 @@ def test_return_note_flags_a_lopsided_pairing():
     assert "11x" in deal_finder._return_note(s, 100000, 64)
     assert "fees" in deal_finder._return_note(s, 9500, 1015)
     assert deal_finder._return_note(s, 10000, 64) == ""
+
+
+def _real(s, program):
+    import dataclasses
+    s.c = dataclasses.replace(s.c, program=program)
+    deal_finder._finalize_cash(s)
+    return s
+
+
+def test_alternatives_name_their_date():
+    leader = _scored("EDI", "BUSINESS", "united", "JFK", 115000, 2887, date="2026-10-05")
+    alt = _scored("EDI", "BUSINESS", "alaska", "JFK", 45000, 1426, date="2026-10-19")
+    line = deal_finder._alt_line(alt, leader)
+    assert "Oct 19" in line and "70,000 fewer points" in line
+    alt.c.date = leader.c.date
+    assert "same day" in deal_finder._alt_line(alt, leader)
+
+
+def test_stale_program_choice_is_switched_after_repricing(monkeypatch):
+    """JFK-EDI: United was chosen during selection, re-pricing then lowered its fare,
+    and Alaska -- 45,000 Bilt instead of ~110,000 Chase -- was worth more by publication."""
+    import funding
+    monkeypatch.setattr(funding, "active_bonus", lambda *a, **k: None)
+    funding._cheapest_transfer.cache_clear()
+    united = _real(_scored("EDI", "BUSINESS", "united", "JFK", 115000, 3100, date="2026-10-05"),
+                   "United MileagePlus")
+    alaska = _real(_scored("EDI", "BUSINESS", "alaska", "JFK", 45000, 1426, date="2026-10-19"),
+                   "Alaska Atmos Rewards")
+    united.trip = alaska.trip = _trip()
+    (leader,) = deal_finder.group_leaders([united, alaska])
+    assert leader is united and leader.alt_awards == [alaska]
+    # Fresh re-pricing lowers United's fare after the choice was made.
+    united.one_way_cash = 2887.0
+    deal_finder._finalize_cash(united)
+    swaps = deal_finder.promote_better_alternatives([united], [united, alaska], None, None, set(), False)
+    assert swaps == {id(united): alaska}
+    assert alaska.alt_awards[0] is united and "United" in alaska.alternatives[0]
+    # An alternative whose flights were never confirmed doesn't replace a checked leader.
+    alaska.trip = None
+    assert deal_finder.promote_better_alternatives([united], [united, alaska], None, None, set(), False) == {}
+    funding._cheapest_transfer.cache_clear()

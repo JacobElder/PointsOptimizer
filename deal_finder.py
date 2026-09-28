@@ -170,6 +170,7 @@ class Scored:
     surplus: float | None = None
     other_dates: list[str] = field(default_factory=list)
     alternatives: list[str] = field(default_factory=list)
+    alt_awards: list["Scored"] = field(default_factory=list)  # the awards behind `alternatives`
     held_miles: int = 0  # miles you already hold in this award's program
     trip: award_trips.TripInfo | None = None
     quote: cash_quotes.Quote | None = None
@@ -999,23 +1000,78 @@ def group_leaders(scored: list[Scored], bar_fn=None) -> list[Scored]:
         combo = (s.c.source, s.c.origin)
         if g is None:
             best[s.group_key], seen[s.group_key] = s, {combo}
-            s.other_dates, s.alternatives = [], []
+            s.other_dates, s.alternatives, s.alt_awards = [], [], []
         elif combo == (g.c.source, g.c.origin):
             if s.c.date != g.c.date and s.c.date not in g.other_dates:
                 g.other_dates.append(s.c.date)
         elif combo not in seen[s.group_key]:
             seen[s.group_key].add(combo)
-            # Alternatives sort by CPP, so one that costs FEWER points can sit
-            # below the leader; for most bookings that is the better option.
-            fewer = (f" — {g.c.points - s.c.points:,} fewer points"
-                     if s.c.points < g.c.points else "")
-            g.alternatives.append(
-                f"{s.c.origin} via {s.c.program} {s.c.points:,} pts ({s.cpp:.2f}¢ one-way){fewer}")
+            g.alt_awards.append(s)
+            g.alternatives.append(_alt_line(s, g))
     leaders = sorted(best.values(), key=lambda s: -s.surplus_vs(bar_fn(s)))
     for s in leaders:
         s.other_dates.sort()
-        s.alternatives = s.alternatives[:3]
+        s.alternatives, s.alt_awards = s.alternatives[:3], s.alt_awards[:3]
     return leaders
+
+
+def _alt_line(s: Scored, leader: Scored) -> str:
+    """One alternatives entry. Names the date: the alternative is the best award in
+    its program, which is often not on the leader's day, so "70,000 fewer points"
+    alone read as the same flight for less."""
+    # Alternatives aren't sorted by points, so one that costs FEWER points can sit
+    # below the leader; for most bookings that is the better option.
+    fewer = (f" — {leader.c.points - s.c.points:,} fewer points"
+             if s.c.points < leader.c.points else "")
+    day = datetime.strptime(s.c.date, "%Y-%m-%d")
+    when = "same day" if s.c.date == leader.c.date else (
+        f"{day:%b} {day.day}" + (f", {day.year}" if s.c.date[:4] != leader.c.date[:4] else ""))
+    return f"{s.c.origin} via {s.c.program}, {when}: {s.c.points:,} pts ({s.cpp:.2f}¢ one-way){fewer}"
+
+
+def promote_better_alternatives(deals: list[Scored], scored: list[Scored], rt_cache: dict | None,
+                                trip_cache: dict | None, sources_reporting_seats: set[str],
+                                round_trip: bool, bar_fn=None, log=None) -> dict[int, Scored]:
+    """Re-check each published deal against its alternatives once fares have settled.
+
+    The program is chosen inside the selection loop, but fresh re-pricing and fare
+    reconciliation move the leader's fare afterwards, so the choice can go stale:
+    JFK-EDI published United 115,000 (~110k Chase) when Alaska 45,000 (Bilt) was
+    worth more by then in the points you'd actually spend. An alternative that now
+    looks better gets the same checks the leader had (round trip, live seats.aero)
+    before it replaces the leader. Returns {id(old leader): new leader}.
+    """
+    bar_fn = bar_fn or (lambda s: s.floor)
+    swaps: dict[int, Scored] = {}
+    for d in deals:
+        if d.funded_surplus is None:
+            continue
+        for a in sorted((a for a in d.alt_awards if a.funded_surplus is not None
+                         and a.funded_surplus > d.funded_surplus),
+                        key=lambda a: -a.funded_surplus)[:2]:
+            if round_trip and rt_cache is not None:
+                apply_round_trip(a, rt_cache)
+            if trip_cache is not None and a.trip is None and not a.trip_checked:
+                attach_trips([a], trip_cache, log=log)
+            if trip_cache is not None and not still_bookable(a, sources_reporting_seats):
+                a.dropped = True
+                continue
+            if (a.cpp is None or a.cpp < bar_fn(a) or a.unverified
+                    or a.funded_surplus is None or a.funded_surplus <= d.funded_surplus):
+                continue
+            a.alt_awards = [d] + [x for x in d.alt_awards if x is not a]
+            a.alternatives = [_alt_line(x, a) for x in a.alt_awards][:3]
+            a.alt_awards = a.alt_awards[:3]
+            a.other_dates = sorted({x.c.date for x in scored
+                                    if (x.c.source, x.c.origin, x.group_key) == (a.c.source, a.c.origin, a.group_key)
+                                    and x.c.date != a.c.date and not x.dropped
+                                    and x.cpp is not None and x.cpp >= bar_fn(x)})
+            swaps[id(d)] = a
+            if log:
+                log(f"Switched {d.c.origin}-{d.c.dest} {d.c.cabin} from {d.c.program} to "
+                    f"{a.c.program}: worth more in the points you'd actually spend")
+            break
+    return swaps
 
 
 def _cap_per_program(leaders: list[Scored], cap: int) -> list[Scored]:
@@ -1550,6 +1606,18 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
                 d["watch_surplus_usd"] = round(s.surplus_vs(g["bar_fn"](s)))
     else:
         reprice_stats = {}
+
+    # After re-pricing: that is what moves the leader's fare and can make the program
+    # chosen during selection the wrong one. Held-miles deals stay put -- the point of
+    # that section is that no transfer is needed.
+    swaps = promote_better_alternatives(ranked, scored, rt_cache, trip_cache, sources_reporting_seats,
+                                        round_trip, log=log)
+    ranked = sorted((swaps.get(id(s), s) for s in ranked), key=lambda s: -s.rank_value)
+    for g in watch:
+        g_swaps = promote_better_alternatives([s for s, _ in g["deals"]], scored, rt_cache, trip_cache,
+                                              sources_reporting_seats, round_trip,
+                                              bar_fn=g["bar_fn"], log=log)
+        g["deals"] = [(g_swaps[id(s)], None) if id(s) in g_swaps else (s, d) for s, d in g["deals"]]
 
     ranked = dedupe_sections(held, watch, ranked)
 
