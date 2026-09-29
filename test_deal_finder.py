@@ -1141,3 +1141,41 @@ def test_stale_program_choice_is_switched_after_repricing(monkeypatch):
     alaska.trip = None
     assert deal_finder.promote_better_alternatives([united], [united, alaska], None, None, set(), False) == {}
     funding._cheapest_transfer.cache_clear()
+
+
+def test_a_close_connection_does_not_lead_over_a_nonstop(monkeypatch):
+    """Sep 29: EWR-VIE led with a Krakow connection (Oct 23) over the still-bookable
+    Austrian nonstop (Oct 11) on an $18 difference."""
+    import funding
+    monkeypatch.setattr(funding, "active_bonus", lambda *a, **k: None)
+    funding._cheapest_transfer.cache_clear()
+    via_krk = _real(_scored("VIE", "BUSINESS", "aeroplan", "EWR", 75000, 3485, date="2026-10-23"),
+                    "Air Canada Aeroplan")
+    nonstop = _real(_scored("VIE", "BUSINESS", "aeroplan", "EWR", 75000, 3467, date="2026-10-11"),
+                    "Air Canada Aeroplan")
+    via_krk.trip = _trip(nonstop=False, stops=1, connections=["KRK"])
+    nonstop.trip = _trip(nonstop=True)
+    assert via_krk.funded_surplus > nonstop.funded_surplus  # money alone picks Krakow
+    (leader,) = deal_finder.group_leaders([via_krk, nonstop])
+    assert leader is nonstop and "2026-10-23" in leader.other_dates
+    # An unchecked date isn't discounted for stops it may not have, so it leads and
+    # gets checked next; that is how the nonstop date gets looked at at all.
+    nonstop.trip = None
+    (leader,) = deal_finder.group_leaders([via_krk, nonstop])
+    assert leader is nonstop
+    # A connection that is clearly worth more still leads.
+    big = _real(_scored("VIE", "BUSINESS", "aeroplan", "EWR", 75000, 4500, date="2026-10-23"),
+                "Air Canada Aeroplan")
+    big.trip = _trip(nonstop=False, stops=1, connections=["KRK"])
+    nonstop.trip = _trip(nonstop=True)
+    (leader,) = deal_finder.group_leaders([big, nonstop])
+    assert leader is big
+    funding._cheapest_transfer.cache_clear()
+
+
+def test_rank_value_unchanged_by_the_quality_factor_refactor():
+    s = _scored("ATH", "BUSINESS", "united", "EWR", 88000, 3500)
+    s.trip = _trip(mixed_cabin=True, airport_changes=["LGA"])
+    assert s.rank_value == pytest.approx(s.surplus * 0.4 * 0.5)
+    s.trip = None
+    assert s.rank_value == pytest.approx(s.surplus * deal_finder.UNVERIFIED_PENALTY)

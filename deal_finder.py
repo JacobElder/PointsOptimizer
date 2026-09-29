@@ -77,6 +77,10 @@ RT_RETRY_MAX = 60  # round-trip lookups re-tried at the end of the run, after th
 RT_RETRY_PAUSE_S = 2.0  # spacing between retries: failures come in bursts when Google throttles
 RT_OUTAGE_SHARE = 0.3  # above this share of reported deals on an estimate, the email says so
 UNVERIFIED_PENALTY = 0.6  # never re-checked live: stops, seats and current price unknown
+# Within one card, a confirmed connection must be worth this much more than a nonstop
+# to lead it. Chosen so a small fare wobble can't flip a nonstop to a connection;
+# long detours are discounted separately (slow) on top of this.
+CONNECTION_MARGIN = 0.15
 # Measured on the real quote store: the haircut from pooling dates is nearly flat
 # from a 2-day window (6.8% mean) to 21 days (8.8%), so this is day-to-day fare
 # volatility, not seasonality. It only climbs past ~21 days (30 days: 10.5%), and
@@ -283,30 +287,59 @@ class Scored:
         return notes
 
     @property
+    def quality_factor(self) -> float:
+        """Discounts for what makes a deal worse than its CPP says, as far as it is known.
+
+        Excludes `unverified`: that is "not checked yet", not a flaw of the trip.
+        """
+        f = 1.0
+        if self.trip and self.trip.mixed_cabin:
+            f *= 0.4
+        if self.trip and self.trip.airport_changes:
+            f *= 0.5  # self-transfer between airports mid-trip
+        if self.slow:
+            f *= 0.75
+        if (self.age_days or 0) > 5:
+            f *= 0.85
+        if self.rt_unavailable:
+            f *= NO_ROUND_TRIP_PENALTY
+        if self.taxes_unknown:
+            f *= UNKNOWN_TAXES_PENALTY  # CPP was computed as if the taxes were $0
+        elif self.taxes_estimated:
+            f *= ESTIMATED_TAXES_PENALTY  # a figure, but not this award's own
+        return f
+
+    @property
     def rank_value(self) -> float:
         """Dollar surplus, discounted for things that make a deal worse than its CPP says."""
         v = self.surplus or 0.0
         if v <= 0:
             return v  # discounts on a negative surplus would rank a worse deal higher
-        if self.trip and self.trip.mixed_cabin:
-            v *= 0.4
-        if self.trip and self.trip.airport_changes:
-            v *= 0.5  # self-transfer between airports mid-trip
-        if self.slow:
-            v *= 0.75
-        if (self.age_days or 0) > 5:
-            v *= 0.85
+        v *= self.quality_factor
         if self.history_pct is not None:
             # Nudge by how unusual this price is for this route, not just its size.
             v *= 1 + HISTORY_WEIGHT * (self.history_pct - 0.5) * 2
-        if self.rt_unavailable:
-            v *= NO_ROUND_TRIP_PENALTY
         if self.unverified:
             v *= UNVERIFIED_PENALTY
-        if self.taxes_unknown:
-            v *= UNKNOWN_TAXES_PENALTY  # CPP was computed as if the taxes were $0
-        elif self.taxes_estimated:
-            v *= ESTIMATED_TAXES_PENALTY  # a figure, but not this award's own
+        return v
+
+    @property
+    def choice_value(self) -> float | None:
+        """Which award leads a card (same destination and cabin): funded surplus after
+        the quality discounts, and a confirmed connection must beat a nonstop by
+        CONNECTION_MARGIN.
+
+        Money alone let EWR-VIE lead with a Krakow connection over the Austrian
+        nonstop two weeks earlier, still bookable, on an $18 difference. An award not
+        yet checked carries no stop discount, so it leads, gets checked, and only
+        then pays for its stops -- which is what gets a nonstop date looked at.
+        """
+        v = self.funded_surplus
+        if v is None or v <= 0:
+            return v
+        v *= self.quality_factor
+        if self.trip is not None and not self.trip.nonstop:
+            v /= 1 + CONNECTION_MARGIN
         return v
 
     @property
@@ -993,9 +1026,10 @@ def group_leaders(scored: list[Scored], bar_fn=None) -> list[Scored]:
     confirmed = [s for s in scored if s.cpp is not None and s.cpp >= bar_fn(s)]
     best: dict[tuple, Scored] = {}
     seen: dict[tuple, set] = {}
-    # The leader is whichever option costs you least for what it's worth, in the
-    # points you'd actually spend; the groups are then ranked by surplus as before.
-    for s in sorted(confirmed, key=lambda s: -s.funded_surplus):
+    # The leader is whichever option is worth most for the points you'd actually
+    # spend, after quality discounts and a nonstop preference (choice_value); the
+    # groups are then ranked by surplus as before.
+    for s in sorted(confirmed, key=lambda s: -s.choice_value):
         g = best.get(s.group_key)
         combo = (s.c.source, s.c.origin)
         if g is None:
@@ -1008,7 +1042,11 @@ def group_leaders(scored: list[Scored], bar_fn=None) -> list[Scored]:
             seen[s.group_key].add(combo)
             g.alt_awards.append(s)
             g.alternatives.append(_alt_line(s, g))
-    leaders = sorted(best.values(), key=lambda s: -s.surplus_vs(bar_fn(s)))
+    # Ties broken by rank_value, which discounts unchecked awards: otherwise the
+    # tie order follows the choice sort above, where an unchecked award has no stop
+    # discount yet, and selection would keep picking unchecked cards over checked
+    # ones -- a seats.aero lookup each.
+    leaders = sorted(best.values(), key=lambda s: (-s.surplus_vs(bar_fn(s)), -s.rank_value))
     for s in leaders:
         s.other_dates.sort()
         s.alternatives, s.alt_awards = s.alternatives[:3], s.alt_awards[:3]
@@ -1044,11 +1082,11 @@ def promote_better_alternatives(deals: list[Scored], scored: list[Scored], rt_ca
     bar_fn = bar_fn or (lambda s: s.floor)
     swaps: dict[int, Scored] = {}
     for d in deals:
-        if d.funded_surplus is None:
+        if d.choice_value is None:
             continue
-        for a in sorted((a for a in d.alt_awards if a.funded_surplus is not None
-                         and a.funded_surplus > d.funded_surplus),
-                        key=lambda a: -a.funded_surplus)[:2]:
+        for a in sorted((a for a in d.alt_awards if a.choice_value is not None
+                         and a.choice_value > d.choice_value),
+                        key=lambda a: -a.choice_value)[:2]:
             if round_trip and rt_cache is not None:
                 apply_round_trip(a, rt_cache)
             if trip_cache is not None and a.trip is None and not a.trip_checked:
@@ -1057,7 +1095,7 @@ def promote_better_alternatives(deals: list[Scored], scored: list[Scored], rt_ca
                 a.dropped = True
                 continue
             if (a.cpp is None or a.cpp < bar_fn(a) or a.unverified
-                    or a.funded_surplus is None or a.funded_surplus <= d.funded_surplus):
+                    or a.choice_value is None or a.choice_value <= d.choice_value):
                 continue
             a.alt_awards = [d] + [x for x in d.alt_awards if x is not a]
             a.alternatives = [_alt_line(x, a) for x in a.alt_awards][:3]
