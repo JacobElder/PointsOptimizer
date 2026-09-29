@@ -7,11 +7,19 @@ name: Deal Finder
 # Needs repo secrets: SEATS_AERO_API_KEY, GMAIL_ADDRESS, GMAIL_APP_PASSWORD
 # (SERPAPI_KEY optional: capped fallback if free lookups fail; PROGRAM_BALANCES
 # optional: miles already held in airline programs, kept out of the public repo).
+#
+# Starting it: GitHub's scheduler has been dropping scheduled runs since late Aug 2026
+# (github.com/orgs/community/discussions/207346; this repo got none on Sep 28-29), so
+# there are three layers, and every layer after the first exits at once if today's
+# digest already exists:
+#   1. the two cron slots below;
+#   2. cron-job.org calling workflow_dispatch with backup=true (14:00 UTC);
+#   3. a Claude routine (16:00 UTC) that pushes a line to .github/run-request, which
+#      needs no token because the routine can already push to this repo.
+# A plain manual "Run workflow" (backup unticked) always runs.
 on:
   schedule:
-    # GitHub's shared scheduler runs late (3-6h observed) and sometimes skips a slot
-    # entirely (Sep 28: no run at all). Two slots, off the top of the hour where load
-    # peaks; the second exits at once when the first already produced today's digest.
+    # Off the top of the hour, where scheduler load peaks.
     - cron: "17 8 * * *"
     - cron: "17 12 * * *"
   workflow_dispatch:
@@ -20,6 +28,14 @@ on:
         description: "Email all current deals, even ones already sent (for testing)"
         type: boolean
         default: false
+      backup:
+        description: "Backup trigger: skip if today's digest already exists"
+        type: boolean
+        default: false
+  push:
+    # Any branch: the routine may only be allowed to push to claude/* branches.
+    # The job always checks out and commits to main regardless.
+    paths: [".github/run-request"]
 
 concurrency:
   group: deal-radar
@@ -34,15 +50,17 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v5
-      # Scheduled runs only: skip when today's digest already exists (the other slot,
-      # or a manual run, got there first). A second full scan would spend another
-      # ~500 of the 1,000 seats.aero calls a day shared with your own searches, and
-      # re-email nothing new. Checkout happens when the job starts, so a run queued
-      # behind another (same concurrency group) sees the digest it just pushed.
-      # A manual run always goes ahead.
+        with:
+          ref: main  # a run requested from a claude/* branch still works on main
+      # Scheduled and backup runs: skip when today's digest already exists (another
+      # layer got there first). A second full scan would spend another ~500 of the
+      # 1,000 seats.aero calls a day shared with your own searches, and re-email
+      # nothing new. Checkout happens when the job starts, so a run queued behind
+      # another (same concurrency group) sees the digest it just pushed.
+      # A plain manual run always goes ahead.
       - name: Already ran today?
         id: guard
-        if: github.event_name == 'schedule'
+        if: github.event_name == 'schedule' || github.event_name == 'push' || inputs.backup
         run: |
           today=$(date -u +%Y-%m-%d)
           made=$(python3 -c "import json; print(json.load(open('deal_digest.json')).get('generated_at', '')[:10])" 2>/dev/null || true)

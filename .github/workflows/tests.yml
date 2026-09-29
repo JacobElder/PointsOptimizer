@@ -3,6 +3,7 @@ name: Tests
 on:
   push:
     branches: [main]
+    paths-ignore: [".github/run-request"]  # the backup trigger, not a code change
   pull_request:
     branches: [main]
 
