@@ -1068,8 +1068,8 @@ def promote_better_alternatives(deals: list[Scored], scored: list[Scored], rt_ca
                                     and x.cpp is not None and x.cpp >= bar_fn(x)})
             swaps[id(d)] = a
             if log:
-                log(f"Switched {d.c.origin}-{d.c.dest} {d.c.cabin} from {d.c.program} to "
-                    f"{a.c.program}: worth more in the points you'd actually spend")
+                log(f"Switched {d.c.dest} {d.c.cabin} from {d.c.origin} via {d.c.program} to "
+                    f"{a.c.origin} via {a.c.program}: worth more in the points you'd actually spend")
             break
     return swaps
 
