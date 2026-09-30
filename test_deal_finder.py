@@ -1179,3 +1179,38 @@ def test_rank_value_unchanged_by_the_quality_factor_refactor():
     assert s.rank_value == pytest.approx(s.surplus * 0.4 * 0.5)
     s.trip = None
     assert s.rank_value == pytest.approx(s.surplus * deal_finder.UNVERIFIED_PENALTY)
+
+
+def test_unchecked_multi_flight_award_counts_as_a_connection():
+    """seats.aero direct=False means more than one flight number, so it can't be a
+    nonstop: no reason to check it hoping it is one."""
+    s = _scored("JNB", "BUSINESS", "united", "EWR", 88000, 3500)
+    assert s.trip is None and not s.connecting  # direct=True: might be a nonstop
+    s.c.direct = False
+    assert s.connecting
+    s.trip = _trip(nonstop=True)  # confirmed flight details win over the flag
+    assert not s.connecting
+
+
+def test_selection_that_runs_out_of_rounds_is_still_verified(monkeypatch):
+    """Sep 30: selection churned for 12 rounds and four deals were emailed without a
+    live check. Whatever is about to be published gets checked anyway."""
+    checked = []
+
+    def _fetch(aid, cabin, points):
+        checked.append(aid)
+        return award_trips.TripInfo(
+            flights=["XX1"], connections=["ABC"], duration_min=600, departs_at="", arrives_at="",
+            leg_cabins=[cabin.lower()], mixed_cabin=False, lower_cabin_legs=[], carriers="XX",
+            booking_url=None, booking_label=None, other_itineraries=0, airport_changes=[],
+            stops=1, nonstop=False, seats=2, current_points=points, price_matches=True)
+
+    monkeypatch.setattr(deal_finder.award_trips, "fetch", _fetch)
+    scored = [_scored(d, "BUSINESS", "aeroplan", "JFK", 60000, 3000)
+              for d in ["ZRH", "FRA", "CAI", "LIS"]]
+    for s in scored:
+        s.c.id = f"{s.c.dest}:id"
+    published = deal_finder.verify_selection(scored, lambda ls: ls[:2], rt_cache=None, trip_cache={},
+                                             sources_reporting_seats=set(), round_trip=False,
+                                             max_rounds=0)
+    assert published and all(s.trip is not None for s in published)

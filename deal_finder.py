@@ -338,9 +338,25 @@ class Scored:
         if v is None or v <= 0:
             return v
         v *= self.quality_factor
-        if self.trip is not None and not self.trip.nonstop:
+        if self.connecting:
             v /= 1 + CONNECTION_MARGIN
         return v
+
+    @property
+    def connecting(self) -> bool:
+        """Known to involve a connection.
+
+        Confirmed from flight details when checked. Before that, seats.aero's
+        `direct` flag can still rule a nonstop OUT: it means "one flight number", and
+        a nonstop always is one, so direct=False is certainly a connection (direct=True
+        proves nothing -- ET515 EWR-LFW-ADD is one number with a stop). Without this,
+        every unchecked date on a route with no nonstop at all looked like a possible
+        nonstop, led, was checked, and was demoted in turn: Sep 30 spent 155 lookups
+        and ran out of rounds, publishing four deals unchecked.
+        """
+        if self.trip is not None:
+            return not self.trip.nonstop
+        return not self.c.direct
 
     @property
     def bookable_now(self) -> bool:
@@ -1395,6 +1411,19 @@ def verify_selection(scored: list[Scored], select, rt_cache: dict | None, trip_c
             elif round_trip and rt_cache is not None and s.trip is not None:
                 apply_round_trip(s, rt_cache)  # cached offers: re-match now stops are known
         selection = current_selection()
+    else:
+        # Out of rounds with some of the selection still unchecked (Sep 30: four
+        # deals, including JFK-HND, were emailed without a live check or a round
+        # trip). Check what is about to be published instead of shipping it
+        # unchecked, and don't regroup afterwards: regrouping is what churns.
+        unchecked = [s for s in selection if not s.dropped and trip_cache is not None
+                     and s.trip is None and not s.trip_checked]
+        if unchecked and log:
+            log(f"::warning::Selection didn't settle in {max_rounds} rounds; checking the "
+                f"{len(unchecked)} unchecked deal(s) it would publish")
+        _verify(unchecked, rt_cache, trip_cache, sources_reporting_seats, round_trip, log=log)
+        selection = [s for s in selection
+                     if not s.dropped and s.cpp is not None and s.cpp >= bar_fn(s)]
     return [s for s in selection if not s.dropped]
 
 
