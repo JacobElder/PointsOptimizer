@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import json
 import os
+import time
 from dataclasses import asdict, dataclass
 from datetime import date, datetime, timedelta, timezone
 
@@ -132,6 +133,37 @@ def remaining_calls(session: requests.Session | None = None) -> int | None:
         return None
 
 
+PAGE_TIMEOUT_S = 90
+PAGE_RETRY_WAITS_S = (10, 30)  # pauses before each retry of a failed page
+MAX_CONSECUTIVE_FAILURES = 4  # program/cabin slices failing in a row = seats.aero is down
+
+
+def _get_page(http, key: str, page: dict, stats: dict, waits=None):
+    """One search page, retried on timeouts, connection errors and 5xx.
+
+    Returns the response (including a 429, which the caller handles), or None if
+    every attempt failed. Other 4xx (a bad key, a malformed query) still raise:
+    retrying won't fix them and they should fail the run loudly.
+    """
+    waits = PAGE_RETRY_WAITS_S if waits is None else waits
+    for attempt in range(len(waits) + 1):
+        if attempt:
+            time.sleep(waits[attempt - 1])
+        try:
+            resp = http.get(seats_aero.SEARCH_URL, headers={"Partner-Authorization": key},
+                            params=page, timeout=PAGE_TIMEOUT_S)
+        except (requests.Timeout, requests.ConnectionError):
+            stats["calls"] += 1  # it may still have counted against the daily quota
+            continue
+        stats["calls"] += 1
+        if resp.status_code >= 500:
+            continue
+        if resp.status_code != 429:
+            resp.raise_for_status()
+        return resp
+    return None
+
+
 def scan(config: dict | None = None, include_planned: bool = False, today: date | None = None,
          session: requests.Session | None = None,
          extra_sources: list[str] | None = None, per_source: bool = True) -> tuple[list[AwardCandidate], dict]:
@@ -158,7 +190,8 @@ def scan(config: dict | None = None, include_planned: bool = False, today: date 
     key = seats_aero._get_api_key()
 
     stats = {"calls": 0, "rows": 0, "stale": 0, "sources": wanted_sources, "rate_limit_remaining": None,
-             "truncated": [], "quota_exhausted": False}
+             "truncated": [], "quota_exhausted": False, "failed": [], "aborted": False}
+    consecutive_failures = 0
     found: dict[tuple, AwardCandidate] = {}
     # One query per cabin PER PROGRAM: a combined query across ~15 programs and ~100
     # destinations returned >25k economy rows and silently cut off whole programs
@@ -180,8 +213,21 @@ def scan(config: dict | None = None, include_planned: bool = False, today: date 
         skip, cursor = 0, None
         for page_no in range(MAX_PAGES_PER_CABIN):
             page = dict(params, skip=skip, **({"cursor": cursor} if cursor else {}))
-            resp = http.get(seats_aero.SEARCH_URL, headers={"Partner-Authorization": key}, params=page, timeout=90)
-            stats["calls"] += 1
+            resp = _get_page(http, key, page, stats)
+            if resp is None:
+                # Still timing out or erroring after retries: skip this program/cabin
+                # and keep going. On Oct 1 one 90-second timeout, uncaught, killed the
+                # whole run and the day's email with it.
+                stats["failed"].append(f"{source}/{cabin}")
+                consecutive_failures += 1
+                if consecutive_failures >= MAX_CONSECUTIVE_FAILURES:
+                    # seats.aero is down, not slow: stop rather than spend the rest of
+                    # the job's 30 minutes on timeouts, and keep what was scanned.
+                    stats["aborted"] = True
+                    stats["candidates"] = len(found)
+                    return list(found.values()), stats
+                break
+            consecutive_failures = 0
             stats["rate_limit_remaining"] = resp.headers.get("x-ratelimit-remaining")
             if resp.status_code == 429:
                 # Out of daily calls: keep whatever was scanned rather than losing the
@@ -189,7 +235,6 @@ def scan(config: dict | None = None, include_planned: bool = False, today: date 
                 stats["quota_exhausted"] = True
                 stats["candidates"] = len(found)
                 return list(found.values()), stats
-            resp.raise_for_status()
             payload = resp.json()
             rows = payload.get("data", [])
             stats["rows"] += len(rows)

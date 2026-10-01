@@ -559,7 +559,10 @@ def _warn_on_source_drop(scan: dict, previous: dict, log) -> None:
         return  # a short scan explains every "drop"; the quota warning already fired
     before = (previous.get("scan") or {}).get("per_source") or {}
     now = scan.get("per_source") or {}
+    failed = {f.split("/")[0] for f in scan.get("failed") or []}
     for src, was in before.items():
+        if src in failed or scan.get("aborted"):
+            continue  # explained by the failure warning, not a drop in availability
         if was >= 100 and now.get(src, 0) < was * 0.5:
             log(f"::warning::{src} returned {now.get(src, 0):,} awards, down from {was:,} yesterday: "
                 "the program may have dropped out of seats.aero or lost availability.")
@@ -623,7 +626,8 @@ def scan_return_legs(deals: list[Scored], config: dict, log=print) -> tuple[list
         return [], False
     # A scan cut short by the quota or the page cap covered only some routes, so it
     # can't support "there is no return award" on the ones it never reached.
-    complete = not stats.get("quota_exhausted") and not stats.get("truncated")
+    complete = not (stats.get("quota_exhausted") or stats.get("truncated")
+                    or stats.get("failed") or stats.get("aborted"))
     log(f"Return legs: {len(cands):,} awards home from {len(dests)} destinations "
         f"in {stats['calls']} calls" + ("" if complete else " (cut short: partial coverage)"))
     return cands, complete
@@ -1569,6 +1573,13 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
             "the first call of the day.")
     if scan_stats.get("truncated"):
         log(f"WARNING: results cut off at the page limit for {', '.join(scan_stats['truncated'])}")
+    if scan_stats.get("aborted"):
+        log(f"::warning::seats.aero kept timing out or erroring, so the scan stopped early after "
+            f"{len(scan_stats['failed'])} failed program/cabin slices; this digest covers only what "
+            "was scanned before that.")
+    elif scan_stats.get("failed"):
+        log(f"::warning::seats.aero failed for {', '.join(scan_stats['failed'])} even after retries; "
+            "those programs/cabins are missing from today's digest.")
 
     history = award_history.record(cands)
     hist_series = award_history.series(history)
