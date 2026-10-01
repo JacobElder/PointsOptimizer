@@ -81,6 +81,9 @@ UNVERIFIED_PENALTY = 0.6  # never re-checked live: stops, seats and current pric
 # to lead it. Chosen so a small fare wobble can't flip a nonstop to a connection;
 # long detours are discounted separately (slow) on top of this.
 CONNECTION_MARGIN = 0.15
+# Per run: route_key -> whether any checked award on that route was a nonstop.
+# Filled as flight details arrive; reset at the start of run().
+ROUTE_NONSTOP_SEEN: dict[tuple, bool] = {}
 # Measured on the real quote store: the haircut from pooling dates is nearly flat
 # from a 2-day window (6.8% mean) to 21 days (8.8%), so this is day-to-day fare
 # volatility, not seasonality. It only climbs past ~21 days (30 days: 10.5%), and
@@ -356,7 +359,19 @@ class Scored:
         """
         if self.trip is not None:
             return not self.trip.nonstop
-        return not self.c.direct
+        if not self.c.direct:
+            return True
+        # direct=True proves little: Ethiopian's EWR-JNB (two flight numbers, two
+        # stops) is flagged direct, so ~60 JNB/CPT dates each looked like a possible
+        # nonstop and were checked in turn (Oct 1: 117 lookups, didn't settle in 12
+        # rounds). Same program, airports and cabin fly the same schedule, so once
+        # dates on a route have been checked and none was nonstop, assume the rest
+        # aren't either.
+        return ROUTE_NONSTOP_SEEN.get(self.route_key) is False
+
+    @property
+    def route_key(self) -> tuple:
+        return (self.c.source, self.c.origin, self.c.dest, self.c.cabin)
 
     @property
     def bookable_now(self) -> bool:
@@ -1000,6 +1015,8 @@ def attach_trips(scored: list[Scored], cache: dict, log=None, budget: int | None
         s.trip_checked = True
         s.trip_unverified = cache[k] == "failed"
         s.trip = None if s.trip_unverified else cache[k]
+        if s.trip is not None:
+            ROUTE_NONSTOP_SEEN[s.route_key] = ROUTE_NONSTOP_SEEN.get(s.route_key, False) or s.trip.nonstop
         if s.trip is not None and s.quote is not None:
             _apply_quote(s, s.quote)  # redo the fare match now that the real stop count is known
 
@@ -1543,6 +1560,7 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
         round_trip: bool = True, log=print, max_watch_lookups: int = DEFAULT_MAX_WATCH_LOOKUPS,
         resend: bool = False, use_watchlist: bool = True) -> dict:
     flight_search.SERPAPI_MAX_CALLS = SERPAPI_CAP
+    ROUTE_NONSTOP_SEEN.clear()
     started = datetime.now(timezone.utc)
     config = award_scanner.load_config()
     watchlist = load_watchlist(config) if use_watchlist else []

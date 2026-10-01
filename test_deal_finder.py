@@ -1214,3 +1214,22 @@ def test_selection_that_runs_out_of_rounds_is_still_verified(monkeypatch):
                                              sources_reporting_seats=set(), round_trip=False,
                                              max_rounds=0)
     assert published and all(s.trip is not None for s in published)
+
+
+def test_a_route_checked_as_connecting_stops_being_explored():
+    """Oct 1: EWR-JNB's ~60 dates are all flagged direct (two flight numbers, two
+    stops on Ethiopian), so each was checked in turn as a possible nonstop."""
+    a = _scored("JNB", "BUSINESS", "united", "EWR", 88000, 3500, date="2027-04-11")
+    b = _scored("JNB", "BUSINESS", "united", "EWR", 88000, 3500, date="2027-04-13")
+    assert a.c.direct and not b.connecting  # nothing known yet: might be a nonstop
+    a.c.id = "jnb-a"
+    import unittest.mock as m
+    with m.patch.object(deal_finder.award_trips, "fetch",
+                        lambda *x: _trip(nonstop=False, stops=2, connections=["LFW", "ADD"])):
+        deal_finder.attach_trips([a], {})
+    assert b.connecting  # same route, checked as a connection
+    # A different cabin or program on the same airports is a different schedule.
+    assert not _scored("JNB", "PREMIUM_ECONOMY", "united", "EWR", 55000, 1600).connecting
+    # One nonstop seen on the route is enough to keep exploring its dates.
+    deal_finder.ROUTE_NONSTOP_SEEN[a.route_key] = True
+    assert not b.connecting

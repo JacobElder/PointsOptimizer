@@ -6,6 +6,7 @@ import pytest
 
 import award_taxes
 import cash_quotes
+import deal_finder
 import flight_search
 import ledger
 import seats_aero
@@ -15,6 +16,9 @@ import valuation
 @pytest.fixture(autouse=True)
 def _isolate_cash_providers(monkeypatch, tmp_path):
     monkeypatch.setattr(flight_search, "FAST_FLIGHTS_DISABLED", True)
+    # Per-run route memory in deal_finder: a fresh dict per test so one test's checked
+    # flights can't make another test's unchecked awards look like connections.
+    monkeypatch.setattr(deal_finder, "ROUTE_NONSTOP_SEEN", {})
     # deal_finder.run() sets these globals; reset so they can't leak between tests.
     # 0, not None: None means "no cap", so the previous value left the real SerpApi
     # allowance reachable and uncapped from the test process.
