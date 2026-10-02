@@ -67,18 +67,20 @@ def test_bonus_ending_soon_says_so_and_what_it_costs_after():
     assert "ends today" in funding._bonus_phrase(bonus, 75000, partner, on=date(2026, 9, 30))
 
 
-def test_bonus_list_health_flags_empty_and_stale_lists(tmp_path, monkeypatch):
+def test_bonus_list_health_nags_only_when_the_list_goes_unchecked(tmp_path, monkeypatch):
     import json
     from datetime import date
     import funding
     path = tmp_path / "bonuses.json"
     monkeypatch.setattr(funding, "BONUSES_PATH", str(path))
-    path.write_text(json.dumps({"bonuses": [
-        {"pool": "chase_ur", "partner": "Air Canada Aeroplan", "bonus_pct": 20,
-         "starts": "2026-09-01", "ends": "2026-10-30", "verified": "2026-09-20"},
-        # A pool you can't transfer from doesn't count as a running bonus.
-        {"pool": "cap1_miles", "partner": "JAL Mileage Bank", "bonus_pct": 30,
-         "starts": "2026-09-01", "ends": "2026-12-31", "verified": "2026-09-20"}]}))
-    assert funding.bonus_list_health(date(2026, 9, 28)) is None
-    assert "last checked 25 days ago" in funding.bonus_list_health(date(2026, 10, 15))
-    assert "No transfer bonuses" in funding.bonus_list_health(date(2026, 11, 1))
+    path.write_text(json.dumps({"checked": "2026-10-02", "bonuses": [
+        {"pool": "chase_ur", "partner": "Marriott Bonvoy", "bonus_pct": 70,
+         "starts": "2026-09-15", "ends": "2026-10-15", "verified": "2026-10-02"}]}))
+    assert funding.bonus_list_health(date(2026, 10, 10)) is None
+    # Oct 20: the only bonus has ended, but the list was checked 18 days ago, so an
+    # empty list is simply accurate -- no nag (the Sep 28 version warned here).
+    assert funding.bonus_list_health(date(2026, 10, 20)) is None
+    note = funding.bonus_list_health(date(2026, 10, 30))
+    assert "last checked 28 days ago" in note and "nothing running for your cards" in note
+    path.write_text(json.dumps({"bonuses": []}))
+    assert "never been checked" in funding.bonus_list_health(date(2026, 10, 30))

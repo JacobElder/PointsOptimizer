@@ -99,28 +99,33 @@ def _bonus_phrase(bonus: dict, top_up: int, partner, on: date | None = None) -> 
 
 
 def bonus_list_health(on: date | None = None) -> str | None:
-    """A note when transfer_bonuses.json has gone stale.
+    """A note when transfer_bonuses.json hasn't been checked in BONUS_LIST_STALE_DAYS.
 
-    Expired entries are ignored silently, so once the last bonus ends every card
-    quietly shows standard ratios, and the program choice (which counts bonuses)
-    stops reflecting bonuses running now. Nothing else would say the list needs a look.
+    Expired entries are ignored silently, so a list nobody revisits quietly drops to
+    standard ratios everywhere, and the program choice (which counts bonuses) stops
+    reflecting bonuses running now. Staleness is measured from the file's `checked`
+    date or the newest entry's `verified`, whichever is later: an empty list checked
+    last week is accurate (after Oct 15 none of your cards has a bonus), so emptiness
+    alone is not a reason to nag.
     """
     on = on or date.today()
     try:
         with open(BONUSES_PATH) as f:
-            bonuses = json.load(f).get("bonuses", [])
+            data = json.load(f)
     except (OSError, json.JSONDecodeError):
         return "The transfer bonus list (transfer_bonuses.json) couldn't be read."
-    usable = [b for b in bonuses if b.get("pool") in POOLS and pool_is_active(b["pool"])]
-    if not any(str(b.get("ends", "")) >= str(on) for b in usable):
-        return ("No transfer bonuses are listed as running or upcoming. If one is on, add it to "
-                "transfer_bonuses.json so transfer amounts and program choices count it.")
-    checked = [str(b.get("verified", "")) for b in bonuses if b.get("verified")]
-    if checked:
-        age = (on - date.fromisoformat(max(checked))).days
-        if age > BONUS_LIST_STALE_DAYS:
-            return (f"The transfer bonus list was last checked {age} days ago; new bonuses "
-                    "may be missing from transfer_bonuses.json.")
+    dates = [str(data.get("checked", ""))] + [str(b.get("verified", "")) for b in data.get("bonuses", [])]
+    dates = [d for d in dates if d]
+    if not dates:
+        return ("The transfer bonus list has never been checked; add any running bonuses to "
+                "transfer_bonuses.json and set its `checked` date.")
+    age = (on - date.fromisoformat(max(dates))).days
+    if age > BONUS_LIST_STALE_DAYS:
+        usable = [b for b in data.get("bonuses", []) if b.get("pool") in POOLS
+                  and pool_is_active(b["pool"]) and str(b.get("ends", "")) >= str(on)]
+        return (f"The transfer bonus list was last checked {age} days ago"
+                + ("" if usable else " and lists nothing running for your cards")
+                + "; new bonuses may be missing from transfer_bonuses.json.")
     return None
 
 
