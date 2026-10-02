@@ -19,6 +19,7 @@ def _isolate_cash_providers(monkeypatch, tmp_path):
     # Per-run route memory in deal_finder: a fresh dict per test so one test's checked
     # flights can't make another test's unchecked awards look like connections.
     monkeypatch.setattr(deal_finder, "ROUTE_NONSTOP_SEEN", {})
+    monkeypatch.setattr(deal_finder, "CARD_CHECKS", {})
     # deal_finder.run() sets these globals; reset so they can't leak between tests.
     # 0, not None: None means "no cap", so the previous value left the real SerpApi
     # allowance reachable and uncapped from the test process.

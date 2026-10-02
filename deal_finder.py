@@ -84,6 +84,12 @@ CONNECTION_MARGIN = 0.15
 # Per run: route_key -> whether any checked award on that route was a nonstop.
 # Filled as flight details arrive; reset at the start of run().
 ROUTE_NONSTOP_SEEN: dict[tuple, bool] = {}
+# Per run: group_key -> awards checked on seats.aero for that card. Past
+# MAX_EXPLORE_PER_CARD, unchecked options carry the unverified discount when
+# choosing the leader, so checking stops cascading through every program and
+# origin for the destination (Oct 2: 133 lookups, didn't settle in 12 rounds).
+CARD_CHECKS: dict[tuple, int] = {}
+MAX_EXPLORE_PER_CARD = 2
 # Measured on the real quote store: the haircut from pooling dates is nearly flat
 # from a 2-day window (6.8% mean) to 21 days (8.8%), so this is day-to-day fare
 # volatility, not seasonality. It only climbs past ~21 days (30 days: 10.5%), and
@@ -343,6 +349,11 @@ class Scored:
         v *= self.quality_factor
         if self.connecting:
             v /= 1 + CONNECTION_MARGIN
+        if self.trip is None and CARD_CHECKS.get(self.group_key, 0) >= MAX_EXPLORE_PER_CARD:
+            # Checking only ever reveals flaws (stops, detours), so an unchecked
+            # option always looks a little better than a checked one. Without a
+            # limit each check promotes the next unchecked option, and so on.
+            v *= UNVERIFIED_PENALTY
         return v
 
     @property
@@ -1015,6 +1026,7 @@ def attach_trips(scored: list[Scored], cache: dict, log=None, budget: int | None
         s.trip_checked = True
         s.trip_unverified = cache[k] == "failed"
         s.trip = None if s.trip_unverified else cache[k]
+        CARD_CHECKS[s.group_key] = CARD_CHECKS.get(s.group_key, 0) + 1
         if s.trip is not None:
             ROUTE_NONSTOP_SEEN[s.route_key] = ROUTE_NONSTOP_SEEN.get(s.route_key, False) or s.trip.nonstop
         if s.trip is not None and s.quote is not None:
@@ -1401,7 +1413,10 @@ def verify_selection(scored: list[Scored], select, rt_cache: dict | None, trip_c
         return select(group_leaders(kept, bar_fn))
 
     selection: list[Scored] = current_selection()
+    calls_before = _trip_calls(trip_cache) if trip_cache is not None else 0
+    rounds_used = 0
     for round_no in range(max_rounds):
+        rounds_used = round_no + 1
         # Stage 1, free: settle the round-trip checks before spending anything.
         # An award that hasn't had one is ranked on its one-way fare, which runs
         # well above half a round trip -- 61% of published cards are valued on the
@@ -1445,6 +1460,9 @@ def verify_selection(scored: list[Scored], select, rt_cache: dict | None, trip_c
         _verify(unchecked, rt_cache, trip_cache, sources_reporting_seats, round_trip, log=log)
         selection = [s for s in selection
                      if not s.dropped and s.cpp is not None and s.cpp >= bar_fn(s)]
+    if log and trip_cache is not None:
+        log(f"Selection: {len(selection)} deal(s) settled in {rounds_used} round(s), "
+            f"{_trip_calls(trip_cache) - calls_before} seats.aero lookup(s)")
     return [s for s in selection if not s.dropped]
 
 
@@ -1499,7 +1517,7 @@ def held_miles_report(scored: list[Scored], rt_cache: dict, round_trip: bool = T
 
 def watch_report(scored: list[Scored], watchlist: list[WatchEntry], rt_cache: dict,
                  round_trip: bool = True, trip_cache: dict | None = None,
-                 sources_reporting_seats: set[str] | None = None) -> list[dict]:
+                 sources_reporting_seats: set[str] | None = None, log=None) -> list[dict]:
     out = []
     for w in watchlist:
         mine = [s for s in scored if any(x is w for x in s.watch)]
@@ -1513,7 +1531,8 @@ def watch_report(scored: list[Scored], watchlist: list[WatchEntry], rt_cache: di
 
         if SELECT_THEN_VERIFY:
             leaders = verify_selection(mine, _watch_pick, rt_cache, trip_cache,
-                                       sources_reporting_seats or set(), round_trip, bar)
+                                       sources_reporting_seats or set(), round_trip, bar,
+                                       log=(lambda m, w=w: log(f"[{w.label}] {m}")) if log else None)
         else:
             leaders = verify_leaders(mine, group_leaders(mine, bar)[: WATCH_DEALS_PER_ENTRY + 4], rt_cache,
                                      trip_cache, sources_reporting_seats or set(), round_trip, bar)
@@ -1561,6 +1580,7 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
         resend: bool = False, use_watchlist: bool = True) -> dict:
     flight_search.SERPAPI_MAX_CALLS = SERPAPI_CAP
     ROUTE_NONSTOP_SEEN.clear()
+    CARD_CHECKS.clear()
     started = datetime.now(timezone.utc)
     config = award_scanner.load_config()
     watchlist = load_watchlist(config) if use_watchlist else []
@@ -1676,7 +1696,7 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
     held = held_miles_report(scored, rt_cache, round_trip=round_trip, trip_cache=trip_cache,
                              sources_reporting_seats=sources_reporting_seats)
     watch = watch_report(scored, watchlist, rt_cache, round_trip=round_trip, trip_cache=trip_cache,
-                         sources_reporting_seats=sources_reporting_seats)
+                         sources_reporting_seats=sources_reporting_seats, log=log)
 
     if round_trip:
         about_to_publish = {id(s): s for s in ranked + held}

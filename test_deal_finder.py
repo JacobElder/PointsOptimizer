@@ -1233,3 +1233,52 @@ def test_a_route_checked_as_connecting_stops_being_explored():
     # One nonstop seen on the route is enough to keep exploring its dates.
     deal_finder.ROUTE_NONSTOP_SEEN[a.route_key] = True
     assert not b.connecting
+
+
+def test_exploration_within_a_card_is_capped():
+    """Checking only ever reveals flaws, so each check made the next unchecked option
+    look better and get checked too (Oct 2: 133 lookups, didn't settle)."""
+    leader = _scored("SIN", "BUSINESS", "aeroplan", "EWR", 102500, 3108)
+    other = _scored("SIN", "BUSINESS", "united", "JFK", 110000, 3300)
+    before = other.choice_value
+    deal_finder.CARD_CHECKS[other.group_key] = deal_finder.MAX_EXPLORE_PER_CARD - 1
+    assert other.choice_value == before  # still exploring this card
+    deal_finder.CARD_CHECKS[other.group_key] = deal_finder.MAX_EXPLORE_PER_CARD
+    assert other.choice_value == pytest.approx(before * deal_finder.UNVERIFIED_PENALTY)
+    leader.trip = _trip(nonstop=True)
+    assert leader.choice_value > 0  # checked options are unaffected by the cap
+    assert deal_finder.CARD_CHECKS.get(("XXX", "BUSINESS"), 0) == 0
+
+
+def test_verification_with_connections_settles_within_the_lookup_budget(monkeypatch):
+    """Every checked award turns out to be a slow connection, on cards with several
+    unchecked options each: the shape that ran out of rounds on Oct 1 and 2."""
+    lookups = []
+
+    def _fetch(aid, cabin, points):
+        lookups.append(aid)
+        return award_trips.TripInfo(
+            flights=["XX1", "XX2"], connections=["ABC"], duration_min=2400, departs_at="",
+            arrives_at="", leg_cabins=[cabin.lower()] * 2, mixed_cabin=False, lower_cabin_legs=[],
+            carriers="XX", booking_url=None, booking_label=None, other_itineraries=0,
+            airport_changes=[], stops=1, nonstop=False, seats=2, current_points=points,
+            price_matches=True)
+
+    monkeypatch.setattr(deal_finder.award_trips, "fetch", _fetch)
+    scored = []
+    for d in ["ZRH", "FRA", "CAI", "LIS"]:
+        for i, (src, origin) in enumerate([("aeroplan", "JFK"), ("aeroplan", "EWR"),
+                                           ("united", "JFK"), ("united", "EWR"),
+                                           ("alaska", "JFK"), ("alaska", "EWR")]):
+            s = _scored(d, "BUSINESS", src, origin, 60000, 3000 - 10 * i)
+            s.c.id = f"{d}:{src}:{origin}"
+            scored.append(s)
+    msgs = []
+    published = deal_finder.verify_selection(scored, lambda ls: ls[:4], rt_cache=None, trip_cache={},
+                                             sources_reporting_seats=set(), round_trip=False,
+                                             log=msgs.append)
+    assert len(published) == 4 and all(s.trip is not None for s in published)
+    assert not any("didn't settle" in m for m in msgs), msgs
+    # Uncapped, every one of the 6 options per card was checked (24 lookups, 7 rounds)
+    # and the same 4 awards were published anyway.
+    assert len(lookups) <= 12, len(lookups)
