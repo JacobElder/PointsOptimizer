@@ -81,6 +81,14 @@ UNVERIFIED_PENALTY = 0.6  # never re-checked live: stops, seats and current pric
 # to lead it. Chosen so a small fare wobble can't flip a nonstop to a connection;
 # long detours are discounted separately (slow) on top of this.
 CONNECTION_MARGIN = 0.15
+# Ranking ignores the part of a fare spike beyond this multiple of the route's typical
+# fare (see `rank_cash`). Short-notice fares run a median 1.29x typical and 38% of
+# cards within 14 days of departure were over 1.4x (Sep 27 - Oct 5), so a great CPP
+# there often means an expensive fare, not a cheap award.
+FARE_SPIKE_CAP = 1.25
+# ...but only where the fare model has this many real fares on the route+cabin. Its
+# estimate for an unseen route (or thin premium economy data) can be off by 30%+.
+MIN_ROUTE_FARES_FOR_CAP = 3
 # Per run: route_key -> whether any checked award on that route was a nonstop.
 # Filled as flight details arrive; reset at the start of run().
 ROUTE_NONSTOP_SEEN: dict[tuple, bool] = {}
@@ -282,6 +290,9 @@ class Scored:
             notes.append("much slower than flying direct")
         if (self.age_days or 0) > 5:
             notes.append(f"last confirmed {self.age_shown} days ago")
+        if self.fare_spike:
+            notes.append(f"today's fare is {self.fare_spike:.1f}x what this route usually costs "
+                         f"(ranked as if it were ${self.rank_cash:,.0f})")
         if self.rt_unavailable:
             notes.append("no round-trip fare could be priced, so the fare is an estimate")
         if self.trip_unverified:
@@ -294,6 +305,49 @@ class Scored:
             notes.append(f"seats.aero reported no taxes, so this uses an estimated "
                          f"${self.taxes_usd:,.0f} ({self.taxes_basis})")
         return notes
+
+    @property
+    def typical_fare(self) -> float | None:
+        """What this route and cabin usually costs one way, if the model knows it from
+        real fares on the route rather than guessing from distance."""
+        if self.est.basis != "route" or self.est.route_obs < MIN_ROUTE_FARES_FOR_CAP:
+            return None
+        return self.est.median_price
+
+    @property
+    def rank_cash(self) -> float | None:
+        """The fare used for RANKING: today's fare, capped at FARE_SPIKE_CAP x typical.
+
+        Design decision (Oct 5; README "Ranking"): CPP shown on the card and the bar a
+        deal must clear always use the real fare -- the savings are real if you were
+        going to fly that day. But ranking by them put fare spikes at the top: EWR-ATH
+        led at 5.77c on a $3,840 fare that is usually $2,260, four days out. Capping
+        sorts those lower without discarding them.
+        """
+        if self.cash is None:
+            return None
+        typical = self.typical_fare
+        return self.cash if typical is None else min(self.cash, typical * FARE_SPIKE_CAP)
+
+    @property
+    def fare_spike(self) -> float | None:
+        """Today's fare as a multiple of typical, when ranking capped it."""
+        typical, cash = self.typical_fare, self.cash
+        if typical is None or cash is None or cash <= typical * FARE_SPIKE_CAP:
+            return None
+        return cash / typical
+
+    @property
+    def rank_surplus(self) -> float | None:
+        """surplus (vs the program's usual value) on the capped fare."""
+        if self.rank_cash is None:
+            return None
+        return (self.rank_cash - self.taxes_usd) - self.c.points * self.baseline / 100
+
+    def rank_surplus_vs(self, bar: float) -> float | None:
+        if self.rank_cash is None:
+            return None
+        return (self.rank_cash - self.taxes_usd) - self.c.points * bar / 100
 
     @property
     def quality_factor(self) -> float:
@@ -320,8 +374,9 @@ class Scored:
 
     @property
     def rank_value(self) -> float:
-        """Dollar surplus, discounted for things that make a deal worse than its CPP says."""
-        v = self.surplus or 0.0
+        """Dollar surplus on the capped fare, discounted for things that make a deal
+        worse than its CPP says."""
+        v = self.rank_surplus or 0.0
         if v <= 0:
             return v  # discounts on a negative surplus would rank a worse deal higher
         v *= self.quality_factor
@@ -420,7 +475,7 @@ class Scored:
         """
         if self.cash is None:
             return None
-        return (self.cash - self.taxes_usd) - funding.opportunity_cost_usd(
+        return (self.rank_cash - self.taxes_usd) - funding.opportunity_cost_usd(
             self.c.program, self.c.cabin, self.c.points, self.held_miles)
 
     def to_dict(self) -> dict:
@@ -449,6 +504,9 @@ class Scored:
             "history_days": self.history_days, "return_option": self.return_option,
             "returns_checked": self.returns_checked,
             "ranked_value_usd": round(self.rank_value) if self.surplus is not None else None,
+            "typical_fare": round(self.typical_fare) if self.typical_fare else None,
+            "rank_cash": round(self.rank_cash) if self.rank_cash is not None else None,
+            "fare_spike": round(self.fare_spike, 2) if self.fare_spike else None,
             "held_miles": self.held_miles, "bookable_now": self.bookable_now,
             "top_up_needed": max(c.points - self.held_miles, 0) if self.held_miles else None,
         }
@@ -1078,7 +1136,9 @@ def group_leaders(scored: list[Scored], bar_fn=None) -> list[Scored]:
     # The leader is whichever option is worth most for the points you'd actually
     # spend, after quality discounts and a nonstop preference (choice_value); the
     # groups are then ranked by surplus as before.
-    for s in sorted(confirmed, key=lambda s: -s.choice_value):
+    # Ties (typically two dates both at the fare cap) go to the one whose fare is
+    # less inflated: the card should show the date that's good at a normal price.
+    for s in sorted(confirmed, key=lambda s: (-s.choice_value, s.fare_spike or 0)):
         g = best.get(s.group_key)
         combo = (s.c.source, s.c.origin)
         if g is None:
@@ -1095,7 +1155,7 @@ def group_leaders(scored: list[Scored], bar_fn=None) -> list[Scored]:
     # tie order follows the choice sort above, where an unchecked award has no stop
     # discount yet, and selection would keep picking unchecked cards over checked
     # ones -- a seats.aero lookup each.
-    leaders = sorted(best.values(), key=lambda s: (-s.surplus_vs(bar_fn(s)), -s.rank_value))
+    leaders = sorted(best.values(), key=lambda s: (-s.rank_surplus_vs(bar_fn(s)), -s.rank_value))
     for s in leaders:
         s.other_dates.sort()
         s.alternatives, s.alt_awards = s.alternatives[:3], s.alt_awards[:3]
@@ -1563,7 +1623,8 @@ def watch_report(scored: list[Scored], watchlist: list[WatchEntry], rt_cache: di
             return w.bar_for(s.c.cabin, s.c.program)
 
         def _watch_pick(ls, bar=bar):
-            ls = sorted(ls, key=lambda s: -(s.surplus_vs(bar(s)) * (s.rank_value / s.surplus if s.surplus else 1)))
+            ls = sorted(ls, key=lambda s: -(s.rank_surplus_vs(bar(s))
+                                            * (s.rank_value / s.rank_surplus if s.rank_surplus else 1)))
             return ls[:WATCH_DEALS_PER_ENTRY]
 
         if SELECT_THEN_VERIFY:
@@ -1573,7 +1634,8 @@ def watch_report(scored: list[Scored], watchlist: list[WatchEntry], rt_cache: di
         else:
             leaders = verify_leaders(mine, group_leaders(mine, bar)[: WATCH_DEALS_PER_ENTRY + 4], rt_cache,
                                      trip_cache, sources_reporting_seats or set(), round_trip, bar)
-            leaders.sort(key=lambda s: -(s.surplus_vs(bar(s)) * (s.rank_value / s.surplus if s.surplus else 1)))
+            leaders.sort(key=lambda s: -(s.rank_surplus_vs(bar(s))
+                                         * (s.rank_value / s.rank_surplus if s.rank_surplus else 1)))
         deals = []
         for s in leaders[:WATCH_DEALS_PER_ENTRY]:
             d = s.to_dict()
@@ -1851,7 +1913,9 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
         watch_new = [d for k, d in fresh if k.startswith("watch:")]
         top_new = [d for k, d in fresh if not k.startswith(("held:", "watch:"))]
         n_unique = len({k.split(":", 1)[-1] for k, _ in fresh})  # same award can appear in 2 sections
-        lead = max((d for _, d in fresh), key=lambda d: d.get("surplus_usd") or 0)  # biggest, not first
+        # Biggest by RANKED value, not raw surplus: the subject line shouldn't headline
+        # a deal that only looks big because today's fare is spiking.
+        lead = max((d for _, d in fresh), key=lambda d: d.get("ranked_value_usd") or 0)
         outage = rt_outage_note([d for _, d in fresh])
         bonus_note = funding.bonus_list_health()
         if bonus_note:

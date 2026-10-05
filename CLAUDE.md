@@ -3,7 +3,9 @@
 Personal award-travel tool. A daily GitHub Actions run (`deal_finder.py`) scans seats.aero,
 prices awards against Google Flights cash fares, picks standout deals and emails a digest;
 `deal_digest.json` is committed and shown on the Streamlit site. `README.md` explains how
-everything works — read it before changing scoring. `TODO.md` lists open items.
+everything works — read it before changing scoring. `docs/decisions.md` records why the
+valuation and ranking rules are what they are — add an entry when you change one. `TODO.md`
+lists open items.
 
 ## The daily routine: run → audit → fix → repeat
 
@@ -73,6 +75,8 @@ Every layer except a plain manual run skips if today's `deal_digest.json` exists
 - Within a card, the leading date/program is chosen by `choice_value` (points you'd actually
   spend via `funding.opportunity_cost_usd`, quality discounts, 15% nonstop preference,
   exploration capped per card). Between cards, ranking uses `rank_value`.
+- Ranking uses `rank_cash` (today's fare capped at 1.25× the route's typical fare); the card's
+  CPP and the bar use the real fare. Don't "fix" the mismatch — it's deliberate.
 - Email repeats are suppressed per route/program/cabin (`reported_routes`) unless ≥15% more
   CPP or ≤90% of the points.
 - Cash fares: fast-flights (free Google Flights) is the source. SerpApi is a 5-call fallback

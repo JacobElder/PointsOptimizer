@@ -1309,3 +1309,42 @@ def test_route_history_is_seeded_from_per_award_keys():
          "points": 50000}
     assert not deal_finder.materially_better(d, seeded["alaska|JFK|LIM|BUSINESS"])
     assert deal_finder.materially_better({**d, "points": 45000}, seeded["alaska|JFK|LIM|BUSINESS"])
+
+
+def _with_typical(s, typical, obs=5):
+    s.est = fare_model.Estimate(typical, 0.16, obs, "route")
+    return s
+
+
+def test_fare_spike_ranks_lower_but_keeps_its_real_cpp():
+    """Oct 4: EWR-ATH led at 5.77c on a $3,840 fare that is usually $2,260, 4 days out."""
+    spike = _with_typical(_scored("ATH", "BUSINESS", "emirates", "EWR", 59000, 3840), 2260)
+    assert spike.fare_spike == pytest.approx(3840 / 2260)
+    assert spike.rank_cash == pytest.approx(2260 * deal_finder.FARE_SPIKE_CAP)
+    assert spike.cpp == pytest.approx((3840 - 50) / 59000 * 100)  # the card's CPP is the real one
+    assert spike.rank_surplus < spike.surplus
+    assert any("usually costs" in n for n in spike.rank_notes)
+    normal = _with_typical(_scored("ATH", "BUSINESS", "emirates", "EWR", 59000, 2600), 2260)
+    assert normal.fare_spike is None and normal.rank_cash == 2600  # within the cap: untouched
+
+
+def test_no_cap_without_real_fares_on_the_route():
+    """The model's distance-based guess (or 1-2 fares) can be off 30%+: no cap then."""
+    guess = _scored("ATH", "BUSINESS", "emirates", "EWR", 59000, 3840)  # basis "model"
+    assert guess.typical_fare is None and guess.rank_cash == 3840 and guess.fare_spike is None
+    thin = _with_typical(_scored("KEF", "PREMIUM_ECONOMY", "flyingblue", "JFK", 28430, 1479), 569, obs=2)
+    assert thin.rank_cash == 1479
+
+
+def test_spiking_date_does_not_lead_the_card():
+    """Same award on two dates: the one riding a fare spike no longer leads on it."""
+    spike = _with_typical(_scored("VIE", "BUSINESS", "united", "EWR", 88000, 4488, date="2026-10-11"), 2763)
+    # A date at a normal-but-high fare, just above the spike's cap (1.25 x $2,763 = $3,454).
+    usual = _with_typical(_scored("VIE", "BUSINESS", "united", "EWR", 88000, 3460, date="2026-11-23"), 2763)
+    assert spike.surplus > usual.surplus  # on real fares the spike wins by $1,028...
+    (leader,) = deal_finder.group_leaders([spike, usual])
+    assert leader is usual and "2026-10-11" in leader.other_dates  # ...capped, it no longer can
+    # The cap limits the spike, it doesn't penalise it: a cheaper date still loses to it.
+    cheap = _with_typical(_scored("VIE", "BUSINESS", "united", "EWR", 88000, 3000, date="2026-12-02"), 2763)
+    (leader,) = deal_finder.group_leaders([spike, cheap])
+    assert leader is spike
