@@ -12,7 +12,9 @@ permissions:
 
 jobs:
   pytest:
-    runs-on: ubuntu-latest
+    # Pinned: ubuntu-latest moves to Ubuntu 26 from Oct 19, 2026 (actions/runner-images#14748).
+    # Move deliberately, with a test run, not on GitHub's schedule.
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     strategy:
       fail-fast: false

@@ -63,6 +63,11 @@ say so, but look for a pattern (same route every day, borderline margins).
 
 Every layer except a plain manual run skips if today's `deal_digest.json` exists.
 
+A run **cancelled** with no steps executed is GitHub, not the code: check the job's annotations
+(`gh api repos/JacobElder/PointsOptimizer/check-runs/<job-id>/annotations`) for "The job was not
+acquired by Runner" and githubstatus.com for an Actions incident. It only matters if no other
+layer produced that day's digest. Workflows are pinned to `ubuntu-24.04` (see TODO.md).
+
 ## Things that are easy to get wrong
 
 - seats.aero `direct` means "one flight number", not nonstop, and isn't reliable even then

@@ -12,6 +12,9 @@ history before 2026-09-16.
 
 ## Possible improvements
 
+- [ ] **Move workflows to Ubuntu 26 deliberately** (pinned to `ubuntu-24.04` on 2026-10-05 because
+      `ubuntu-latest` switches from Oct 19). Change one workflow, run it by hand, compare the digest.
+
 - [ ] Once `award_history.json` has a few weeks of data, consider raising
       `HISTORY_WEIGHT` (0.3) so route-relative cheapness counts for more than deal size.
 - [ ] Premium economy was just added to the scan but `fare_model` has no premium-economy
