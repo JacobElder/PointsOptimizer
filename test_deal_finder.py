@@ -1282,3 +1282,30 @@ def test_verification_with_connections_settles_within_the_lookup_budget(monkeypa
     # Uncapped, every one of the 6 options per card was checked (24 lookups, 7 rounds)
     # and the same 4 awards were published anyway.
     assert len(lookups) <= 12, len(lookups)
+
+
+def test_same_route_on_another_date_is_not_emailed_again():
+    """Sep 27 - Oct 4: 74 of 152 emailed cards repeated a route/program/cabin already
+    emailed; JFK-ANU on American went out on 5 different days."""
+    prev = {"at": "2026-10-01T00:00:00", "cpp": 2.26, "points": 9500}
+    d = {"source": "american", "origin": "JFK", "dest": "ANU", "cabin": "ECONOMY",
+         "cpp": 2.24, "points": 9500, "date": "2026-10-28"}
+    assert deal_finder.route_report_key(d) == "american|JFK|ANU|ECONOMY"
+    assert not deal_finder.materially_better(d, prev)
+    assert deal_finder.materially_better({**d, "cpp": 2.26 * 1.15}, prev)  # clearly better value
+    assert deal_finder.materially_better({**d, "points": 8500}, prev)  # clearly fewer points
+
+
+def test_route_history_is_seeded_from_per_award_keys():
+    seeded = deal_finder.seed_reported_routes({
+        "held:american|JFK|ANU|ECONOMY|9500|2026-10-25": "2026-10-01T10:00:00",
+        "american|JFK|ANU|ECONOMY|10500|2026-10-14": "2026-09-28T10:00:00",
+        "watch:Peru (dry season)|alaska|JFK|LIM|BUSINESS|50000|2027-06-27": "2026-10-02T10:00:00",
+        "garbage": "2026-10-02T10:00:00"})
+    assert seeded["american|JFK|ANU|ECONOMY"] == {
+        "at": "2026-10-01T10:00:00", "cpp": float("inf"), "points": 9500}
+    assert seeded["alaska|JFK|LIM|BUSINESS"]["points"] == 50000
+    d = {"source": "alaska", "origin": "JFK", "dest": "LIM", "cabin": "BUSINESS", "cpp": 9.9,
+         "points": 50000}
+    assert not deal_finder.materially_better(d, seeded["alaska|JFK|LIM|BUSINESS"])
+    assert deal_finder.materially_better({**d, "points": 45000}, seeded["alaska|JFK|LIM|BUSINESS"])

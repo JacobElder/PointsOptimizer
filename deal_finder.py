@@ -1235,6 +1235,43 @@ def _section_key(s: Scored) -> tuple:
     return (s.c.source, s.c.origin, s.c.dest, s.c.cabin)
 
 
+REPEAT_BETTER_CPP = 1.15  # a re-sent route must be worth this much more per point...
+REPEAT_FEWER_POINTS = 0.9  # ...or cost this share of the points or less
+
+
+def route_report_key(d: dict) -> str:
+    """One trip for email purposes: program, airports and cabin, whatever the date."""
+    return "|".join([d["source"], d["origin"], d["dest"], d["cabin"]])
+
+
+def seed_reported_routes(reported: dict[str, str]) -> dict[str, dict]:
+    """Route history recovered from per-award keys ("[held:|watch:label|]source|origin|
+    dest|cabin|points|date"), for digests written before reported_routes existed. They
+    carry no CPP, so only a clear drop in points counts as materially better."""
+    out: dict[str, dict] = {}
+    for key, at in reported.items():
+        parts = key.split(":", 1)[-1].split("|")
+        if key.startswith("watch:"):
+            parts = parts[1:]  # drop the watchlist label
+        if len(parts) < 6:
+            continue
+        try:
+            points = int(parts[4])
+        except ValueError:
+            continue
+        rk = "|".join(parts[:4])
+        prev = out.get(rk)
+        out[rk] = {"at": max(at, prev["at"]) if prev else at, "cpp": float("inf"),
+                   "points": min(points, prev["points"]) if prev else points}
+    return out
+
+
+def materially_better(d: dict, prev: dict) -> bool:
+    """Worth emailing again: clearly more value per point, or clearly fewer points."""
+    return (d["cpp"] >= prev.get("cpp", 0) * REPEAT_BETTER_CPP
+            or d["points"] <= prev.get("points", 0) * REPEAT_FEWER_POINTS)
+
+
 def dedupe_sections(held: list[Scored], watch: list[dict], ranked: list[Scored]) -> list[Scored]:
     """One award, one card. Sections are grouped independently, so the same
     program/route/cabin surfaced twice in one email -- once under the watchlist
@@ -1680,6 +1717,20 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
     # --resend emails everything currently listed, but must not erase the history:
     # a wiped history would re-email every deal again on the next normal run.
     already = {} if resend else reported
+    # The same trip on another date or at a few hundred points' difference: Sep 27 -
+    # Oct 4, 74 of 152 emailed cards repeated a route/program/cabin already emailed
+    # (JFK-ANU on American went out on 5 different days). report_key includes the date
+    # and points, so every new date counted as a new deal.
+    reported_routes = seed_reported_routes(reported)
+    reported_routes.update({k: v for k, v in digest.get("reported_routes", {}).items()
+                            if v.get("at", "") >= cutoff})
+    already_routes = {} if resend else reported_routes
+
+    def is_new(key: str, d: dict) -> bool:
+        if key in already:
+            return False
+        prev = already_routes.get(route_report_key(d))
+        return prev is None or materially_better(d, prev)
 
     # BEFORE selection. rank_value reads history_pct, so setting it afterwards left
     # it None through every selection round: the nudge only reordered a set already
@@ -1754,13 +1805,13 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
     top_pairs = []
     for s in ranked:
         d = s.to_dict()
-        d["new"] = s.report_key not in already
+        d["new"] = is_new(s.report_key, d)
         top_pairs.append((s.report_key, d))
     held_pairs = []
     for s in held:
         d = s.to_dict()
         key = f"held:{s.report_key}"
-        d["new"] = key not in already
+        d["new"] = is_new(key, d)
         held_pairs.append((key, d))
     log(f"Round-trip checks: {len(rt_cache)} ({sum(1 for v in rt_cache.values() if v)} priced); "
         f"flight details: {len(trip_cache)} checked, "
@@ -1778,7 +1829,7 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
             d["watch_bar"] = g["bar_fn"](s)
             d["watch_surplus_usd"] = round(s.surplus_vs(g["bar_fn"](s)))
             key = f"watch:{g['label']}|{s.report_key}"
-            d["watch_label"], d["new"] = g["label"], key not in already
+            d["watch_label"], d["new"] = g["label"], is_new(key, d)
             rebuilt.append((s, d))
             watch_pairs.append((key, d))
         g["deals"] = rebuilt
@@ -1831,8 +1882,10 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
                        + (f" {bonus_note}" if bonus_note else "")),
             )
             emailed = n_unique
-            for k, _ in fresh:
+            for k, d in fresh:
                 reported.setdefault(k, started.isoformat())
+                reported_routes[route_report_key(d)] = {
+                    "at": started.isoformat(), "cpp": d["cpp"], "points": d["points"]}
         except Exception as e:
             log(f"::error::Deal Finder could not send the digest email: {type(e).__name__}: {e}")
             out_email_failed.append(str(e))
@@ -1864,6 +1917,7 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
         "top": [{k: v for k, v in d.items() if k not in public} for _, d in top_pairs],
         "emailed_new": emailed, "email_failed": out_email_failed,
         "reported": reported,
+        "reported_routes": reported_routes,
     }
     # The site recomputes "how to pay" locally from your balances, so the public
     # digest never carries them.
