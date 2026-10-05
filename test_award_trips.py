@@ -146,3 +146,19 @@ def test_the_cheapest_itinerary_at_or_below_the_scanned_price_is_chosen():
     trip = award_trips.fetch("id", "BUSINESS", 88000, session=_Session(payload))
     assert trip.flights == ["CHEAP1 JFK–ZRH"] and trip.current_points == 70000
     assert trip.other_itineraries == 1
+
+
+def test_emirates_booking_link_asks_for_the_award_cabin():
+    import base64, json
+    from urllib.parse import parse_qs, urlsplit
+    req = {"journeyType": "ONEWAY", "bookingType": "REDEMPTION",
+           "segments": [{"departure": "EWR", "arrival": "ATH", "travelDate": "2026-10-14", "cabinClass": "Y"}]}
+    url = ("https://www.emirates.com/booking/search-results/?searchRequest="
+           + base64.b64encode(json.dumps(req).encode()).decode() + "&utm_source=seatsaero")
+    fixed = award_trips._with_cabin(url, "business")
+    q = parse_qs(urlsplit(fixed).query)
+    assert json.loads(base64.b64decode(q["searchRequest"][0]))["segments"][0]["cabinClass"] == "J"
+    assert q["utm_source"] == ["seatsaero"]
+    other = "https://www.united.com/x?sc=7"
+    assert award_trips._with_cabin(other, "business") == other  # only Emirates links change
+    assert award_trips._with_cabin("https://www.emirates.com/x?searchRequest=@@", "business").endswith("@@")

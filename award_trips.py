@@ -9,7 +9,10 @@ direct booking link for the program.
 
 from __future__ import annotations
 
+import base64
+import json
 from dataclasses import asdict, dataclass
+from urllib.parse import parse_qs, urlencode, urlsplit, urlunsplit
 
 import requests
 
@@ -61,6 +64,28 @@ class TripInfo:
         return asdict(self)
 
 
+_EMIRATES_CABIN = {"economy": "Y", "premium": "W", "business": "J", "first": "F"}
+
+
+def _with_cabin(url: str | None, cabin: str) -> str | None:
+    """seats.aero's Emirates link encodes the search as base64 JSON and always asks for
+    economy ("cabinClass": "Y"), so "Book via Emirates" on the Oct 5 EWR-ATH business
+    card opened an economy search. Point it at the award's cabin. Anything that
+    doesn't parse as expected is returned untouched."""
+    if not url or "emirates.com" not in url or "searchRequest=" not in url:
+        return url
+    try:
+        parts = urlsplit(url)
+        query = parse_qs(parts.query)
+        req = json.loads(base64.b64decode(query["searchRequest"][0]))
+        for seg in req.get("segments", []):
+            seg["cabinClass"] = _EMIRATES_CABIN.get(cabin, seg.get("cabinClass"))
+        query["searchRequest"] = [base64.b64encode(json.dumps(req, separators=(",", ":")).encode()).decode()]
+        return urlunsplit(parts._replace(query=urlencode(query, doseq=True)))
+    except (KeyError, ValueError, TypeError):
+        return url
+
+
 def fetch(availability_id: str, cabin: str, points: int, session: requests.Session | None = None) -> TripInfo | None:
     """Best (shortest) itinerary for this award's cabin at its price. None if unavailable."""
     if not availability_id:
@@ -109,7 +134,7 @@ def fetch(availability_id: str, cabin: str, points: int, session: requests.Sessi
         mixed_cabin=bool(lower),
         lower_cabin_legs=lower,
         carriers=", ".join(carriers),
-        booking_url=link.get("link") if link else None,
+        booking_url=_with_cabin(link.get("link"), want) if link else None,
         booking_label=link.get("label") if link else None,
         other_itineraries=len(at_price) - 1,
         airport_changes=changes,
