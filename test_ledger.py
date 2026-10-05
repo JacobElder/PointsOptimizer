@@ -223,3 +223,11 @@ def test_missing_gist_is_not_created_from_nothing(monkeypatch):
     assert ledger._gist_read() is None
     assert wrote == []
     assert ledger.gist_failed() is True  # so saves refuse rather than overwrite
+
+
+def test_tests_never_touch_the_real_balance_files():
+    """conftest redirects both files for every test; a test that forgot to wiped the
+    user's real balances.json on each run (Sep 26 - Oct 5)."""
+    real_dir = os.path.dirname(os.path.abspath(ledger.__file__))
+    assert os.path.dirname(ledger.BALANCES_PATH) != real_dir
+    assert os.path.dirname(ledger.PROGRAM_BALANCES_PATH) != real_dir
