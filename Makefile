@@ -2,7 +2,7 @@
 # base Anaconda env can take). `make setup` once, then use the targets below.
 PY := .venv/bin/python
 
-.PHONY: setup app find find-resend find-quiet test check
+.PHONY: setup app find find-resend find-quiet test check audit audit-live
 
 setup:            ## create .venv with app + pipeline deps
 	python3 -m venv .venv && $(PY) -m pip install -q -r requirements.txt pytest
@@ -24,3 +24,9 @@ test:
 
 check:            ## confirm free cash-price lookups work from this machine
 	$(PY) cash_price_check.py
+
+audit:            ## check today's digest offline (math, bars, verification); see CLAUDE.md
+	$(PY) tools/audit_digest.py
+
+audit-live:       ## same, plus a live Google Flights re-price of the emailed cards (~2 min)
+	$(PY) tools/audit_digest.py --live

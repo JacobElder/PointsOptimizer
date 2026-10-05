@@ -1,0 +1,92 @@
+# PointsOptimizer — notes for Claude
+
+Personal award-travel tool. A daily GitHub Actions run (`deal_finder.py`) scans seats.aero,
+prices awards against Google Flights cash fares, picks standout deals and emails a digest;
+`deal_digest.json` is committed and shown on the Streamlit site. `README.md` explains how
+everything works — read it before changing scoring. `TODO.md` lists open items.
+
+## The daily routine: run → audit → fix → repeat
+
+The user asks "check the digest" / "did it run today? audit and review" most days. Do this:
+
+1. **Did it run?** `gh run list --repo JacobElder/PointsOptimizer --workflow "Deal Finder" -L 6`
+   then `git pull --ff-only`. Runs are started in layers (see "How the run is started");
+   later layers stop at "Today's digest already exists" — that is correct, not a failure.
+   If nothing ran by ~16:30 UTC, find which layer failed before starting one by hand.
+2. **Read the run log's key lines** (replace RUN_ID):
+   ```
+   gh run view RUN_ID --repo JacobElder/PointsOptimizer --log | cut -f3 \
+     | sed -E 's/^[0-9T:.-]+Z //' | grep -E "^Scan:|^Pricing|Selection|settle|warning|^Round-trip|^Fresh re-pricing|^Switched|^Return legs|retries|failed for"
+   ```
+   Healthy: no `::warning`; `Selection: … settled in ≤12 round(s)` everywhere; flight
+   lookups ~50–80 total; round-trip checks mostly priced (>90%); `no_fare` single digits;
+   scan `failed`/`aborted` empty. Compare with the previous 2–3 days, not absolutes.
+3. **Audit the digest:** `make audit` (offline: card math, bars, unverified, estimated round
+   trips) then `make audit-live` (re-prices emailed cards against today's Google fares; free,
+   ~2 min). For a past day: `.venv/bin/python tools/audit_digest.py <git-rev> [--live]`.
+   Repeat emails: `tools/audit_digest.py --repeats`.
+4. **Fix what's wrong** — see "How to fix" — then push, and tell the user plainly what ran,
+   what you checked, what was wrong, what you changed, and what to watch tomorrow.
+
+A deal falling below its bar a day later at live fares is usually the fare moving, not a bug —
+say so, but look for a pattern (same route every day, borderline margins).
+
+## How to fix (lessons from this project)
+
+- **Write a failing test that reproduces the bug first, and confirm it fails without the fix.**
+  Two fixes for selection churn (0ec75fb, 7c7b74f) were guesses that didn't work; the third
+  (d10106b) came with a reproducing test and did. A test whose bound is computed from the
+  constant you're changing proves nothing — use a literal.
+- Measure on real data before and after (the digest history in git is the dataset:
+  `git log -- deal_digest.json`). Replay a rule over past digests before shipping it.
+- `make test` (pytest via `.venv`; warnings are errors). Never use the base Anaconda python
+  (protobuf clash with fast-flights).
+- Commit messages explain the why with the numbers that found it (see `git log`). End with
+  the Co-Authored-By / Claude-Session lines the harness gives you. Push to `main` when tests
+  pass; the user has asked for changes to be pushed.
+- Don't run `make find` / a full scan to test: one scan is ~240 of the 1,000 seats.aero calls a
+  day shared with the user's own searches, and it re-emails. Use the digest and the fakes in
+  `test_run_end_to_end.py`. `make audit-live` uses only Google (free) — fine to run.
+
+## How the run is started (GitHub's scheduler drops runs since late Aug 2026)
+
+1. Cron slots 08:17 and 12:17 UTC (`.github/workflows/deal_finder.yml`) — usually fire hours
+   late, sometimes not at all.
+2. cron-job.org calling `workflow_dispatch` with `backup=true` at 14:00 UTC — **not yet set up by
+   the user** (no dispatch runs seen). Steps were given in chat; status 204 = working.
+3. Claude routine `trig_01EkoS6ACSSFEpBo7wY5qCUq` at 16:00 UTC: pushes a line to
+   `.github/run-request`, which starts the workflow via a push trigger. Inspect with the
+   RemoteTrigger tool (`list_runs`, `get_run_log`). It has no connectors on purpose — if you
+   recreate it, clear them (create attaches all of the user's connectors by default).
+
+Every layer except a plain manual run skips if today's `deal_digest.json` exists.
+
+## Things that are easy to get wrong
+
+- seats.aero `direct` means "one flight number", not nonstop, and isn't reliable even then
+  (Ethiopian EWR–JNB, two numbers and two stops, is flagged direct). Stops come from the
+  flight details (`award_trips`). American reports 0 seats meaning "unknown".
+- seats.aero taxes are in cents. Gulf carriers quote taxes in AED/QAR/SAR (FX fallback).
+- A deal is valued at the lower of the one-way fare and half a round trip. When no round
+  trip can be priced it's valued at 81% of the one-way (`RT_HALF_ESTIMATE_RATIO`) — never at
+  the full one-way.
+- Within a card, the leading date/program is chosen by `choice_value` (points you'd actually
+  spend via `funding.opportunity_cost_usd`, quality discounts, 15% nonstop preference,
+  exploration capped per card). Between cards, ranking uses `rank_value`.
+- Email repeats are suppressed per route/program/cabin (`reported_routes`) unless ≥15% more
+  CPP or ≤90% of the points.
+- Cash fares: fast-flights (free Google Flights) is the source. SerpApi is a 5-call fallback
+  that almost never runs; the user may remove it. Google sometimes throttles the Actions
+  runner (empty results) — the round-trip retry and estimate exist for that.
+- Saved fares are reused for up to 14 days; reuse counts dip when an old batch ages out.
+- `transfer_bonuses.json`: set `checked` whenever you check bonuses, even if nothing changed.
+- Public repo: never commit balances or secrets. Wording: say "per-run lookup limit", never
+  "budget", for Google lookups (the user reads budget as money).
+
+## Talking to the user
+
+Plain language, lead with the answer: did it run, are the deals right, what you fixed.
+Name deals worth a look with route, program, points and live ¢/pt. Be honest about your own
+earlier mistakes. Remind them of open items only when relevant: cron-job.org setup,
+GIST_TOKEN, deleting the old paused "seats.aero Deal Radar" routine at
+claude.ai/code/routines, the SerpApi decision.
