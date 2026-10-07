@@ -54,14 +54,18 @@ say so, but look for a pattern (same route every day, borderline margins).
 
 1. Cron slots 08:17 and 12:17 UTC (`.github/workflows/deal_finder.yml`) — usually fire hours
    late, sometimes not at all.
-2. cron-job.org calling `workflow_dispatch` with `backup=true` at 14:00 UTC — **not yet set up by
-   the user** (no dispatch runs seen). Steps were given in chat; status 204 = working.
+2. cron-job.org (the user's account) calling `workflow_dispatch` with `backup=true` daily at
+   10:00 America/New_York — set up 2026-10-06, test returned 204 and started a run. Shows up as
+   event `workflow_dispatch`. It uses a fine-grained token (Actions read/write, this repo only); if
+   these runs stop appearing, the token probably expired — the user gets cron-job.org failure emails.
 3. Claude routine `trig_01EkoS6ACSSFEpBo7wY5qCUq` at 16:00 UTC: pushes a line to
    `.github/run-request`, which starts the workflow via a push trigger. Inspect with the
    RemoteTrigger tool (`list_runs`, `get_run_log`). It has no connectors on purpose — if you
    recreate it, clear them (create attaches all of the user's connectors by default).
 
-Every layer except a plain manual run skips if today's `deal_digest.json` exists.
+Every layer except a plain manual run skips if today's `deal_digest.json` exists. "Today" is the
+**UTC** date: anything started after 8 PM Eastern counts as the next day's run (a cron-job.org
+test at 9:53 PM ET on Oct 6 produced Oct 7's batch that night; the next day's layers then skipped).
 
 A run **cancelled** with no steps executed is GitHub, not the code: check the job's annotations
 (`gh api repos/JacobElder/PointsOptimizer/check-runs/<job-id>/annotations`) for "The job was not
@@ -96,6 +100,20 @@ layer produced that day's digest. Workflows are pinned to `ubuntu-24.04` (see TO
 
 Plain language, lead with the answer: did it run, are the deals right, what you fixed.
 Name deals worth a look with route, program, points and live ¢/pt. Be honest about your own
-earlier mistakes. Remind them of open items only when relevant: cron-job.org setup,
-GIST_TOKEN, deleting the old paused "seats.aero Deal Radar" routine at
-claude.ai/code/routines, the SerpApi decision.
+earlier mistakes. Remind them of open items only when relevant: GIST_TOKEN, deleting the old
+paused "seats.aero Deal Radar" routine at claude.ai/code/routines, the SerpApi decision.
+
+## Where things stand (update this section as it changes)
+
+- **Goal:** call the system finished after 5 consecutive clean runs — email arrives with no one
+  stepping in, every emailed deal verified and still above its bar at live fares, no repeat
+  emails, no code fixes needed — then switch to a weekly `make audit-live`.
+- **Clean days so far:** Oct 6 (1 of 5). Fixes from Oct 5 (repeat suppression, fare-spike cap,
+  Emirates cabin links, test isolation of balance files, runner pin) had their first real run Oct 6
+  and worked.
+- **Local balances** (`balances.json`, gitignored, Mac only) were wiped by a test from Sep 26 to
+  Oct 5 and restored Oct 6 from the user: Chase 139,915 · Bilt 103,000 · Wells Fargo 0. Airline
+  miles are in `program_balances.json` and the `PROGRAM_BALANCES` secret.
+- **Ideas parked until the data asks for them:** a small margin above the bar for borderline deals;
+  more fresh Google fares per run (reuse fell when the Sep 16–17 batch aged out); a mild preference
+  for fewer total points. See `docs/decisions.md` for decisions already made.
