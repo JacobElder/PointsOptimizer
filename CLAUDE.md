@@ -108,9 +108,12 @@ paused "seats.aero Deal Radar" routine at claude.ai/code/routines, the SerpApi d
 - **Goal:** call the system finished after 5 consecutive clean runs — email arrives with no one
   stepping in, every emailed deal verified and still above its bar at live fares, no repeat
   emails, no code fixes needed — then switch to a weekly `make audit-live`.
-- **Clean days so far:** Oct 6 (1 of 5). Fixes from Oct 5 (repeat suppression, fare-spike cap,
+- **Clean days so far:** Oct 6, Oct 7 (2 of 5). Fixes from Oct 5 (repeat suppression, fare-spike cap,
   Emirates cabin links, test isolation of balance files, runner pin) had their first real run Oct 6
-  and worked.
+  and worked. Oct 7's digest came from the hand-clicked cron-job.org test (01:53 UTC), so the
+  unattended 10:00 ET dispatch has not yet produced a digest on its own — Oct 8 is its first real
+  test. Oct 7 flight-detail lookups were 91 (above the ~50–80 norm, far under the 260 cap; more
+  round-trip checks too, 785 vs 562) — watch whether that keeps climbing.
 - **Local balances** (`balances.json`, gitignored, Mac only) were wiped by a test from Sep 26 to
   Oct 5 and restored Oct 6 from the user: Chase 139,915 · Bilt 103,000 · Wells Fargo 0. Airline
   miles are in `program_balances.json` and the `PROGRAM_BALANCES` secret.
