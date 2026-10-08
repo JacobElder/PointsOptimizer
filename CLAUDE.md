@@ -58,6 +58,10 @@ say so, but look for a pattern (same route every day, borderline margins).
    10:00 America/New_York — set up 2026-10-06, test returned 204 and started a run. Shows up as
    event `workflow_dispatch`. It uses a fine-grained token (Actions read/write, this repo only); if
    these runs stop appearing, the token probably expired — the user gets cron-job.org failure emails.
+   **As of Oct 8 it has never fired on schedule:** no `workflow_dispatch` run on Oct 7 or Oct 8 and
+   no failure email (only the account-activation email, Oct 7 01:43 UTC). Since even a skipping run
+   would show up, the job itself isn't executing — the user is checking activation / enabled /
+   schedule on cron-job.org. Until it's confirmed, treat this layer as missing.
 3. Claude routine `trig_01EkoS6ACSSFEpBo7wY5qCUq` at 16:00 UTC: pushes a line to
    `.github/run-request`, which starts the workflow via a push trigger. Inspect with the
    RemoteTrigger tool (`list_runs`, `get_run_log`). It has no connectors on purpose — if you
@@ -108,12 +112,18 @@ paused "seats.aero Deal Radar" routine at claude.ai/code/routines, the SerpApi d
 - **Goal:** call the system finished after 5 consecutive clean runs — email arrives with no one
   stepping in, every emailed deal verified and still above its bar at live fares, no repeat
   emails, no code fixes needed — then switch to a weekly `make audit-live`.
-- **Clean days so far:** Oct 6, Oct 7 (2 of 5). Fixes from Oct 5 (repeat suppression, fare-spike cap,
+- **Clean days so far:** Oct 6, Oct 7, Oct 8 (3 of 5). Fixes from Oct 5 (repeat suppression, fare-spike cap,
   Emirates cabin links, test isolation of balance files, runner pin) had their first real run Oct 6
   and worked. Oct 7's digest came from the hand-clicked cron-job.org test (01:53 UTC), so the
-  unattended 10:00 ET dispatch has not yet produced a digest on its own — Oct 8 is its first real
-  test. Oct 7 flight-detail lookups were 91 (above the ~50–80 norm, far under the 260 cap; more
-  round-trip checks too, 785 vs 562) — watch whether that keeps climbing.
+  unattended 10:00 ET dispatch has not yet produced a digest on its own (see layer 2 above). Oct 8
+  came from GitHub's own schedule (15:36 UTC); 7 emailed, all above bar live, one intended repeat
+  (EWR–MAD Alaska, 70k → 55k points). Flight-detail lookups 91 (Oct 7) and 93 (Oct 8), above the
+  ~50–80 norm and far under the 260 cap, tracking more round-trip checks (~790 vs 562) — fine
+  unless it keeps climbing. Borderline margins on Oct 8: JFK–BGI 2.76¢ vs 2.71 bar, JFK–SJU 2.12¢
+  vs 2.08 (the parked "small margin above the bar" idea).
+- **One-off local searches** (e.g. the Oct 7 SE Asia search via `award_scanner.scan` +
+  `price_promising`) write live quotes into `cash_quotes.json`; `git checkout -- cash_quotes.json`
+  before `git pull` or the pull aborts.
 - **Local balances** (`balances.json`, gitignored, Mac only) were wiped by a test from Sep 26 to
   Oct 5 and restored Oct 6 from the user: Chase 139,915 · Bilt 103,000 · Wells Fargo 0. Airline
   miles are in `program_balances.json` and the `PROGRAM_BALANCES` secret.
