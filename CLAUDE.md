@@ -121,6 +121,15 @@ paused "seats.aero Deal Radar" routine at claude.ai/code/routines, the SerpApi d
   ~50–80 norm and far under the 260 cap, tracking more round-trip checks (~790 vs 562) — fine
   unless it keeps climbing. Borderline margins on Oct 8: JFK–BGI 2.76¢ vs 2.71 bar, JFK–SJU 2.12¢
   vs 2.08 (the parked "small margin above the bar" idea).
+- **Oct 9: not clean by the letter, no code fault.** GitHub schedule (15:18 UTC), healthy log (74
+  flight lookups, 507/510 round trips priced, all selections ≤7 rounds), 5 emailed, 0 repeats, 0
+  offline problems. JFK–NRT Flying Blue 115k+$699 (Oct 27) fell below its bar at live fares
+  6 h later: $3,540 → $2,949, 2.47¢ → 1.96¢ vs 2.27 bar. The email fare was 1.22× the route's
+  typical $2,895 (the fare model's estimate, which was right) and the margin was only 9%. Replay
+  of Oct 6–9: 3 emailed cards would have been below the bar at the typical fare (JFK–CPT Oct 6,
+  EWR–MUC Oct 7, JFK–NRT Oct 9); only NRT actually fell. 1 of 3 isn't enough to ship a rule. If
+  another "fare well above typical + thin margin" card falls, that's the data for the parked
+  margin idea. Whether this resets the streak is the user's call.
 - **One-off local searches** (e.g. the Oct 7 SE Asia search via `award_scanner.scan` +
   `price_promising`) write live quotes into `cash_quotes.json`; `git checkout -- cash_quotes.json`
   before `git pull` or the pull aborts.
