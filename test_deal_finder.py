@@ -1348,3 +1348,14 @@ def test_spiking_date_does_not_lead_the_card():
     cheap = _with_typical(_scored("VIE", "BUSINESS", "united", "EWR", 88000, 3000, date="2026-12-02"), 2763)
     (leader,) = deal_finder.group_leaders([spike, cheap])
     assert leader is spike
+
+
+def test_google_lookups_are_logged_per_minute(monkeypatch):
+    monkeypatch.setattr(deal_finder.flight_search, "lookup_log", lambda: [
+        ("15:01", "one-way", True), ("15:02", "one-way", False), ("15:02", "round-trip", True),
+        ("15:02", "one-way", True)])
+    monkeypatch.setattr(deal_finder.flight_search, "backoff_stats", lambda: {"pauses": 1, "waited_s": 3.0})
+    lines = []
+    deal_finder._log_google_lookups(lines.append)
+    assert lines == ["Google lookups by minute (one-way, round-trip; priced/total): 15:01 1/1 0/0 · 15:02 1/2 1/1",
+                     "Paused 1 time(s) after empty Google answers, 3 s in all"]

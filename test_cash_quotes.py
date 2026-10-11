@@ -84,3 +84,62 @@ def test_empty_answer_within_the_same_run_is_not_retried(monkeypatch):
     quotes = [_stored("2026-11-04", None, "2026-10-10T14:34:00Z")]
     q = cash_quotes.find_cached(quotes, "EWR", "CPT", "2026-11-04", "ECONOMY")
     assert q is not None and q.price_usd is None
+
+
+EMPTY_PAGE = '<script class="ds:1">AF_initDataCallback({key: "ds:1", data:[null, null, null, null], sideChannel: {}});</script>'
+
+
+def _google_stub(monkeypatch, pages):
+    """Feed fast-flights lookups from `pages` (a page, or an exception to raise) and record pauses."""
+    sleeps, pages = [], list(pages)
+
+    def fetch(_query):
+        page = pages.pop(0)
+        if isinstance(page, Exception):
+            raise page
+        return page
+
+    monkeypatch.setattr(flight_search, "_fetch_html", fetch)
+    monkeypatch.setattr(flight_search, "_sleep", sleeps.append)
+    monkeypatch.setattr(flight_search, "fast_flights_available", lambda: True)
+    monkeypatch.setattr(flight_search, "_backoff", dict(flight_search._backoff))  # restored after the test
+    monkeypatch.setattr(flight_search, "_lookups", [])
+    flight_search.reset_backoff(enabled=True)
+    return sleeps
+
+
+def test_empty_answers_slow_the_next_lookups_down_and_a_real_one_resets(monkeypatch):
+    # Oct 10-11: Google throttled the runner, and the empty answers came in the
+    # busiest minute (Oct 11 15:02: 78 lookups, 20 empty) while lookups ran back
+    # to back. The 2 s-spaced end-of-run retry recovered 8 of 10.
+    full = _payload_html(best=[(4169, [("JFK", "ZRH", "LX", "17")])], other=[])
+    sleeps = _google_stub(monkeypatch, [EMPTY_PAGE, EMPTY_PAGE, RuntimeError("blocked"), full, full])
+    flight_search._fetch_offers_fast_flights("JFK", "ZRH", "2026-11-12", "BUSINESS")
+    flight_search._fetch_offers_fast_flights("JFK", "ZRH", "2026-11-13", "BUSINESS")
+    try:
+        flight_search.search_round_trip_offers("JFK", "ZRH", "2026-11-14", "2026-11-21", "BUSINESS")
+    except flight_search.SearchFailed:
+        pass
+    flight_search._fetch_offers_fast_flights("JFK", "ZRH", "2026-11-15", "BUSINESS")
+    flight_search._fetch_offers_fast_flights("JFK", "ZRH", "2026-11-16", "BUSINESS")
+    assert sleeps == [3.0, 6.0, 12.0]
+    log = flight_search.lookup_log()
+    assert [(kind, ok) for _, kind, ok in log] == [
+        ("one-way", False), ("one-way", False), ("round-trip", False), ("one-way", True), ("one-way", True)]
+
+
+def test_pauses_stop_growing_and_stop_altogether_past_the_run_total(monkeypatch):
+    sleeps = _google_stub(monkeypatch, [EMPTY_PAGE] * 40)
+    for _ in range(40):
+        flight_search._fetch_offers_fast_flights("JFK", "ZRH", "2026-11-12", "BUSINESS")
+    assert max(sleeps) == 24.0
+    assert sum(sleeps) <= 240.0
+    assert sum(sleeps) >= 230.0  # it does use the allowance before giving up
+
+
+def test_no_pauses_unless_the_run_turns_them_on(monkeypatch):
+    sleeps = _google_stub(monkeypatch, [EMPTY_PAGE, EMPTY_PAGE])
+    flight_search.reset_backoff(enabled=False)
+    flight_search._fetch_offers_fast_flights("JFK", "ZRH", "2026-11-12", "BUSINESS")
+    flight_search._fetch_offers_fast_flights("JFK", "ZRH", "2026-11-13", "BUSINESS")
+    assert sleeps == []

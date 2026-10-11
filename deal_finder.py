@@ -1001,6 +1001,27 @@ def _use_round_trip(s: Scored, offers, stay: int) -> bool:
     return True
 
 
+def _log_google_lookups(log) -> None:
+    """When the empty Google answers happened, so a throttled run shows its shape.
+
+    One line per run: per UTC minute, one-way then round-trip lookups as
+    priced/total. Oct 10-11 2026 the empties bunched in the busiest minute; this
+    is how to tell whether the pauses after an empty answer (flight_search) help.
+    """
+    by_minute: dict[str, dict[str, list[int]]] = {}
+    for minute, kind, ok in flight_search.lookup_log():
+        cell = by_minute.setdefault(minute, {"one-way": [0, 0], "round-trip": [0, 0]})[kind]
+        cell[0] += ok
+        cell[1] += 1
+    if not by_minute:
+        return
+    parts = [f"{m} {c['one-way'][0]}/{c['one-way'][1]} {c['round-trip'][0]}/{c['round-trip'][1]}"
+             for m, c in by_minute.items()]
+    log("Google lookups by minute (one-way, round-trip; priced/total): " + " · ".join(parts))
+    b = flight_search.backoff_stats()
+    log(f"Paused {b['pauses']} time(s) after empty Google answers, {b['waited_s']:.0f} s in all")
+
+
 def rt_outage_note(deals: list[dict]) -> str | None:
     """A warning when too many published deals are valued on an estimated fare.
 
@@ -1678,6 +1699,7 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
         round_trip: bool = True, log=print, max_watch_lookups: int = DEFAULT_MAX_WATCH_LOOKUPS,
         resend: bool = False, use_watchlist: bool = True) -> dict:
     flight_search.SERPAPI_MAX_CALLS = SERPAPI_CAP
+    flight_search.reset_backoff(enabled=True)
     ROUTE_NONSTOP_SEEN.clear()
     CARD_CHECKS.clear()
     started = datetime.now(timezone.utc)
@@ -1880,6 +1902,7 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
         f"{sum(1 for v in trip_cache.values() if v is None)} gone/repriced, "
         f"{sum(1 for v in trip_cache.values() if isinstance(v, award_trips.TripInfo) and v.mixed_cabin)}"
         " mixed cabin")
+    _log_google_lookups(log)
     watch_out, watch_pairs = [], []
     for g in watch:
         rebuilt = []

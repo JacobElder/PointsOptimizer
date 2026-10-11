@@ -15,7 +15,9 @@ Configure SerpApi via environment variable or Streamlit secrets: SERPAPI_KEY
 from __future__ import annotations
 
 import os
+import time
 from dataclasses import dataclass
+from datetime import datetime, timezone
 
 import requests
 
@@ -230,11 +232,61 @@ def _fetch_with_fallback(origin: str, destination: str, departure_date: str, cab
 
 _FF_SEAT = {"ECONOMY": "economy", "PREMIUM_ECONOMY": "premium-economy", "BUSINESS": "business", "FIRST": "first"}
 
+# Google throttles the scraper in bursts: on Oct 10 and 11 2026 a third of the
+# round-trip checks came back empty, the empties bunched in the busiest minute
+# (Oct 11 15:02: 78 lookups, 20 empty) while lookups ran back to back, and the
+# end-of-run retry, spaced 2 s apart, recovered 8 of 10. So after an empty or
+# failed answer the next lookup waits, longer while the empties continue, and a
+# real answer resets it. A real "no flights" costs one 3 s pause. Off unless a
+# batch run turns it on (reset_backoff), so the site never stalls on it.
+BACKOFF_FIRST_S = 3.0
+BACKOFF_MAX_S = 24.0
+BACKOFF_RUN_TOTAL_S = 240.0  # a hard block must not add half an hour to the run
+
+_backoff = {"enabled": False, "next_s": 0.0, "waited_s": 0.0, "pauses": 0}
+_lookups: list[tuple[str, str, bool]] = []  # (UTC minute, "one-way"/"round-trip", got fares)
+_sleep = time.sleep
+
+
+def reset_backoff(enabled: bool) -> None:
+    """Start a run: clear the pause state and the lookup log."""
+    _backoff.update(enabled=enabled, next_s=0.0, waited_s=0.0, pauses=0)
+    _lookups.clear()
+
+
+def backoff_stats() -> dict:
+    return {"pauses": _backoff["pauses"], "waited_s": round(_backoff["waited_s"], 1)}
+
+
+def lookup_log() -> list[tuple[str, str, bool]]:
+    return list(_lookups)
+
+
+def _fetch_html(query) -> str:
+    from fast_flights import fetch_flights_html
+    return fetch_flights_html(query)
+
+
+def _google(query, cabin: str, kind: str) -> list[FlightOffer]:
+    """One fast-flights lookup, paced after empty answers (see BACKOFF_FIRST_S)."""
+    wait = min(_backoff["next_s"], BACKOFF_RUN_TOTAL_S - _backoff["waited_s"])
+    if _backoff["enabled"] and wait > 0:
+        _sleep(wait)
+        _backoff["waited_s"] += wait
+        _backoff["pauses"] += 1
+    offers: list[FlightOffer] = []
+    try:
+        offers = _parse_google_flights_html(_fetch_html(query), cabin)
+        return offers
+    finally:
+        _lookups.append((datetime.now(timezone.utc).strftime("%H:%M"), kind, bool(offers)))
+        _backoff["next_s"] = 0.0 if offers else min(max(_backoff["next_s"] * 2, BACKOFF_FIRST_S), BACKOFF_MAX_S)
+
 
 def _fetch_offers_fast_flights(origin: str, destination: str, departure_date: str, cabin: str) -> list[FlightOffer]:
     """Free Google Flights lookup via fast-flights. Raises on any failure;
     returns [] when Google genuinely has no itineraries (e.g. date too far out)."""
-    from fast_flights import FlightQuery, create_query, fetch_flights_html
+    from fast_flights import FlightQuery, create_query
 
     query = create_query(
         flights=[FlightQuery(date=departure_date, from_airport=origin, to_airport=destination)],
@@ -243,7 +295,7 @@ def _fetch_offers_fast_flights(origin: str, destination: str, departure_date: st
         currency="USD",
         language="en",
     )
-    return _parse_google_flights_html(fetch_flights_html(query), cabin)
+    return _google(query, cabin, "one-way")
 
 
 def _parse_google_flights_html(html: str, cabin: str) -> list[FlightOffer]:
@@ -331,7 +383,7 @@ def search_round_trip_offers(origin: str, destination: str, depart_date: str, re
     """
     if not fast_flights_available():
         raise SearchFailed("Round-trip check needs fast-flights.")
-    from fast_flights import FlightQuery, create_query, fetch_flights_html
+    from fast_flights import FlightQuery, create_query
 
     origin, destination, cabin = origin.strip().upper(), destination.strip().upper(), cabin.strip().upper()
     query = create_query(
@@ -343,7 +395,7 @@ def search_round_trip_offers(origin: str, destination: str, depart_date: str, re
         language="en",
     )
     try:
-        return _parse_google_flights_html(fetch_flights_html(query), cabin)
+        return _google(query, cabin, "round-trip")
     except SearchFailed:
         raise
     except Exception as e:

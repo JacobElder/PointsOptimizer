@@ -18,7 +18,7 @@ The user asks "check the digest" / "did it run today? audit and review" most day
 2. **Read the run log's key lines** (replace RUN_ID):
    ```
    gh run view RUN_ID --repo JacobElder/PointsOptimizer --log | cut -f3 \
-     | sed -E 's/^[0-9T:.-]+Z //' | grep -E "^Scan:|^Pricing|Selection|settle|warning|^Round-trip|^Fresh re-pricing|^Switched|^Return legs|retries|failed for"
+     | sed -E 's/^[0-9T:.-]+Z //' | grep -E "^Scan:|^Pricing|Selection|settle|warning|^Round-trip|^Fresh re-pricing|^Switched|^Return legs|retries|failed for|^Google lookups|^Paused"
    ```
    Healthy: no `::warning`; `Selection: … settled in ≤12 round(s)` everywhere; flight
    lookups ~50–80 total; round-trip checks mostly priced (>90%); `no_fare` single digits;
