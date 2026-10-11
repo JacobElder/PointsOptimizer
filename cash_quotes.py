@@ -38,6 +38,11 @@ _DATE_RE = __import__("re").compile(r"^\d{4}-\d{2}-\d{2}$")
 REUSE_TIERS = ((45, 2, 3), (120, 7, 7), (10 ** 6, 14, 14))
 APPROX_WINDOW_DAYS = 7  # kept for callers that don't know the lead time
 APPROX_MAX_AGE_DAYS = 14
+# An empty answer ("no itineraries") is trusted only within the run that got it.
+# Real ones are rare (5 of 280 lookups Oct 8, 2 of 262 Oct 9); throttled ones come
+# in bursts (98 of 252 on Oct 10, 91 of them in three minutes) and, kept for days,
+# hid those dates from pricing even where a real fare on a nearby date was saved.
+NO_FARE_MAX_AGE_DAYS = 0.5
 # Google Flights only lists fares ~11 months ahead; every "no cash price" in
 # deal_log.json with no error was 343-357 days out, the furthest priced was 329.
 MAX_LOOKAHEAD_DAYS = 330
@@ -195,7 +200,8 @@ def find_cached(quotes: list[dict], origin: str, dest: str, travel_date: str, ca
                   and _DATE_RE.match(str(q.get("date", "")))]  # one malformed row must not abort a run
 
     for q in same_route:
-        if q["date"] == travel_date and _age_days(q) <= _max_age_days(travel_day, today):
+        max_age = _max_age_days(travel_day, today) if q.get("price_usd") is not None else NO_FARE_MAX_AGE_DAYS
+        if q["date"] == travel_date and _age_days(q) <= max_age:
             return Quote(**{**q, "approx": False})
 
     if not allow_approx:

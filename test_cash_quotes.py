@@ -56,3 +56,31 @@ def test_parser_reads_best_and_other_lists_and_skips_priceless_rows():
 
     broken = html.replace("[[null, 1468]]", "[]")
     assert [o.price_usd for o in flight_search._parse_google_flights_html(broken, "BUSINESS")] == [4169.0]
+
+
+def _stored(date, price, fetched):
+    return {"origin": "EWR", "dest": "CPT", "cabin": "ECONOMY", "date": date, "price_usd": price,
+            "nonstop_price_usd": None, "provider": "fast-flights", "fetched_at": fetched, "offers": []}
+
+
+def test_empty_answer_from_yesterday_does_not_block_pricing(monkeypatch):
+    # Oct 10: Google throttled the runner for three minutes and 98 lookups came back
+    # empty. Saved as "no fare", each blocked its exact date for up to a week, even
+    # where a real fare a day away was sitting in the store.
+    from datetime import datetime, timezone
+    monkeypatch.setattr(cash_quotes, "_now", lambda: datetime(2026, 10, 11, 14, 0, tzinfo=timezone.utc))
+    quotes = [_stored("2026-11-04", None, "2026-10-10T14:34:00Z"),
+              _stored("2026-11-05", 1210.0, "2026-10-09T15:20:00Z")]
+    q = cash_quotes.find_cached(quotes, "EWR", "CPT", "2026-11-04", "ECONOMY")
+    assert q is not None and q.price_usd == 1210.0 and q.approx
+
+    # With nothing nearby, it is looked up again rather than trusted.
+    assert cash_quotes.find_cached(quotes[:1], "EWR", "CPT", "2026-11-04", "ECONOMY") is None
+
+
+def test_empty_answer_within_the_same_run_is_not_retried(monkeypatch):
+    from datetime import datetime, timezone
+    monkeypatch.setattr(cash_quotes, "_now", lambda: datetime(2026, 10, 10, 14, 50, tzinfo=timezone.utc))
+    quotes = [_stored("2026-11-04", None, "2026-10-10T14:34:00Z")]
+    q = cash_quotes.find_cached(quotes, "EWR", "CPT", "2026-11-04", "ECONOMY")
+    assert q is not None and q.price_usd is None

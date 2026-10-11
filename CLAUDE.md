@@ -130,6 +130,16 @@ paused "seats.aero Deal Radar" routine at claude.ai/code/routines, the SerpApi d
   EWR–MUC Oct 7, JFK–NRT Oct 9); only NRT actually fell. 1 of 3 isn't enough to ship a rule. If
   another "fare well above typical + thin margin" card falls, that's the data for the parked
   margin idea. Whether this resets the streak is the user's call.
+- **Oct 10: emailed deals clean; one code fix.** GitHub schedule (14:28 UTC), 3 emailed, 0 repeats,
+  0 offline problems, all 3 above bar live on Oct 11 (EWR–DXB LifeMiles thin: 3.09¢ vs 3.00 bar).
+  Google throttled the runner 14:34–14:36: 94 of 233 cash lookups and 279 of 848 round trips came
+  back empty (`::warning`), but every published card still had a real round trip. The empty answers
+  were saved as "no fare" and blocked those dates from pricing for 2–7 days; now they're trusted
+  only within the run (`NO_FARE_MAX_AGE_DAYS`). Watch Oct 11's `no_fare` and live-lookup counts.
+- **iCloud evicts this repo's files** (`ls -lO` shows `dataless`; the `.nosync` name doesn't stop it).
+  Reads then hang forever: git fetch/pull and `.venv` Python stalled on Oct 11. Check with
+  `find .venv -type f | head -500 | xargs ls -lO | grep -c dataless`. A venv outside `~/Documents`
+  works around it; the real fix is the user's (keep the folder downloaded / move it out of iCloud).
 - **One-off local searches** (e.g. the Oct 7 SE Asia search via `award_scanner.scan` +
   `price_promising`) write live quotes into `cash_quotes.json`; `git checkout -- cash_quotes.json`
   before `git pull` or the pull aborts.
