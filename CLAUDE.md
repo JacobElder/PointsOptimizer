@@ -142,8 +142,9 @@ paused "seats.aero Deal Radar" routine at claude.ai/code/routines, the SerpApi d
   *below* typical $3,133, so not Oct 9's pattern). Oct 10's fix worked: 39 of the 98 blocked dates were
   re-looked-up, 31 priced. Google throttled again: round trips 404/600 priced (67%, 2nd day running;
   also Oct 4 at 57%), empties peak in the busiest minute (15:02: 78 lookups, 20 empty). Main lookups
-  are unpaced; the 2 s-spaced end-of-run retry recovered 8/10. Candidate fix (not shipped, unproven):
-  back off after an empty answer. Thin-margin tally (<10% over bar, Oct 8–11): 7 emailed, 2 fell
+  are unpaced; the 2 s-spaced end-of-run retry recovered 8/10. Shipped d1b6669 (unproven until a
+  throttled day): pause 3→24 s after an empty answer, 240 s max per run; read the new `Google lookups
+  by minute` / `Paused` log lines — if the priced share recovers once pauses start, it works. Thin-margin tally (<10% over bar, Oct 8–11): 7 emailed, 2 fell
   (NRT, HKG); none of the wider-margin cards fell.
 - **iCloud evicts this repo's files** (`ls -lO` shows `dataless`; the `.nosync` name doesn't stop it).
   Reads then hang forever: git fetch/pull and `.venv` Python stalled on Oct 11. Check with
