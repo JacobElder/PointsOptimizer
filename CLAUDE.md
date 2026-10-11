@@ -136,6 +136,15 @@ paused "seats.aero Deal Radar" routine at claude.ai/code/routines, the SerpApi d
   back empty (`::warning`), but every published card still had a real round trip. The empty answers
   were saved as "no fare" and blocked those dates from pricing for 2–7 days; now they're trusted
   only within the run (`NO_FARE_MAX_AGE_DAYS`). Watch Oct 11's `no_fare` and live-lookup counts.
+- **Oct 11: no code fault; one emailed deal fell on a fare move.** GitHub schedule (14:54 UTC), 7 emailed,
+  0 repeats, 0 offline problems, 0 published cards on estimated round trips. EWR–HKG Aeroplan 102.5k
+  (Sep 4 2027) fell below bar live: $2,930 → $2,636, 2.80¢ → 2.52¢ vs 2.62 (7% margin; the fare was
+  *below* typical $3,133, so not Oct 9's pattern). Oct 10's fix worked: 39 of the 98 blocked dates were
+  re-looked-up, 31 priced. Google throttled again: round trips 404/600 priced (67%, 2nd day running;
+  also Oct 4 at 57%), empties peak in the busiest minute (15:02: 78 lookups, 20 empty). Main lookups
+  are unpaced; the 2 s-spaced end-of-run retry recovered 8/10. Candidate fix (not shipped, unproven):
+  back off after an empty answer. Thin-margin tally (<10% over bar, Oct 8–11): 7 emailed, 2 fell
+  (NRT, HKG); none of the wider-margin cards fell.
 - **iCloud evicts this repo's files** (`ls -lO` shows `dataless`; the `.nosync` name doesn't stop it).
   Reads then hang forever: git fetch/pull and `.venv` Python stalled on Oct 11. Check with
   `find .venv -type f | head -500 | xargs ls -lO | grep -c dataless`. A venv outside `~/Documents`
