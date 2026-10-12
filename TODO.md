@@ -8,9 +8,9 @@ history before 2026-09-16.
 
 - [ ] **Delete the paused "seats.aero Deal Radar" routine** at claude.ai/code/routines
       (the tool here can pause but not delete). Its pipeline was removed 2026-09-16.
-- [ ] SerpApi was removed from the code 2026-10-12. Delete the `SERPAPI_KEY` GitHub repo
-      secret, the Streamlit Cloud secret and the line in local `.streamlit/secrets.toml`;
-      optionally close the serpapi.com account.
+- [ ] SerpApi was removed 2026-10-12 (code, GitHub repo secret and local secrets.toml line).
+      Left: delete `SERPAPI_KEY` from the Streamlit Cloud app's secrets; optionally close
+      the serpapi.com account.
 
 ## Possible improvements
 

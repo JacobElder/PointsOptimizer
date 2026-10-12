@@ -114,7 +114,7 @@ Plain language, lead with the answer: did it run, are the deals right, what you 
 Name deals worth a look with route, program, points and live ¢/pt. Be honest about your own
 earlier mistakes. Remind them of open items only when relevant: GIST_TOKEN, deleting the old
 paused "seats.aero Deal Radar" routine at claude.ai/code/routines (its Gmail connector was
-removed Oct 12), deleting the old SERPAPI_KEY secrets.
+removed Oct 12), deleting SERPAPI_KEY from the Streamlit Cloud secrets.
 
 ## Where things stand (update this section as it changes)
 
