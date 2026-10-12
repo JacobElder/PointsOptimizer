@@ -97,6 +97,9 @@ layer produced that day's digest. Workflows are pinned to `ubuntu-24.04` (see TO
   runner (empty results) — the round-trip retry and estimate exist for that.
 - Saved fares are reused for up to 14 days; reuse counts dip when an old batch ages out.
 - `transfer_bonuses.json`: set `checked` whenever you check bonuses, even if nothing changed.
+  Claude routine `trig_01Un3SpQQTYb5j7Ys4gW19qs` (Mondays 14:00 UTC, no connectors) checks roame.travel +
+  point.me and opens a PR from a `claude/transfer-bonuses-<date>` branch; the user merges it. Debug with
+  RemoteTrigger `list_runs` / `get_run_log`. First run Oct 12 2026.
 - Public repo: never commit balances or secrets. Wording: say "per-run lookup limit", never
   "budget", for Google lookups (the user reads budget as money).
 
