@@ -99,9 +99,11 @@ layer produced that day's digest. Workflows are pinned to `ubuntu-24.04` (see TO
 - `transfer_bonuses.json`: set `checked` whenever you check bonuses, even if nothing changed.
   Claude routine `trig_01Un3SpQQTYb5j7Ys4gW19qs` (Mondays 14:00 UTC, no connectors) checks roame.travel +
   point.me and opens a PR from a `claude/transfer-bonuses-<date>` branch; the user merges it. Debug with
-  RemoteTrigger `list_runs` / `get_run_log`. First PR (#1) merged Oct 12 2026. The cloud sandbox's
-  network (Default environment, Trusted) can't reach roame.travel/point.me, so it confirms bonuses via
-  WebSearch (2 agreeing sites); the user may switch Default to Custom + those domains. In the sandbox
+  RemoteTrigger `list_runs` / `get_run_log`. First PR (#1) merged Oct 12 2026. On Oct 12 the user set the
+  routines' environment (env_019guvaADMYYQRYcGqGPpuRX, renamed "Default_v2") to Custom network access:
+  the default list plus roame.travel, point.me, upgradedpoints.com, awardtravelfinder.com,
+  onemileatatime.com, frequentmiler.com. Before that, the sandbox got DNS errors for those sites; WebSearch
+  (2 agreeing sites) is the fallback if they're blocked again. In the sandbox
   `gh pr create` fails (GraphQL is blocked) — PRs go through `gh api .../pulls`.
 - Public repo: never commit balances or secrets. Wording: say "per-run lookup limit", never
   "budget", for Google lookups (the user reads budget as money).
