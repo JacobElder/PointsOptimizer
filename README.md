@@ -31,9 +31,9 @@ Copy `.streamlit/secrets.toml.example` to `.streamlit/secrets.toml` (gitignored)
 |-----|----------|------|
 | `SEATS_AERO_API_KEY` | Award availability (Cached Search) | seats.aero Pro, $9.99/mo, includes 1,000 API calls/day |
 | `GMAIL_ADDRESS` / `GMAIL_APP_PASSWORD` | Emailing deal digests (Gmail SMTP) | Free (Google Account → Security → App Passwords) |
-| `SERPAPI_KEY` *(optional)* | Fallback cash prices if free lookups fail | Free tier, 250 searches/month; capped per run |
+| `GIST_TOKEN` *(optional)* | One copy of your balances across Mac, site and daily run (see Balances) | Free |
 
-**Cash prices need no key.** They come from Google Flights via `fast-flights` (free, no quota). SerpApi is the same Google Flights data behind a paid API, kept only as a fallback.
+**Cash prices need no key.** They come from Google Flights via `fast-flights` (free, no quota). SerpApi, a paid API for the same Google data, was the fallback until Oct 2026 and has been removed.
 
 For the scheduled Deal Finder, add the same keys as GitHub repo secrets (Settings → Secrets and variables → Actions).
 
@@ -142,7 +142,7 @@ CI: `tests.yml` on every push; `cash_price_check.yml` weekly and whenever the pr
 | `award_scanner.py` | seats.aero Cached Search across routes and your programs |
 | `fare_model.py` | Cash-fare estimates with uncertainty |
 | `cash_quotes.py` | Saved fare quotes, nearby-date reuse, comparable-fare matching |
-| `flight_search.py` | Google Flights fares (one-way and round-trip): fast-flights, capped SerpApi fallback |
+| `flight_search.py` | Google Flights fares (one-way and round-trip) via fast-flights, paced after empty answers |
 | `valuation.py` | CPP math, currency conversion, per-program baselines and verdict (`program_values.json`) |
 | `funding.py` | How to pay for an award: held miles first, then the best transfer (with active transfer bonuses) |
 | `award_trips.py` | Flight-level detail and live re-verification: flights, cabin per leg, stops, seats, current price, airport changes, booking link |

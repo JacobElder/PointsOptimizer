@@ -1,7 +1,7 @@
 """
 Resolve a user-typed origin/destination into an IATA code the search APIs accept.
 
-Both seats.aero (Cached Search) and SerpApi (Google Flights) accept 3-letter IATA
+Both seats.aero (Cached Search) and Google Flights accept 3-letter IATA
 codes -- and, verified against the live seats.aero API 2026-07-25, metropolitan-area
 codes too (e.g. NYC covers JFK/EWR/LGA, LON covers LHR/LGW/etc.). So a city search
 resolves to the metro code where one exists (broadest coverage), otherwise to the

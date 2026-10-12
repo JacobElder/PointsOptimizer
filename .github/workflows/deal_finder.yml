@@ -5,8 +5,8 @@ name: Deal Finder
 # digest (shown on the Deal Radar page) plus the saved cash quotes.
 #
 # Needs repo secrets: SEATS_AERO_API_KEY, GMAIL_ADDRESS, GMAIL_APP_PASSWORD
-# (SERPAPI_KEY optional: capped fallback if free lookups fail; PROGRAM_BALANCES
-# optional: miles already held in airline programs, kept out of the public repo).
+# (PROGRAM_BALANCES optional: miles already held in airline programs, kept out of
+# the public repo; GIST_TOKEN optional: balances from your private Gist).
 #
 # Starting it: GitHub's scheduler has been dropping scheduled runs since late Aug 2026
 # (github.com/orgs/community/discussions/207346; this repo got none on Sep 28-29), so
@@ -99,7 +99,6 @@ jobs:
         if: steps.guard.outputs.skip != 'true'
         env:
           SEATS_AERO_API_KEY: ${{ secrets.SEATS_AERO_API_KEY }}
-          SERPAPI_KEY: ${{ secrets.SERPAPI_KEY }}
           GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
           GIST_TOKEN: ${{ secrets.GIST_TOKEN }} # optional: balances from your private Gist (see README)

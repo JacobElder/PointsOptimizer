@@ -11,7 +11,7 @@ get_quote() order:
   1. exact route/date/cabin quote, still fresh              -> reused
   2. same route+cabin, date within +/-APPROX_WINDOW_DAYS,
      recent enough                                           -> reused, approx=True
-  3. live lookup via flight_search (fast-flights, then SerpApi), saved
+  3. live lookup via flight_search (fast-flights), saved
 Dates outside Google Flights' booking window are never looked up live.
 
 Git-tracked JSON next to deal_log.json so the pipeline and the Streamlit app share it.
@@ -224,7 +224,7 @@ def get_quote(origin: str, dest: str, travel_date: str, cabin: str, *,
     """Best available quote. Returns None only if allow_live=False and nothing cached.
 
     Raises OutOfWindow (no lookup attempted), or flight_search's NotConfigured /
-    QuotaExhausted / SearchFailed from the live lookup.
+    SearchFailed from the live lookup.
     """
     origin, dest, cabin = origin.strip().upper(), dest.strip().upper(), cabin.strip().upper()
     quotes = load()
@@ -241,7 +241,7 @@ def get_quote(origin: str, dest: str, travel_date: str, cabin: str, *,
         origin=origin, dest=dest, cabin=cabin, date=travel_date,
         price_usd=offers[0].price_usd if offers else None,
         nonstop_price_usd=min(nonstop) if nonstop else None,
-        provider=offers[0].provider if offers else ("fast-flights" if flight_search.fast_flights_available() else "serpapi"),
+        provider=offers[0].provider if offers else "fast-flights",
         fetched_at=_now().strftime("%Y-%m-%dT%H:%M:%SZ"),
         offers=[[o.price_usd, o.stops, ",".join(o.carrier_codes)] for o in offers[:MAX_STORED_OFFERS]],
     )

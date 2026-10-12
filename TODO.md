@@ -8,7 +8,9 @@ history before 2026-09-16.
 
 - [ ] **Delete the paused "seats.aero Deal Radar" routine** at claude.ai/code/routines
       (the tool here can pause but not delete). Its pipeline was removed 2026-09-16.
-- [ ] Optional hygiene: rotate the SerpApi key (no longer stored in the routine).
+- [ ] SerpApi was removed from the code 2026-10-12. Delete the `SERPAPI_KEY` GitHub repo
+      secret, the Streamlit Cloud secret and the line in local `.streamlit/secrets.toml`;
+      optionally close the serpapi.com account.
 
 ## Possible improvements
 
@@ -37,5 +39,5 @@ history before 2026-09-16.
       secret. See README → "Balances".
 - [ ] Flight-number quick check (needs a schedule API such as AeroDataBox).
 - [ ] If Google changes its results page, `cash_price_check.yml` (weekly) fails
-      and GitHub emails you; meanwhile the Deal Finder falls back to SerpApi
-      (capped at 5 calls/run) and prices fewer deals.
+      and GitHub emails you; meanwhile the Deal Finder can't price new fares and
+      leans on saved quotes (up to 14 days old).

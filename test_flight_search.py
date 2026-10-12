@@ -1,14 +1,12 @@
-"""Tests for flight_search — focused on FIX 8, the quota-safety memoization.
+"""Tests for flight_search.search_cash_price: memoization and failure handling.
 
-The scarce resource is the SerpApi free quota (250 searches/MONTH), so the key
-guarantees under test are:
-  - two identical search_cash_price calls => only ONE underlying HTTP call
-  - a different (route/date/cabin) => a second HTTP call
-  - failures (SearchFailed) are NOT cached, so a retry hits HTTP again
-  - clear_cache() forces a fresh call
-Plus a couple of regression guards: HTTPError/RequestException map to SearchFailed
-without leaking the API key or request URL, and a single malformed price row does
-not abort the whole result set.
+The guarantees under test:
+  - two identical search_cash_price calls => only ONE underlying Google lookup
+  - a different (route/date/cabin) => a second lookup
+  - failures (SearchFailed) and empty answers are NOT cached, so a retry looks again
+  - clear_cache() forces a fresh lookup
+  - any scraper error surfaces as SearchFailed; no fast-flights => NotConfigured
+The Google Flights page parser itself is tested in test_cash_quotes.py.
 """
 
 import pytest
@@ -16,86 +14,44 @@ import pytest
 import flight_search
 
 
-@pytest.fixture(autouse=True)
-def _allow_mocked_serpapi_calls(monkeypatch):
-    """conftest caps SerpApi at 0 so a stray live lookup can't spend the real 250/month
-    allowance. These tests exercise that code path deliberately, against a fake HTTP
-    layer, so they opt back in."""
-    monkeypatch.setattr(flight_search, "SERPAPI_MAX_CALLS", 100)
-import requests
-
-import flight_search
-
-
-class _FakeResp:
-    def __init__(self, payload, status_code=200):
-        self._payload = payload
-        self.status_code = status_code
-
-    def raise_for_status(self):
-        if self.status_code >= 400:
-            raise requests.HTTPError(f"HTTP {self.status_code}")
-
-    def json(self):
-        return self._payload
-
-
-def _one_offer_payload(price=250):
-    """Minimal but real-shaped Google Flights payload with a single offer."""
-    return {
-        "best_flights": [
-            {
-                "price": price,
-                "total_duration": 360,
-                "flights": [
-                    {
-                        "airline": "United",
-                        "flight_number": "UA 1",
-                        "departure_airport": {"id": "SFO", "name": "San Francisco", "time": "2026-09-01 08:00"},
-                        "arrival_airport": {"id": "JFK", "name": "New York", "time": "2026-09-01 16:20"},
-                        "duration": 360,
-                    }
-                ],
-                "layovers": [],
-            }
-        ],
-        "other_flights": [],
-    }
+def _offer(price=250.0):
+    seg = flight_search.FlightSegment("United", "UA 1", "SFO", "San Francisco", "2026-09-01 08:00",
+                                      "JFK", "New York", "2026-09-01 16:20", 360, "UA")
+    return flight_search.FlightOffer(price_usd=price, cabin="ECONOMY", total_duration_minutes=360,
+                                     segments=[seg], layovers=[])
 
 
 class _Counter:
-    """Counts underlying HTTP calls and returns a configurable response/error."""
+    """Stands in for _fetch_offers_fast_flights: counts calls, returns offers or raises."""
 
-    def __init__(self, response=None, exc=None):
+    def __init__(self, offers=None, exc=None):
         self.calls = 0
-        self.response = response
+        self.offers = [_offer()] if offers is None else offers
         self.exc = exc
-        self.last_params = None
 
-    def __call__(self, *args, **kwargs):
+    def __call__(self, origin, destination, departure_date, cabin):
         self.calls += 1
-        self.last_params = kwargs.get("params")
         if self.exc is not None:
             raise self.exc
-        return self.response
+        return list(self.offers)
 
 
 @pytest.fixture(autouse=True)
 def _isolate(monkeypatch):
-    """Every test starts with a configured key and an empty cache."""
-    monkeypatch.setattr(flight_search, "_get_api_key", lambda: "test-key")
+    """Every test starts with fast-flights available and an empty cache."""
+    monkeypatch.setattr(flight_search, "fast_flights_available", lambda: True)
     flight_search.clear_cache()
     yield
     flight_search.clear_cache()
 
 
-def _patch_get(monkeypatch, counter):
-    monkeypatch.setattr(flight_search.requests, "get", counter)
+def _patch(monkeypatch, counter):
+    monkeypatch.setattr(flight_search, "_fetch_offers_fast_flights", counter)
 
 
-def test_identical_calls_hit_http_only_once(monkeypatch):
-    counter = _Counter(response=_FakeResp(_one_offer_payload()))
-    _patch_get(monkeypatch, counter)
+def test_identical_calls_look_up_only_once(monkeypatch):
+    counter = _Counter()
+    _patch(monkeypatch, counter)
 
     first = flight_search.search_cash_price("SFO", "JFK", "2026-09-01", "ECONOMY")
     second = flight_search.search_cash_price("SFO", "JFK", "2026-09-01", "ECONOMY")
@@ -106,8 +62,8 @@ def test_identical_calls_hit_http_only_once(monkeypatch):
 
 
 def test_cache_key_normalizes_case_and_whitespace(monkeypatch):
-    counter = _Counter(response=_FakeResp(_one_offer_payload()))
-    _patch_get(monkeypatch, counter)
+    counter = _Counter()
+    _patch(monkeypatch, counter)
 
     flight_search.search_cash_price("sfo", "jfk", "2026-09-01", "economy")
     flight_search.search_cash_price("  SFO ", " JFK ", "2026-09-01", " Economy ")
@@ -115,9 +71,9 @@ def test_cache_key_normalizes_case_and_whitespace(monkeypatch):
     assert counter.calls == 1
 
 
-def test_different_route_date_or_cabin_triggers_second_call(monkeypatch):
-    counter = _Counter(response=_FakeResp(_one_offer_payload()))
-    _patch_get(monkeypatch, counter)
+def test_different_route_date_or_cabin_triggers_second_lookup(monkeypatch):
+    counter = _Counter()
+    _patch(monkeypatch, counter)
 
     flight_search.search_cash_price("SFO", "JFK", "2026-09-01", "ECONOMY")
     flight_search.search_cash_price("SFO", "LAX", "2026-09-01", "ECONOMY")  # route
@@ -128,165 +84,64 @@ def test_different_route_date_or_cabin_triggers_second_call(monkeypatch):
 
 
 def test_max_results_does_not_fragment_cache_and_slices(monkeypatch):
-    payload = {
-        "best_flights": [
-            {
-                "price": p,
-                "total_duration": 360,
-                "flights": [
-                    {
-                        "airline": "United",
-                        "flight_number": f"UA {p}",
-                        "departure_airport": {"id": "SFO", "name": "SF", "time": "2026-09-01 08:00"},
-                        "arrival_airport": {"id": "JFK", "name": "NY", "time": "2026-09-01 16:20"},
-                        "duration": 360,
-                    }
-                ],
-                "layovers": [],
-            }
-            for p in (300, 100, 200)
-        ],
-        "other_flights": [],
-    }
-    counter = _Counter(response=_FakeResp(payload))
-    _patch_get(monkeypatch, counter)
+    counter = _Counter(offers=[_offer(100.0), _offer(200.0), _offer(300.0)])
+    _patch(monkeypatch, counter)
 
     one = flight_search.search_cash_price("SFO", "JFK", "2026-09-01", "ECONOMY", max_results=1)
     three = flight_search.search_cash_price("SFO", "JFK", "2026-09-01", "ECONOMY", max_results=3)
 
     assert counter.calls == 1  # same key despite different max_results
-    assert [o.price_usd for o in one] == [100.0]  # cheapest first, sliced to 1
+    assert [o.price_usd for o in one] == [100.0]
     assert [o.price_usd for o in three] == [100.0, 200.0, 300.0]
 
 
-def test_search_failed_is_not_cached(monkeypatch):
-    # First call: transient network failure -> SearchFailed, must NOT be cached.
-    failing = _Counter(exc=requests.ConnectionError("boom"))
-    _patch_get(monkeypatch, failing)
+def test_failure_is_not_cached(monkeypatch):
+    failing = _Counter(exc=flight_search.SearchFailed("no results payload"))
+    _patch(monkeypatch, failing)
     with pytest.raises(flight_search.SearchFailed):
         flight_search.search_cash_price("SFO", "JFK", "2026-09-01", "ECONOMY")
     assert failing.calls == 1
 
-    # Retry now succeeds because the failure was never cached.
-    ok = _Counter(response=_FakeResp(_one_offer_payload()))
-    _patch_get(monkeypatch, ok)
+    ok = _Counter()
+    _patch(monkeypatch, ok)
     offers = flight_search.search_cash_price("SFO", "JFK", "2026-09-01", "ECONOMY")
     assert ok.calls == 1
     assert offers[0].price_usd == 250
 
 
 def test_empty_result_is_not_cached(monkeypatch):
-    # No inventory now -> empty list, must NOT be cached so a retry can find
-    # newly-available seats.
-    empty = _Counter(response=_FakeResp({"best_flights": [], "other_flights": []}))
-    _patch_get(monkeypatch, empty)
+    empty = _Counter(offers=[])
+    _patch(monkeypatch, empty)
     assert flight_search.search_cash_price("SFO", "JFK", "2026-09-01", "ECONOMY") == []
 
-    later = _Counter(response=_FakeResp(_one_offer_payload()))
-    _patch_get(monkeypatch, later)
+    later = _Counter()
+    _patch(monkeypatch, later)
     offers = flight_search.search_cash_price("SFO", "JFK", "2026-09-01", "ECONOMY")
     assert later.calls == 1  # retried, not stuck on the empty result
     assert offers[0].price_usd == 250
 
 
-def test_clear_cache_forces_fresh_call(monkeypatch):
-    counter = _Counter(response=_FakeResp(_one_offer_payload()))
-    _patch_get(monkeypatch, counter)
+def test_clear_cache_forces_fresh_lookup(monkeypatch):
+    counter = _Counter()
+    _patch(monkeypatch, counter)
 
     flight_search.search_cash_price("SFO", "JFK", "2026-09-01", "ECONOMY")
-    assert counter.calls == 1
     flight_search.clear_cache()
     flight_search.search_cash_price("SFO", "JFK", "2026-09-01", "ECONOMY")
     assert counter.calls == 2
 
 
-def test_http_error_maps_to_search_failed_without_leaking_key(monkeypatch):
-    counter = _Counter(response=_FakeResp({}, status_code=429))
-    _patch_get(monkeypatch, counter)
-
-    with pytest.raises(flight_search.SearchFailed) as exc:
-        flight_search.search_cash_price("SFO", "JFK", "2026-09-01", "ECONOMY")
-    msg = str(exc.value)
-    assert "test-key" not in msg
-    assert "api_key" not in msg
-    assert flight_search.SEARCH_URL not in msg
+def test_scraper_error_becomes_search_failed(monkeypatch):
+    # Google changing its page, a network error, a block: callers only handle SearchFailed.
+    _patch(monkeypatch, _Counter(exc=RuntimeError("google changed")))
+    with pytest.raises(flight_search.SearchFailed, match="RuntimeError"):
+        flight_search.search_cash_price("SFO", "JFK", "2026-12-03")
 
 
-def test_request_exception_maps_to_search_failed_without_leaking_key(monkeypatch):
-    counter = _Counter(exc=requests.ConnectionError("https://serpapi.com/search?api_key=test-key"))
-    _patch_get(monkeypatch, counter)
-
-    with pytest.raises(flight_search.SearchFailed) as exc:
-        flight_search.search_cash_price("SFO", "JFK", "2026-09-01", "ECONOMY")
-    msg = str(exc.value)
-    assert "test-key" not in msg
-    assert flight_search.SEARCH_URL not in msg
-
-
-def test_malformed_price_row_does_not_abort_result_set(monkeypatch):
-    payload = _one_offer_payload(price=250)
-    # Inject a bad row (non-numeric price) ahead of the good one.
-    bad_row = {
-        "price": "not-a-number",
-        "flights": [
-            {
-                "airline": "United",
-                "flight_number": "UA 9",
-                "departure_airport": {"id": "SFO", "name": "SF", "time": "2026-09-01 08:00"},
-                "arrival_airport": {"id": "JFK", "name": "NY", "time": "2026-09-01 16:20"},
-                "duration": 360,
-            }
-        ],
-        "layovers": [],
-    }
-    payload["best_flights"] = [bad_row] + payload["best_flights"]
-    counter = _Counter(response=_FakeResp(payload))
-    _patch_get(monkeypatch, counter)
-
-    offers = flight_search.search_cash_price("SFO", "JFK", "2026-09-01", "ECONOMY")
-    assert [o.price_usd for o in offers] == [250.0]  # bad row skipped, good row kept
-
-
-def test_serpapi_cap_blocks_paid_fallback(monkeypatch):
-    counter = _Counter(response=_FakeResp(_one_offer_payload()))
-    monkeypatch.setattr(flight_search, "_get_api_key", lambda: "test-key")
-    monkeypatch.setattr(flight_search.requests, "get", counter)
-    monkeypatch.setattr(flight_search, "SERPAPI_MAX_CALLS", 1)
-    monkeypatch.setattr(flight_search, "serpapi_calls_made", 0)
-
-    flight_search.search_cash_price("SFO", "JFK", "2026-12-01")
-    with pytest.raises(flight_search.QuotaExhausted):
-        flight_search.search_cash_price("SFO", "JFK", "2026-12-02")
-    assert counter.calls == 1
-
-
-def test_http_429_is_quota_exhausted(monkeypatch):
-    counter = _Counter(response=_FakeResp({}, status_code=429))
-    monkeypatch.setattr(flight_search, "_get_api_key", lambda: "test-key")
-    monkeypatch.setattr(flight_search.requests, "get", counter)
-    with pytest.raises(flight_search.QuotaExhausted):
-        flight_search.search_cash_price("SFO", "JFK", "2026-12-01")
-
-
-def test_fast_flights_failure_falls_back_to_serpapi(monkeypatch):
-    counter = _Counter(response=_FakeResp(_one_offer_payload(321)))
-    monkeypatch.setattr(flight_search, "FAST_FLIGHTS_DISABLED", False)
-    monkeypatch.setattr(flight_search, "fast_flights_available", lambda: True)
-    monkeypatch.setattr(flight_search, "_fetch_offers_fast_flights",
-                        lambda *a: (_ for _ in ()).throw(RuntimeError("google changed")))
-    monkeypatch.setattr(flight_search, "_get_api_key", lambda: "test-key")
-    monkeypatch.setattr(flight_search.requests, "get", counter)
-
-    offers = flight_search.search_cash_price("SFO", "JFK", "2026-12-03")
-    assert offers[0].price_usd == 321 and offers[0].provider == "serpapi"
-
-
-def test_fast_flights_empty_result_does_not_spend_serpapi(monkeypatch):
-    counter = _Counter(response=_FakeResp(_one_offer_payload()))
-    monkeypatch.setattr(flight_search, "fast_flights_available", lambda: True)
-    monkeypatch.setattr(flight_search, "_fetch_offers_fast_flights", lambda *a: [])
-    monkeypatch.setattr(flight_search, "_get_api_key", lambda: "test-key")
-    monkeypatch.setattr(flight_search.requests, "get", counter)
-
-    assert flight_search.search_cash_price("SFO", "JFK", "2026-12-04") == []
+def test_without_fast_flights_it_says_so(monkeypatch):
+    counter = _Counter()
+    _patch(monkeypatch, counter)
+    monkeypatch.setattr(flight_search, "fast_flights_available", lambda: False)
+    with pytest.raises(flight_search.NotConfigured):
+        flight_search.search_cash_price("SFO", "JFK", "2026-12-04")
     assert counter.calls == 0

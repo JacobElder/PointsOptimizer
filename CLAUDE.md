@@ -92,9 +92,9 @@ layer produced that day's digest. Workflows are pinned to `ubuntu-24.04` (see TO
   CPP and the bar use the real fare. Don't "fix" the mismatch — it's deliberate.
 - Email repeats are suppressed per route/program/cabin (`reported_routes`) unless ≥15% more
   CPP or ≤90% of the points.
-- Cash fares: fast-flights (free Google Flights) is the source. SerpApi is a 5-call fallback
-  that almost never runs; the user may remove it. Google sometimes throttles the Actions
-  runner (empty results) — the round-trip retry and estimate exist for that.
+- Cash fares: fast-flights (free Google Flights) is the only source; SerpApi was removed
+  Oct 12 2026 at the user's request. Google sometimes throttles the Actions runner (empty
+  results) — the pauses after empty answers, round-trip retry and estimate exist for that.
 - Saved fares are reused for up to 14 days; reuse counts dip when an old batch ages out.
 - `transfer_bonuses.json`: set `checked` whenever you check bonuses, even if nothing changed.
   Claude routine `trig_01Un3SpQQTYb5j7Ys4gW19qs` (Mondays 14:00 UTC, no connectors) checks roame.travel +
@@ -113,7 +113,8 @@ layer produced that day's digest. Workflows are pinned to `ubuntu-24.04` (see TO
 Plain language, lead with the answer: did it run, are the deals right, what you fixed.
 Name deals worth a look with route, program, points and live ¢/pt. Be honest about your own
 earlier mistakes. Remind them of open items only when relevant: GIST_TOKEN, deleting the old
-paused "seats.aero Deal Radar" routine at claude.ai/code/routines, the SerpApi decision.
+paused "seats.aero Deal Radar" routine at claude.ai/code/routines (its Gmail connector was
+removed Oct 12), deleting the old SERPAPI_KEY secrets.
 
 ## Where things stand (update this section as it changes)
 

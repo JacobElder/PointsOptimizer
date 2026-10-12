@@ -67,7 +67,6 @@ def search(origin: str, dest: str, cabins: list[str], start: date | None = None,
     scored = deal_finder.score_candidates(cands, model, [], program_balances)
     scored = [s for s in scored if s.c.source in transferable or s.bookable_now]
     log(f"Found {len(scored):,} awards you can fund. Pricing the most promising with Google Flights…")
-    deal_finder.flight_search.SERPAPI_MAX_CALLS = 0  # interactive search never spends SerpApi quota
     # Rank for pricing by estimated CPP (not dollar surplus): this search is about the best rate.
     for s in scored:
         s.p_great = max(s.p_great, 0.2)  # price the best estimates even if below the usual bar

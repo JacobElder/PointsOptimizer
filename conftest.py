@@ -20,12 +20,9 @@ def _isolate_cash_providers(monkeypatch, tmp_path):
     # flights can't make another test's unchecked awards look like connections.
     monkeypatch.setattr(deal_finder, "ROUTE_NONSTOP_SEEN", {})
     monkeypatch.setattr(deal_finder, "CARD_CHECKS", {})
-    # deal_finder.run() sets these globals; reset so they can't leak between tests.
-    # 0, not None: None means "no cap", so the previous value left the real SerpApi
-    # allowance reachable and uncapped from the test process.
-    monkeypatch.setattr(flight_search, "SERPAPI_MAX_CALLS", 0)
-    monkeypatch.setattr(flight_search, "serpapi_calls_made", 0)
-    monkeypatch.delenv("SERPAPI_KEY", raising=False)
+    # deal_finder.run() turns the Google pauses on; reset so they can't leak between tests.
+    monkeypatch.setattr(flight_search, "_backoff", dict(flight_search._backoff, enabled=False))
+    monkeypatch.setattr(flight_search, "_lookups", [])
     monkeypatch.setattr(ledger, "GIST_DISABLED", True)  # never touch the real balances Gist
     # ...nor the real local files. A Gist test that saved {"chase_ur": 1} without
     # redirecting BALANCES_PATH overwrote the user's balances.json on every test run

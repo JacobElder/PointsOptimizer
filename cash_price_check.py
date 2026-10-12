@@ -1,7 +1,7 @@
 """
 Smoke check: can this machine get a free Google Flights price via fast-flights?
 
-Makes a few real lookups with SerpApi disabled (so it never spends quota) and
+Makes a few real fast-flights lookups and
 exits non-zero if none succeed. Used by .github/workflows/cash_price_check.yml
 to check whether Google allows scraping from GitHub's runners.
 """
@@ -28,7 +28,6 @@ def main() -> int:
     if not flight_search.fast_flights_available():
         print("::error::fast-flights disabled via POINTSOPT_DISABLE_FAST_FLIGHTS")
         return 2
-    flight_search.SERPAPI_MAX_CALLS = 0
     day = (date.today() + timedelta(days=45)).isoformat()
     ok = 0
     for origin, dest, cabin in ROUTES:

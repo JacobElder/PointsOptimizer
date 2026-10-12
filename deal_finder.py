@@ -1,7 +1,7 @@
 """
 Deal finder: separates the wheat from the chaff in seats.aero award space.
 
-Pipeline (one run, ~8 minutes, ~200-300 seats.aero calls of 1,000/day, 0 SerpApi):
+Pipeline (one run, ~8 minutes, ~200-300 seats.aero calls of 1,000/day):
   1. SCAN      award_scanner: every fresh award on scan_config.json's routes (plus
                watchlist destinations), in programs your active pools can transfer to.
   2. ESTIMATE  fare_model: estimated cash fare + uncertainty for every candidate,
@@ -60,7 +60,6 @@ DEFAULT_MAX_LOOKUPS = 150
 DEFAULT_MAX_WATCH_LOOKUPS = 80  # separate budget so a long watchlist can't starve the general scan
 DEFAULT_TOP = 20
 REPORT_COOLDOWN_DAYS = 14
-SERPAPI_CAP = 5
 ROUND_TRIP_STAY_DAYS = 7
 ROUND_TRIP_FALLBACK_STAYS = (7, 4, 2)  # shorter stays when the 7-night return is past the booking window
 # When no round trip can be priced, value the award at this share of the one-way
@@ -918,10 +917,6 @@ def _price_one(s: Scored, state: dict, stats: dict, log, allow_live: bool = True
             state["quotes"].append({k: v for k, v in q.__dict__.items() if k != "approx"})
     except cash_quotes.OutOfWindow:
         return "skipped"
-    except flight_search.QuotaExhausted as e:
-        log(f"Stopping live lookups: {e}")
-        state["stop"] = True
-        return "skipped"
     except (flight_search.NotConfigured, flight_search.SearchFailed) as e:
         stats["live"] += 1
         stats["failed"] += 1
@@ -1698,7 +1693,6 @@ def _load_digest() -> dict:
 def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = False,
         round_trip: bool = True, log=print, max_watch_lookups: int = DEFAULT_MAX_WATCH_LOOKUPS,
         resend: bool = False, use_watchlist: bool = True) -> dict:
-    flight_search.SERPAPI_MAX_CALLS = SERPAPI_CAP
     flight_search.reset_backoff(enabled=True)
     ROUTE_NONSTOP_SEEN.clear()
     CARD_CHECKS.clear()
@@ -2015,7 +2009,6 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
 def preview_sources(sources: list[str], max_lookups: int = 60, top: int = 10, log=print) -> dict:
     """Best deals in specific programs you can't reach today (e.g. what a new card would
     unlock), on your usual routes. No watchlist, no digest, no email."""
-    flight_search.SERPAPI_MAX_CALLS = 0
     config = {**award_scanner.load_config(), "sources": sources}
     if not sources:
         return {"deals": [], "candidates": 0, "calls": 0}
