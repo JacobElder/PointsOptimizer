@@ -122,7 +122,7 @@ removed Oct 12), deleting SERPAPI_KEY from the Streamlit Cloud secrets.
 - **Goal:** call the system finished after 5 consecutive clean runs — email arrives with no one
   stepping in, every emailed deal verified and still above its bar at live fares, no repeat
   emails, no code fixes needed — then switch to a weekly `make audit-live`.
-- **Clean days so far:** 1 of 5: Oct 12. (Oct 6–8 were clean, but the user decided on Oct 13 to count conservatively: Oct 9 (deal fell below bar) and the code fixes on Oct 10 and 11 reset the streak.) Fixes from Oct 5 (repeat suppression, fare-spike cap,
+- **Clean days so far:** 0 of 5 (Oct 12 was clean; Oct 13 reset it: an emailed deal fell below its bar). (Oct 6–8 were clean, but the user decided on Oct 13 to count conservatively: Oct 9 (deal fell below bar) and the code fixes on Oct 10 and 11 reset the streak.) Fixes from Oct 5 (repeat suppression, fare-spike cap,
   Emirates cabin links, test isolation of balance files, runner pin) had their first real run Oct 6
   and worked. Oct 7's digest came from the hand-clicked cron-job.org test (01:53 UTC), so the
   unattended 10:00 ET dispatch has not yet produced a digest on its own (see layer 2 above). Oct 8
@@ -164,6 +164,15 @@ removed Oct 12), deleting SERPAPI_KEY from the Streamlit Cloud secrets.
   pauses don't explain it: 50 pauses used the whole 240 s, avg 4.8 s, so mostly single 3 s pauses on
   scattered one-way empties (16:12–16:18) and the cap was gone by ~16:20, before most round trips; minutes
   with pauses (16:19: 79%) priced no better than without. Undecided, not proven. Streak: 1 of 5.
+- **Oct 13: not clean, no code fault.** GitHub schedule started it at 15:58 UTC; the routine's push run
+  (16:05) queued behind it and skipped correctly; the first digest push was rejected by the routine's commit
+  and the retry loop recovered. cron-job.org missed again. 9 emailed, 0 offline problems, 67 flight lookups,
+  selections ≤5 rounds, `no_fare` 25, round trips 429/520 (82%). 1 repeat by the rule: EWR–RAK United
+  business 88k 3.26¢ (Oct 9, Nov 22) → 90k 3.91¢ (Oct 25), 1.20×; held live. **JFK–GCM American 10k fell
+  below bar live:** $237 → $185, 2.31¢ → 1.79¢ vs 2.24 (3% margin; fare 1.12× typical $212, 2.06¢ at
+  typical). Replay of all emailed cards Oct 6–13: "below bar at the typical fare" caught 7 cards, 2 fell
+  (NRT, GCM); "<10% over bar" caught 8, 3 fell (NRT, HKG, GCM); both together caught 3 (NRT, GCM, BGI), 2
+  fell. No card with ≥10% margin has fallen. Not shipped yet — put to the user as a choice on Oct 13.
 - **iCloud evicts this repo's files** (`ls -lO` shows `dataless`; the `.nosync` name doesn't stop it).
   Reads then hang forever: git fetch/pull and `.venv` Python stalled on Oct 11. Check with
   `find .venv -type f | head -500 | xargs ls -lO | grep -c dataless`. A venv outside `~/Documents`
