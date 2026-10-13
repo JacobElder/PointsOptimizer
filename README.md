@@ -9,7 +9,7 @@ The core question: *an award in front of you is worth some cents-per-point (CPP)
 ## Quick start
 
 ```bash
-cd ~/Documents/GitHub/PointsOptimizer
+cd ~/Developer/PointsOptimizer
 make setup     # creates .venv with everything (once)
 make app       # run the Streamlit app
 make find         # scan seats.aero, price the best awards, email new standouts
