@@ -34,9 +34,11 @@ history before 2026-09-16.
 - [ ] Maybe later: tune the email after a week of real use (fewer/more watchlist deals,
       bars).
 
-- [ ] **Add GIST_TOKEN** (classic token, `gist` scope only) to secrets.toml,
-      Streamlit Cloud secrets and GitHub secrets, then delete the PROGRAM_BALANCES
-      secret. See README → "Balances".
+- [ ] Optional, later (user: "if I care to bother"): **add GIST_TOKEN** for one shared copy
+      of balances. Without it the daily email's pay line doesn't know card balances and uses
+      the Sep 16 PROGRAM_BALANCES miles. Order matters: add it to local secrets.toml and open
+      the Wallet page FIRST (seeds the Gist from local files), then Streamlit Cloud secrets,
+      then the GitHub secret; delete PROGRAM_BALANCES after a clean run. See README → "Balances".
 - [ ] Flight-number quick check (needs a schedule API such as AeroDataBox).
 - [ ] If Google changes its results page, `cash_price_check.yml` (weekly) fails
       and GitHub emails you; meanwhile the Deal Finder can't price new fares and

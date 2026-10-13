@@ -112,7 +112,8 @@ layer produced that day's digest. Workflows are pinned to `ubuntu-24.04` (see TO
 
 Plain language, lead with the answer: did it run, are the deals right, what you fixed.
 Name deals worth a look with route, program, points and live ¢/pt. Be honest about your own
-earlier mistakes. Remind them of open items only when relevant: GIST_TOKEN, deleting the old
+earlier mistakes. Remind them of open items only when relevant (GIST_TOKEN is a parked TODO the user
+rarely needs; don't nag about it): deleting the old
 paused "seats.aero Deal Radar" routine at claude.ai/code/routines (its Gmail connector was
 removed Oct 12), deleting SERPAPI_KEY from the Streamlit Cloud secrets.
 
