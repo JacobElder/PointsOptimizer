@@ -122,7 +122,7 @@ removed Oct 12), deleting SERPAPI_KEY from the Streamlit Cloud secrets.
 - **Goal:** call the system finished after 5 consecutive clean runs — email arrives with no one
   stepping in, every emailed deal verified and still above its bar at live fares, no repeat
   emails, no code fixes needed — then switch to a weekly `make audit-live`.
-- **Clean days so far:** Oct 6, Oct 7, Oct 8 (3 of 5). Fixes from Oct 5 (repeat suppression, fare-spike cap,
+- **Clean days so far:** 1 of 5: Oct 12. (Oct 6–8 were clean, but the user decided on Oct 13 to count conservatively: Oct 9 (deal fell below bar) and the code fixes on Oct 10 and 11 reset the streak.) Fixes from Oct 5 (repeat suppression, fare-spike cap,
   Emirates cabin links, test isolation of balance files, runner pin) had their first real run Oct 6
   and worked. Oct 7's digest came from the hand-clicked cron-job.org test (01:53 UTC), so the
   unattended 10:00 ET dispatch has not yet produced a digest on its own (see layer 2 above). Oct 8
@@ -139,7 +139,7 @@ removed Oct 12), deleting SERPAPI_KEY from the Streamlit Cloud secrets.
   of Oct 6–9: 3 emailed cards would have been below the bar at the typical fare (JFK–CPT Oct 6,
   EWR–MUC Oct 7, JFK–NRT Oct 9); only NRT actually fell. 1 of 3 isn't enough to ship a rule. If
   another "fare well above typical + thin margin" card falls, that's the data for the parked
-  margin idea. Whether this resets the streak is the user's call.
+  margin idea. Counted as a reset (user, Oct 13).
 - **Oct 10: emailed deals clean; one code fix.** GitHub schedule (14:28 UTC), 3 emailed, 0 repeats,
   0 offline problems, all 3 above bar live on Oct 11 (EWR–DXB LifeMiles thin: 3.09¢ vs 3.00 bar).
   Google throttled the runner 14:34–14:36: 94 of 233 cash lookups and 279 of 848 round trips came
@@ -163,7 +163,7 @@ removed Oct 12), deleting SERPAPI_KEY from the Streamlit Cloud secrets.
   lookups, selections ≤6 rounds, `no_fare` 31. Round trips 483/584 priced (83%, up from 67%), but the
   pauses don't explain it: 50 pauses used the whole 240 s, avg 4.8 s, so mostly single 3 s pauses on
   scattered one-way empties (16:12–16:18) and the cap was gone by ~16:20, before most round trips; minutes
-  with pauses (16:19: 79%) priced no better than without. Undecided, not proven. Streak since Oct 11's fix: 1.
+  with pauses (16:19: 79%) priced no better than without. Undecided, not proven. Streak: 1 of 5.
 - **iCloud evicts this repo's files** (`ls -lO` shows `dataless`; the `.nosync` name doesn't stop it).
   Reads then hang forever: git fetch/pull and `.venv` Python stalled on Oct 11. Check with
   `find .venv -type f | head -500 | xargs ls -lO | grep -c dataless`. A venv outside `~/Documents`
