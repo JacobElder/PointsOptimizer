@@ -156,6 +156,14 @@ removed Oct 12), deleting SERPAPI_KEY from the Streamlit Cloud secrets.
   throttled day): pause 3→24 s after an empty answer, 240 s max per run; read the new `Google lookups
   by minute` / `Paused` log lines — if the priced share recovers once pauses start, it works. Thin-margin tally (<10% over bar, Oct 8–11): 7 emailed, 2 fell
   (NRT, HKG); none of the wider-margin cards fell.
+- **Oct 12: clean, no code change.** GitHub's morning slots and cron-job.org both missed again; the Claude
+  routine started it (16:06 UTC, push event). 4 emailed, 0 offline problems, all 4 above bar live on Oct 13
+  (lowest margin: EWR–JNB United PE 2.41¢ vs 1.80). One repeat by the rule: JFK–ZRH Aeroplan 60k, 3.45¢ on
+  Oct 8 → 3.99¢ (1.157×, just over 1.15); live it's 3.61¢, so the "better" was mostly a fare bump. 74 flight
+  lookups, selections ≤6 rounds, `no_fare` 31. Round trips 483/584 priced (83%, up from 67%), but the
+  pauses don't explain it: 50 pauses used the whole 240 s, avg 4.8 s, so mostly single 3 s pauses on
+  scattered one-way empties (16:12–16:18) and the cap was gone by ~16:20, before most round trips; minutes
+  with pauses (16:19: 79%) priced no better than without. Undecided, not proven. Streak since Oct 11's fix: 1.
 - **iCloud evicts this repo's files** (`ls -lO` shows `dataless`; the `.nosync` name doesn't stop it).
   Reads then hang forever: git fetch/pull and `.venv` Python stalled on Oct 11. Check with
   `find .venv -type f | head -500 | xargs ls -lO | grep -c dataless`. A venv outside `~/Documents`
