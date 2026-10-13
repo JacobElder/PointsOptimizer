@@ -168,3 +168,29 @@ def test_digest_records_what_verification_cost(tmp_path, monkeypatch):
     v = out["verification"]
     assert v["trip_lookups"] >= 1 and v["hit_budget"] is False
     assert v["gone_or_repriced"] == 0 and v["lookup_failed"] == 0
+
+
+def test_deal_barely_over_its_bar_is_listed_but_not_emailed(tmp_path, monkeypatch):
+    """Oct 6-13: every emailed card that fell below its bar at the next day's fares had
+    cleared it by under 10% (JFK-GCM by 3%, JFK-NRT 9%, EWR-HKG 7%); none with 10%+
+    fell. A card that thin stays on the site but is not emailed, and is not recorded
+    as sent, so it can still go out later if the margin grows."""
+    thin = _award("ZRH", "BUSINESS", "aeroplan", 64000, 60)   # ~4% over the bar
+    wide = _award("FRA", "BUSINESS", "aeroplan", 50000, 61)   # ~34% over
+    _fake_pipeline(tmp_path, monkeypatch, [thin, wide])
+    monkeypatch.setattr(deal_finder, "_load_digest", lambda: {})
+    sent = []
+    monkeypatch.setattr(deal_finder.deal_email, "is_configured", lambda: True)
+    monkeypatch.setattr(deal_finder.deal_email, "send_digest_email",
+                        lambda sections, subject, intro, **kw: sent.append(
+                            [d["dest"] for _, _, ds in sections for d in ds]))
+
+    out = deal_finder.run(max_lookups=10, top=5, send_email=True, log=lambda m: None)
+
+    zrh = next(d for d in out["top"] if d["dest"] == "ZRH")
+    fra = next(d for d in out["top"] if d["dest"] == "FRA")
+    assert 1.0 <= zrh["cpp"] / zrh["great_floor"] < 1.05  # the setup is what it says
+    assert fra["cpp"] / fra["great_floor"] > 1.2
+    assert sent == [["FRA"]]
+    assert zrh["new"] is False and fra["new"] is True
+    assert "aeroplan|JFK|ZRH|BUSINESS" not in out["reported_routes"]

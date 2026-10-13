@@ -65,7 +65,7 @@ For the scheduled Deal Finder, add the same keys as GitHub repo secrets (Setting
 6. **Book now with miles you already hold** — awards fully covered by miles already in a program (e.g. JetBlue, American), listed first. Programs you can't top up from a card only show awards your balance fully covers.
 7. **Watchlist** — destinations you care about are always reported when they clear their bar, even outside the top 20.
 8. **Self-check** — every fresh fare is compared with what `fare_model` predicted; the run logs the median and 90th-percentile error and warns in the GitHub log if the median passes `ESTIMATE_DRIFT_WARN_PCT` (45%). Shown on Top Deals.
-9. **Report** — `deal_digest.json` (shown on Top Deals) and an email of deals not reported in the last 14 days, watchlist hits first. The digest is committed to this public repo, so it deliberately carries **no balances**; the site computes "how to pay" locally.
+9. **Report** — `deal_digest.json` (shown on Top Deals) and an email of deals not reported in the last 14 days, watchlist hits first. A deal is emailed only if it clears its bar by 10% (thinner ones are listed on the site only): every emailed deal that fell below its bar a day later had cleared it by less. The digest is committed to this public repo, so it deliberately carries **no balances**; the site computes "how to pay" locally.
 
 ### Which cash fare an award is compared against
 

@@ -1313,6 +1313,10 @@ def _section_key(s: Scored) -> tuple:
 
 REPEAT_BETTER_CPP = 1.15  # a re-sent route must be worth this much more per point...
 REPEAT_FEWER_POINTS = 0.9  # ...or cost this share of the points or less
+# Oct 6-13: the 3 emailed cards that fell below their bar at the next day's fares had
+# all cleared it by under 10%; none of the cards with 10%+ fell. A thinner card is
+# still listed, but only emailed once it clears its bar by this much.
+EMAIL_MARGIN = 1.10
 
 
 def route_report_key(d: dict) -> str:
@@ -1806,6 +1810,8 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
 
     def is_new(key: str, d: dict) -> bool:
         if key in already:
+            return False
+        if d["cpp"] < d.get("watch_bar", d["great_floor"]) * EMAIL_MARGIN:
             return False
         prev = already_routes.get(route_report_key(d))
         return prev is None or materially_better(d, prev)

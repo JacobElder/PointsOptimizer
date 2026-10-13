@@ -91,7 +91,7 @@ layer produced that day's digest. Workflows are pinned to `ubuntu-24.04` (see TO
 - Ranking uses `rank_cash` (today's fare capped at 1.25× the route's typical fare); the card's
   CPP and the bar use the real fare. Don't "fix" the mismatch — it's deliberate.
 - Email repeats are suppressed per route/program/cabin (`reported_routes`) unless ≥15% more
-  CPP or ≤90% of the points.
+  CPP or ≤90% of the points. A card is emailed only at ≥1.10× its bar (`EMAIL_MARGIN`).
 - Cash fares: fast-flights (free Google Flights) is the only source; SerpApi was removed
   Oct 12 2026 at the user's request. Google sometimes throttles the Actions runner (empty
   results) — the pauses after empty answers, round-trip retry and estimate exist for that.
@@ -172,7 +172,9 @@ removed Oct 12), deleting SERPAPI_KEY from the Streamlit Cloud secrets.
   below bar live:** $237 → $185, 2.31¢ → 1.79¢ vs 2.24 (3% margin; fare 1.12× typical $212, 2.06¢ at
   typical). Replay of all emailed cards Oct 6–13: "below bar at the typical fare" caught 7 cards, 2 fell
   (NRT, GCM); "<10% over bar" caught 8, 3 fell (NRT, HKG, GCM); both together caught 3 (NRT, GCM, BGI), 2
-  fell. No card with ≥10% margin has fallen. Not shipped yet — put to the user as a choice on Oct 13.
+  fell. No card with ≥10% margin has fallen. The user chose the 10% margin: shipped Oct 13 as
+  `EMAIL_MARGIN` (email only; thin cards stay on the site). From Oct 14, `make audit` lists no emailed
+  card under 1.10× its bar; tally thin cards withheld vs. emailed cards that still fall (decisions.md).
 - **iCloud evicts this repo's files** (`ls -lO` shows `dataless`; the `.nosync` name doesn't stop it).
   Reads then hang forever: git fetch/pull and `.venv` Python stalled on Oct 11. Check with
   `find .venv -type f | head -500 | xargs ls -lO | grep -c dataless`. A venv outside `~/Documents`
@@ -183,6 +185,5 @@ removed Oct 12), deleting SERPAPI_KEY from the Streamlit Cloud secrets.
 - **Local balances** (`balances.json`, gitignored, Mac only) were wiped by a test from Sep 26 to
   Oct 5 and restored Oct 6 from the user: Chase 139,915 · Bilt 103,000 · Wells Fargo 0. Airline
   miles are in `program_balances.json` and the `PROGRAM_BALANCES` secret.
-- **Ideas parked until the data asks for them:** a small margin above the bar for borderline deals;
-  more fresh Google fares per run (reuse fell when the Sep 16–17 batch aged out); a mild preference
+- **Ideas parked until the data asks for them:** more fresh Google fares per run (reuse fell when the Sep 16–17 batch aged out); a mild preference
   for fewer total points. See `docs/decisions.md` for decisions already made.

@@ -6,6 +6,29 @@ revisit it. Code comments point here; change the entry when you change the decis
 
 ---
 
+## 2026-10-13 — Email a deal only when it clears its bar by 10%
+
+**Decision.** A card is emailed only if its CPP is at least `EMAIL_MARGIN` (1.10) × its bar
+(the watchlist bar for watchlist cards). Thinner cards are still listed on the site, and are
+not recorded as sent, so the same trip can be emailed later once its margin grows. The
+repeat rule (15% more CPP or 10% fewer points) is unchanged.
+
+**Why.** Re-pricing emailed cards at the next day's fares, Oct 6–13: 3 fell below their bar
+(JFK–NRT Flying Blue, 9% over when emailed; EWR–HKG Aeroplan, 7%; JFK–GCM American, 3%).
+All 3 had cleared the bar by under 10%; none of the cards with a 10%+ margin fell. The rule
+would have held back 8 cards in those 8 days, the 3 that fell plus 5 that held (JFK–SJU and
+JFK–SXM JetBlue, EWR–RAK United premium economy, JFK–DEL Aeroplan, JFK–BGI Alaska).
+
+**Rejected.** "Below the bar at the route's typical fare": it would have held back 7 cards,
+2 of which fell, and it misses EWR–HKG (fare below typical). Requiring both conditions held back 3, 2 of which fell, but
+also missed HKG. Raising the bars themselves would hide these deals from the site too.
+
+**Revisit** after ~2 weeks: count withheld cards that would have held vs. emailed cards that
+still fell. If thin cards hold far more often than 5 in 8, lower the margin; if a 10%+ card
+falls on a fare move, look at the fare relative to typical before raising it.
+
+---
+
 ## 2026-10-05 — Rank on a capped fare; show the real CPP
 
 **Decision.** For *ranking* only, a deal is valued at the lower of today's cash fare and
