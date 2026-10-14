@@ -7,7 +7,8 @@
 
 Offline checks need no network: card math (CPP and "$ better" recomputed from the
 card's own numbers), every card clears its bar, nothing unverified or valued on the
-estimated round trip, scan failures, verification cost. --live re-prices each NEW card
+estimated round trip, scan failures, verification cost, and Google coverage (THROTTLED
+when enough lookups came back empty that deals were likely missed). --live re-prices each NEW card
 (what was emailed) against today's one-way and round-trip fares, using the same
 "cheapest of one-way and half a round trip" rule as the run. It never calls seats.aero,
 so it doesn't touch the 1,000/day quota.
@@ -42,6 +43,23 @@ def bar_of(x: dict) -> float:
     return x.get("watch_bar") or x["great_floor"]
 
 
+def google_line(d: dict) -> str:
+    """Google coverage, with THROTTLED when deals were likely missed (not counted as a
+    card problem: values stay honest, the list is just less complete)."""
+    import deal_finder as df
+    cov = d.get("google_coverage")
+    if not cov:  # digests before Oct 15 2026 only kept the one-way counts
+        cov = {k: v for k, v in df.google_coverage(d.get("pricing") or {}, {}).items()
+               if k.startswith("one_way")}
+    parts = [f"one-way {cov['one_way'] - cov['one_way_empty']}/{cov['one_way']} priced"]
+    if "round_trips" in cov:
+        share = cov["round_trips_priced"] / cov["round_trips"] if cov["round_trips"] else 1
+        parts.append(f"round trips {cov['round_trips_priced']}/{cov['round_trips']} ({share:.0%})")
+    else:
+        parts.append("round trips priced not recorded (see the run log)")
+    return f"google: {', '.join(parts)}{'  THROTTLED' if df.throttle_note(cov) else ''}"
+
+
 def offline(d: dict) -> int:
     problems = 0
     v, scan = d.get("verification", {}), d.get("scan", {})
@@ -52,6 +70,7 @@ def offline(d: dict) -> int:
           f"quota_exhausted {scan.get('quota_exhausted', False)}")
     print(f"verification: {v.get('trip_lookups')} flight lookups (normal ~50-80), "
           f"hit_budget {v.get('hit_budget')}; round-trip checks {d.get('round_trip_checks')}")
+    print(google_line(d))
     for sec, x in cards(d):
         flags = []
         cpp = (x["cash_price"] - x["taxes_usd"]) / x["points"] * 100

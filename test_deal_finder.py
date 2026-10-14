@@ -1359,3 +1359,27 @@ def test_google_lookups_are_logged_per_minute(monkeypatch):
     deal_finder._log_google_lookups(lines.append)
     assert lines == ["Google lookups by minute (one-way, round-trip; priced/total): 15:01 1/1 0/0 · 15:02 1/2 1/1",
                      "Paused 1 time(s) after empty Google answers, 3 s in all"]
+
+
+def test_throttle_note_on_the_real_throttled_days_only():
+    """Round trips priced: Oct 11 404/600, Oct 13 429/520, Oct 14 256/571. One-way
+    lookups empty: Oct 11 37/246, Oct 13 25/261, Oct 14 130/234."""
+    oct14 = {"one_way": 234, "one_way_empty": 130, "round_trips": 571, "round_trips_priced": 256}
+    oct13 = {"one_way": 261, "one_way_empty": 25, "round_trips": 520, "round_trips_priced": 429}
+    oct11 = {"one_way": 246, "one_way_empty": 37, "round_trips": 600, "round_trips_priced": 404}
+    note = deal_finder.throttle_note(oct14)
+    assert note and "130 of 234" in note and "315 of 571" in note
+    assert deal_finder.throttle_note(oct13) is None
+    assert "196 of 600" in deal_finder.throttle_note(oct11)  # round trips alone are enough
+    assert deal_finder.throttle_note({}) is None  # digests from before this was recorded
+
+
+def test_audit_flags_a_throttled_digest_and_reads_old_ones():
+    import tools.audit_digest as audit
+    throttled = {"google_coverage": {"one_way": 234, "one_way_empty": 130,
+                                     "round_trips": 571, "round_trips_priced": 256}}
+    assert audit.google_line(throttled).endswith("THROTTLED")
+    assert "256/571 (45%)" in audit.google_line(throttled)
+    old_normal = {"pricing": {"live": 150, "watch_live": 80, "explore_live": 4, "no_fare": 25}}
+    line = audit.google_line(old_normal)
+    assert "209/234" in line and "not recorded" in line and "THROTTLED" not in line

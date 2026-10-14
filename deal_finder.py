@@ -75,6 +75,11 @@ NO_ROUND_TRIP_PENALTY = 0.85
 RT_RETRY_MAX = 60  # round-trip lookups re-tried at the end of the run, after the ones that failed
 RT_RETRY_PAUSE_S = 2.0  # spacing between retries: failures come in bursts when Google throttles
 RT_OUTAGE_SHARE = 0.3  # above this share of reported deals on an estimate, the email says so
+# A run counts as throttled by Google past either line. Round trips priced, Oct 2026:
+# 82-83% on normal days (Oct 12-13), 67% Oct 10-11, 57% Oct 4, 45% Oct 14. One-way
+# lookups empty: 1-15% normal (Oct 4-13), 40% Oct 10, 56% Oct 14.
+THROTTLE_ONE_WAY_EMPTY = 0.3
+THROTTLE_RT_PRICED_MIN = 0.7
 UNVERIFIED_PENALTY = 0.6  # never re-checked live: stops, seats and current price unknown
 # Within one card, a confirmed connection must be worth this much more than a nonstop
 # to lead it. Chosen so a small fare wobble can't flip a nonstop to a connection;
@@ -663,7 +668,7 @@ def _warn_on_stale_training(rows: list[dict], log) -> None:
 def _warn_on_health(price: dict, scan: dict, budget: int, log) -> None:
     """Loud warnings for the ways a run can look fine and still be useless."""
     live = price.get("live", 0) + price.get("watch_live", 0) + price.get("explore_live", 0)
-    if live and price.get("no_fare", 0) / live > 0.3:
+    if live and price.get("no_fare", 0) / live > THROTTLE_ONE_WAY_EMPTY:
         log(f"::warning::{price['no_fare']} of {live} cash lookups returned no fare: "
             "Google may be blocking or serving empty pages.")
     if budget and live < 0.5 * budget and price.get("skipped_low_p", 0) > 1000:
@@ -1015,6 +1020,33 @@ def _log_google_lookups(log) -> None:
     log("Google lookups by minute (one-way, round-trip; priced/total): " + " · ".join(parts))
     b = flight_search.backoff_stats()
     log(f"Paused {b['pauses']} time(s) after empty Google answers, {b['waited_s']:.0f} s in all")
+
+
+def google_coverage(price: dict, rt_cache: dict) -> dict:
+    """How many Google lookups came back with a fare, for the digest and `make audit`."""
+    return {
+        "one_way": price.get("live", 0) + price.get("watch_live", 0) + price.get("explore_live", 0),
+        "one_way_empty": price.get("no_fare", 0),
+        "round_trips": len(rt_cache),
+        "round_trips_priced": sum(1 for v in rt_cache.values() if v),
+    }
+
+
+def throttle_note(cov: dict) -> str | None:
+    """A warning when Google left too many lookups empty for the list to be complete.
+
+    Values stay honest on such a day (cards without a round trip are estimated and
+    flagged), but fewer awards get priced, so a quiet email may mean missed deals.
+    """
+    ow, ow_empty = cov.get("one_way", 0), cov.get("one_way_empty", 0)
+    rt, rt_priced = cov.get("round_trips", 0), cov.get("round_trips_priced", 0)
+    ow_bad = ow and ow_empty / ow > THROTTLE_ONE_WAY_EMPTY
+    rt_bad = rt and rt_priced / rt < THROTTLE_RT_PRICED_MIN
+    if not (ow_bad or rt_bad):
+        return None
+    return (f"Google Flights limited today's lookups: {ow_empty} of {ow} one-way fares and "
+            f"{rt - rt_priced} of {rt} round trips came back empty. The deals here are priced on "
+            "real fares, but fewer awards were priced than usual, so good ones may be missing.")
 
 
 def rt_outage_note(deals: list[dict]) -> str | None:
@@ -1939,7 +1971,8 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
         # Biggest by RANKED value, not raw surplus: the subject line shouldn't headline
         # a deal that only looks big because today's fare is spiking.
         lead = max((d for _, d in fresh), key=lambda d: d.get("ranked_value_usd") or 0)
-        outage = rt_outage_note([d for _, d in fresh])
+        outage = " ".join(n for n in (throttle_note(google_coverage(price_stats, rt_cache)),
+                                      rt_outage_note([d for _, d in fresh])) if n) or None
         bonus_note = funding.bonus_list_health()
         if bonus_note:
             log(f"::warning::{bonus_note}")
@@ -1987,6 +2020,7 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
         "estimate_drift": drift,
         "reuse_error": reuse,
         "round_trip_checks": len(rt_cache),
+        "google_coverage": google_coverage(price_stats, rt_cache),
         # How much seats.aero re-verification actually cost, and what it caught.
         # Without this the digest can't answer "were the published deals checked,
         # and what did it take?" -- which is the whole point of the section.

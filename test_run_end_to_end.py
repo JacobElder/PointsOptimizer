@@ -194,3 +194,23 @@ def test_deal_barely_over_its_bar_is_listed_but_not_emailed(tmp_path, monkeypatc
     assert sent == [["FRA"]]
     assert zrh["new"] is False and fra["new"] is True
     assert "aeroplan|JFK|ZRH|BUSINESS" not in out["reported_routes"]
+
+
+def test_throttled_run_records_google_coverage_and_says_so_in_the_email(tmp_path, monkeypatch):
+    """Oct 14: Google left 130 of 234 one-way lookups and 315 of 571 round trips empty.
+    The only trace was a ::warning in the Actions log; the digest kept just "571 checks"
+    and the email read like a normal day with fewer deals."""
+    _fake_pipeline(tmp_path, monkeypatch, [_award("ZRH", "BUSINESS", "aeroplan", 40000, 60)])
+    monkeypatch.setattr(deal_finder, "_load_digest", lambda: {})
+    monkeypatch.setattr(deal_finder.flight_search, "search_round_trip_offers", lambda *a, **k: [])
+    warnings = []
+    monkeypatch.setattr(deal_finder.deal_email, "is_configured", lambda: True)
+    monkeypatch.setattr(deal_finder.deal_email, "send_digest_email",
+                        lambda sections, subject, intro, warning=None: warnings.append(warning))
+
+    out = deal_finder.run(max_lookups=10, top=5, send_email=True, log=lambda m: None)
+
+    cov = out["google_coverage"]
+    assert cov["round_trips"] >= 1 and cov["round_trips_priced"] == 0
+    assert cov["one_way"] >= 1 and cov["one_way_empty"] == 0
+    assert warnings and "Google Flights limited" in warnings[0]

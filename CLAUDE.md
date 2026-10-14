@@ -26,7 +26,9 @@ The user asks "check the digest" / "did it run today? audit and review" most day
 3. **Audit the digest:** `make audit` (offline: card math, bars, unverified, estimated round
    trips) then `make audit-live` (re-prices emailed cards against today's Google fares; free,
    ~2 min). For a past day: `.venv/bin/python tools/audit_digest.py <git-rev> [--live]`.
-   Repeat emails: `tools/audit_digest.py --repeats`.
+   Repeat emails: `tools/audit_digest.py --repeats`. The `google:` line shows how many Google
+   lookups got a fare; `THROTTLED` (>30% one-way empty or <70% round trips priced) means deals
+   were likely missed, and the email said so. Not a card problem; compare with recent days.
 4. **Fix what's wrong** — see "How to fix" — then push, and tell the user plainly what ran,
    what you checked, what was wrong, what you changed, and what to watch tomorrow.
 
@@ -184,7 +186,9 @@ removed Oct 12), deleting SERPAPI_KEY from the Streamlit Cloud secrets.
   d1b6669's pauses: verdict now "doesn't help". The 240 s cap was spent by 13:54 in the one-way phase, priced
   share didn't recover while pausing (13:52–13:54: 48%, 45%, 44%), and the round-trip phase ran unpaced at ~44%.
   If throttling keeps getting worse, the next thing to try (with a test first) is pacing round trips instead of
-  pausing after empties; not shipped.
+  pausing after empties; not shipped. Same day, at the user's request: the digest now records
+  `google_coverage`, `make audit` prints it with `THROTTLED`, and a throttled run's email opens with a
+  line saying coverage was partial. A visibility change, not a fix for a fault, so not a streak reset.
 - **iCloud evicts this repo's files** (`ls -lO` shows `dataless`; the `.nosync` name doesn't stop it).
   Reads then hang forever: git fetch/pull and `.venv` Python stalled on Oct 11. Check with
   `find .venv -type f | head -500 | xargs ls -lO | grep -c dataless`. A venv outside `~/Documents`
