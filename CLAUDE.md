@@ -122,7 +122,7 @@ removed Oct 12), deleting SERPAPI_KEY from the Streamlit Cloud secrets.
 - **Goal:** call the system finished after 5 consecutive clean runs — email arrives with no one
   stepping in, every emailed deal verified and still above its bar at live fares, no repeat
   emails, no code fixes needed — then switch to a weekly `make audit-live`.
-- **Clean days so far:** 0 of 5 (Oct 12 was clean; Oct 13 reset it: an emailed deal fell below its bar). (Oct 6–8 were clean, but the user decided on Oct 13 to count conservatively: Oct 9 (deal fell below bar) and the code fixes on Oct 10 and 11 reset the streak.) Fixes from Oct 5 (repeat suppression, fare-spike cap,
+- **Clean days so far:** 1 of 5 (Oct 14). (Oct 12 was clean; Oct 13 reset it: an emailed deal fell below its bar.) (Oct 6–8 were clean, but the user decided on Oct 13 to count conservatively: Oct 9 (deal fell below bar) and the code fixes on Oct 10 and 11 reset the streak.) Fixes from Oct 5 (repeat suppression, fare-spike cap,
   Emirates cabin links, test isolation of balance files, runner pin) had their first real run Oct 6
   and worked. Oct 7's digest came from the hand-clicked cron-job.org test (01:53 UTC), so the
   unattended 10:00 ET dispatch has not yet produced a digest on its own (see layer 2 above). Oct 8
@@ -175,6 +175,16 @@ removed Oct 12), deleting SERPAPI_KEY from the Streamlit Cloud secrets.
   fell. No card with ≥10% margin has fallen. The user chose the 10% margin: shipped Oct 13 as
   `EMAIL_MARGIN` (email only; thin cards stay on the site). From Oct 14, `make audit` lists no emailed
   card under 1.10× its bar; tally thin cards withheld vs. emailed cards that still fall (decisions.md).
+- **Oct 14: clean, no code change.** GitHub schedule (13:42 UTC). 5 emailed, 0 offline problems, all 5 above bar
+  live the same day (lowest: JFK–IST Aeroplan 75k 3.15¢ → 2.82¢ vs 2.62 bar). 2 repeats, both by the rule:
+  EWR–IST Turkish 65k 3.05¢ (Oct 10) → 3.97¢ (1.30×); JFK–PTY United 38.5k 2.45¢ (Oct 13) → 3.03¢ (1.24×).
+  **Worst Google throttling yet:** 130 of 234 one-way lookups empty (`::warning`), round trips 256/571 priced
+  (45%; 67% Oct 11, 83% Oct 12–13). Throttled from the first minute (13:48: 6/16). All 30 published cards still
+  have a real round trip (0 `rt_unavailable`), so values weren't inflated — the cost is deals never priced.
+  d1b6669's pauses: verdict now "doesn't help". The 240 s cap was spent by 13:54 in the one-way phase, priced
+  share didn't recover while pausing (13:52–13:54: 48%, 45%, 44%), and the round-trip phase ran unpaced at ~44%.
+  If throttling keeps getting worse, the next thing to try (with a test first) is pacing round trips instead of
+  pausing after empties; not shipped.
 - **iCloud evicts this repo's files** (`ls -lO` shows `dataless`; the `.nosync` name doesn't stop it).
   Reads then hang forever: git fetch/pull and `.venv` Python stalled on Oct 11. Check with
   `find .venv -type f | head -500 | xargs ls -lO | grep -c dataless`. A venv outside `~/Documents`
