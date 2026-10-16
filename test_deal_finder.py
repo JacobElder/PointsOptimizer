@@ -1383,3 +1383,10 @@ def test_audit_flags_a_throttled_digest_and_reads_old_ones():
     old_normal = {"pricing": {"live": 150, "watch_live": 80, "explore_live": 4, "no_fare": 25}}
     line = audit.google_line(old_normal)
     assert "209/234" in line and "not recorded" in line and "THROTTLED" not in line
+
+
+def test_google_probe_tells_a_block_from_an_empty_page():
+    import tools.google_probe as probe
+    assert probe.classify(429, "", "ECONOMY") == "http 429"
+    assert probe.classify(200, "<p>Our systems have detected unusual traffic</p>", "ECONOMY") == "block page"
+    assert probe.classify(200, "<html><body>nothing</body></html>", "ECONOMY") == "no payload"

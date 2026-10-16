@@ -1,0 +1,33 @@
+name: Google probe
+
+# Why Google Flights answers GitHub's runners with empty pages (since Oct 10 2026),
+# and whether a different request style gets fares. Google only: no seats.aero calls,
+# no email, no commits. Run by hand; the saved pages are in the run's artifacts.
+on:
+  workflow_dispatch:
+    inputs:
+      n:
+        description: "Lookups per variant"
+        default: "30"
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - run: python tools/google_probe.py --n "${{ inputs.n }}"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: google-probe-pages
+          path: probe_out/
+          if-no-files-found: ignore
