@@ -189,6 +189,16 @@ removed Oct 12), deleting SERPAPI_KEY from the Streamlit Cloud secrets.
   pausing after empties; not shipped. Same day, at the user's request: the digest now records
   `google_coverage`, `make audit` prints it with `THROTTLED`, and a throttled run's email opens with a
   line saying coverage was partial. A visibility change, not a fix for a fault, so not a streak reset.
+- **Google empties on the runner (investigated Oct 15–16).** Every daily run since Oct 10 lost 17–55% of
+  round trips (Sep 28–Oct 9: 98–100%, except Oct 4). Not our code (the drop predates the Oct 11 changes) and
+  not a block page: the empties are Google's ordinary "no flights" answer, sometimes false (CPT priced from the
+  Mac, "no flights" on the runner). From the Mac, 37 of 40 of Oct 15's empties priced. `tools/google_probe.py`
+  (workflow "Google probe") re-runs the latest empties on a runner three ways: fresh client, warmed session,
+  session+gl=us. Oct 16 01:12 UTC: 77–83% priced, all three alike; unpaced 73–80%, so not pacing or request
+  style. Leading suspect: time of day (daily runs 13:25–16:07 UTC). The probe runs at 01:40/07:40/13:40/19:40
+  UTC to test it — compare `Summary` lines by start time. If nights are clean, the fix is moving the run
+  (the email would arrive in the evening Eastern; ask the user). Options if not: self-hosted runner on the Mac,
+  residential proxy (fast-flights `proxy=`), paid API (last resort; the user removed SerpApi).
 - **iCloud evicts this repo's files** (`ls -lO` shows `dataless`; the `.nosync` name doesn't stop it).
   Reads then hang forever: git fetch/pull and `.venv` Python stalled on Oct 11. Check with
   `find .venv -type f | head -500 | xargs ls -lO | grep -c dataless`. A venv outside `~/Documents`
