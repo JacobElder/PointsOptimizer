@@ -1390,3 +1390,47 @@ def test_google_probe_tells_a_block_from_an_empty_page():
     assert probe.classify(429, "", "ECONOMY") == "http 429"
     assert probe.classify(200, "<p>Our systems have detected unusual traffic</p>", "ECONOMY") == "block page"
     assert probe.classify(200, "<html><body>nothing</body></html>", "ECONOMY") == "no payload"
+
+
+def test_one_way_lookups_that_came_back_empty_are_asked_again(monkeypatch):
+    """Oct 17: 119 of 254 one-way lookups came back empty and were never asked again,
+    so those awards could never become deals. Re-asking the same empties on a runner
+    priced 27 of 30 (Google probe, Oct 17 11:44 UTC)."""
+    asked = []
+
+    def _quote(o, d, dt, cab, **k):
+        asked.append((d, k.get("refresh", False)))
+        first_time = sum(1 for x in asked if x[0] == d) == 1
+        price = None if (d == "CMN" and first_time) else 3000.0
+        return cash_quotes.Quote(o, d, cab, dt, price, None, "t",
+                                 deal_finder.datetime.now(deal_finder.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"))
+
+    monkeypatch.setattr(cash_quotes, "get_quote", _quote)
+    monkeypatch.setattr(cash_quotes, "load", lambda: [])
+    monkeypatch.setattr(deal_finder, "ONE_WAY_RETRY_PAUSE_S", 0)
+    # Two awards on the same flight date (two programs), and one that priced first time.
+    cmn_a = _scored("CMN", "BUSINESS", "united", "EWR", 88000, 1.0)
+    cmn_b = _scored("CMN", "BUSINESS", "aeroplan", "EWR", 75000, 1.0)
+    lis = _scored("LIS", "BUSINESS", "flyingblue", "JFK", 60000, 1.0)
+    for s in (cmn_a, cmn_b, lis):
+        s.cash = s.cpp = s.surplus = None
+        s.p_great = 0.9
+    stats = deal_finder.price_promising([cmn_a, cmn_b, lis], max_lookups=5, log=lambda m: None)
+    assert cmn_a.cash == 3000.0 and cmn_b.cash == 3000.0
+    assert asked.count(("CMN", False)) == 1 and asked.count(("CMN", True)) == 1  # one retry per flight
+    assert stats["no_fare"] == 1 and stats["retried"] == 1 and stats["recovered"] == 1
+
+
+def test_one_way_retries_stop_at_their_limit(monkeypatch):
+    calls = []
+    monkeypatch.setattr(cash_quotes, "get_quote", lambda o, d, dt, cab, **k: calls.append(k.get("refresh"))
+                        or cash_quotes.Quote(o, d, cab, dt, None, None, "t", "2026-10-17T12:00:00Z"))
+    monkeypatch.setattr(cash_quotes, "load", lambda: [])
+    monkeypatch.setattr(deal_finder, "ONE_WAY_RETRY_PAUSE_S", 0)
+    monkeypatch.setattr(deal_finder, "ONE_WAY_RETRY_MAX", 2)
+    scored = [_scored(d, "BUSINESS", "united", "EWR", 88000, 1.0) for d in ("CMN", "LIS", "NRT", "ICN")]
+    for s in scored:
+        s.cash = s.cpp = s.surplus = None
+        s.p_great = 0.9
+    stats = deal_finder.price_promising(scored, max_lookups=10, log=lambda m: None)
+    assert calls.count(True) == 2 and stats["retried"] == 2 and stats["recovered"] == 0

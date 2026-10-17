@@ -51,7 +51,8 @@ def google_line(d: dict) -> str:
     if not cov:  # digests before Oct 15 2026 only kept the one-way counts
         cov = {k: v for k, v in df.google_coverage(d.get("pricing") or {}, {}).items()
                if k.startswith("one_way")}
-    parts = [f"one-way {cov['one_way'] - cov['one_way_empty']}/{cov['one_way']} priced"]
+    parts = [f"one-way {cov['one_way'] - cov['one_way_empty']}/{cov['one_way']} priced"
+             + (f" ({cov['one_way_recovered']} on a retry)" if cov.get("one_way_recovered") else "")]
     if "round_trips" in cov:
         share = cov["round_trips_priced"] / cov["round_trips"] if cov["round_trips"] else 1
         parts.append(f"round trips {cov['round_trips_priced']}/{cov['round_trips']} ({share:.0%})")

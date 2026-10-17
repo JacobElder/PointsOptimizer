@@ -220,15 +220,18 @@ def find_cached(quotes: list[dict], origin: str, dest: str, travel_date: str, ca
 
 
 def get_quote(origin: str, dest: str, travel_date: str, cabin: str, *,
-              allow_approx: bool = True, allow_live: bool = True) -> Quote | None:
+              allow_approx: bool = True, allow_live: bool = True, refresh: bool = False) -> Quote | None:
     """Best available quote. Returns None only if allow_live=False and nothing cached.
+
+    refresh=True skips saved quotes and asks Google again (used to re-ask a lookup
+    that came back empty earlier in the run).
 
     Raises OutOfWindow (no lookup attempted), or flight_search's NotConfigured /
     SearchFailed from the live lookup.
     """
     origin, dest, cabin = origin.strip().upper(), dest.strip().upper(), cabin.strip().upper()
     quotes = load()
-    cached = find_cached(quotes, origin, dest, travel_date, cabin, allow_approx=allow_approx)
+    cached = None if refresh else find_cached(quotes, origin, dest, travel_date, cabin, allow_approx=allow_approx)
     if cached is not None:
         return cached
     if not allow_live:

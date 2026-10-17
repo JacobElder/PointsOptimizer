@@ -74,6 +74,11 @@ RT_HALF_ESTIMATE_RATIO = 0.81
 NO_ROUND_TRIP_PENALTY = 0.85
 RT_RETRY_MAX = 60  # round-trip lookups re-tried at the end of the run, after the ones that failed
 RT_RETRY_PAUSE_S = 2.0  # spacing between retries: failures come in bursts when Google throttles
+# One-way lookups that came back empty are asked once more at the end of pricing.
+# Google's empties are often false (Oct 17 probe: 27 of 30 of a run's empties priced
+# when re-asked from a runner), and an award with no fare can never become a deal.
+ONE_WAY_RETRY_MAX = 60
+ONE_WAY_RETRY_PAUSE_S = 2.0
 RT_OUTAGE_SHARE = 0.3  # above this share of reported deals on an estimate, the email says so
 # A run counts as throttled by Google past either line. Round trips priced, Oct 2026:
 # 82-83% on normal days (Oct 12-13), 67% Oct 10-11, 57% Oct 4, 45% Oct 14. One-way
@@ -793,8 +798,8 @@ def price_promising(scored: list[Scored], max_lookups: int, log=print, max_watch
     Caribbean, takes it all). Then everything competes for max_lookups.
     """
     stats = {"cached": 0, "live": 0, "watch_live": 0, "explore_live": 0, "no_fare": 0, "failed": 0,
-             "skipped_low_p": 0, "estimate_errors": []}
-    state = {"quotes": cash_quotes.load(), "stop": False}
+             "skipped_low_p": 0, "retried": 0, "recovered": 0, "estimate_errors": []}
+    state = {"quotes": cash_quotes.load(), "stop": False, "empty": {}}
     if max_watch_lookups:
         groups = [[s for s in scored if any(x is w for x in s.watch)] for w in (watchlist or [])]
         groups.append([s for s in scored if s.bookable_now])  # awards you can book with miles already held
@@ -824,7 +829,46 @@ def price_promising(scored: list[Scored], max_lookups: int, log=print, max_watch
         if _price_one(s, state, stats, log) == "live":
             live += 1
     stats["live"] = live
+    _retry_empty_one_ways(scored, state, stats, log)
     return stats
+
+
+def _retry_empty_one_ways(scored: list[Scored], state: dict, stats: dict, log) -> None:
+    """Ask Google once more for the one-way fares that came back empty this run.
+
+    Empties come in bursts and are often false (Oct 17: 119 of 254 empty in the run;
+    the probe re-asking a run's empties priced 27 of 30), and an award with no fare is
+    never considered. One lookup per flight date, in the order they were first asked
+    (highest pricing priority first), spaced out like the round-trip retries.
+    """
+    if state["stop"] or not state["empty"]:
+        return
+    recovered: set[tuple] = set()
+    for key in list(state["empty"])[:ONE_WAY_RETRY_MAX]:
+        if stats["retried"] and ONE_WAY_RETRY_PAUSE_S:
+            time.sleep(ONE_WAY_RETRY_PAUSE_S)
+        stats["retried"] += 1
+        try:
+            q = cash_quotes.get_quote(*key, refresh=True)
+        except (cash_quotes.OutOfWindow, flight_search.NotConfigured, flight_search.SearchFailed):
+            continue
+        if q is None or q.price_usd is None:
+            continue
+        # Drop the empty answer, or find_cached keeps returning it ahead of the new fare.
+        state["quotes"] = [r for r in state["quotes"]
+                           if (r["origin"], r["dest"], r["date"], r["cabin"]) != key]
+        state["quotes"].append({k: v for k, v in q.__dict__.items() if k != "approx"})
+        recovered.add(key)
+    stats["recovered"] = len(recovered)
+    for s in scored:
+        if s.cash is None and _quote_key(s) in recovered:
+            _price_one(s, state, stats, log, allow_live=False)
+    log(f"One-way retries: {stats['recovered']} of {stats['retried']} empty lookups priced "
+        f"on a second try ({len(state['empty'])} came back empty)")
+
+
+def _quote_key(s: Scored) -> tuple:
+    return (s.c.origin, s.c.dest, s.c.date, price_cabin(s.c.cabin))
 
 
 def reuse_holdout(scored: list[Scored], budget: int, log=print) -> dict:
@@ -933,6 +977,7 @@ def _price_one(s: Scored, state: dict, stats: dict, log, allow_live: bool = True
     stats["live"] += 1
     if q is None or q.price_usd is None:
         stats["no_fare"] += 1
+        state.setdefault("empty", {})[_quote_key(s)] = True
     else:
         # Fresh fare for an award the model had estimated: track how far off it was,
         # so drift in the estimates (which decide what gets priced) shows up early.
@@ -1026,7 +1071,9 @@ def google_coverage(price: dict, rt_cache: dict) -> dict:
     """How many Google lookups came back with a fare, for the digest and `make audit`."""
     return {
         "one_way": price.get("live", 0) + price.get("watch_live", 0) + price.get("explore_live", 0),
-        "one_way_empty": price.get("no_fare", 0),
+        # Still empty after the end-of-run retry: what was actually missing.
+        "one_way_empty": price.get("no_fare", 0) - price.get("recovered", 0),
+        "one_way_recovered": price.get("recovered", 0),
         "round_trips": len(rt_cache),
         "round_trips_priced": sum(1 for v in rt_cache.values() if v),
     }
