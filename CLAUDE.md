@@ -124,7 +124,7 @@ removed Oct 12), deleting SERPAPI_KEY from the Streamlit Cloud secrets.
 - **Goal:** call the system finished after 5 consecutive clean runs — email arrives with no one
   stepping in, every emailed deal verified and still above its bar at live fares, no repeat
   emails, no code fixes needed — then switch to a weekly `make audit-live`.
-- **Clean days so far:** 1 of 5 (Oct 14). (Oct 12 was clean; Oct 13 reset it: an emailed deal fell below its bar.) (Oct 6–8 were clean, but the user decided on Oct 13 to count conservatively: Oct 9 (deal fell below bar) and the code fixes on Oct 10 and 11 reset the streak.) Fixes from Oct 5 (repeat suppression, fare-spike cap,
+- **Clean days so far:** 1 of 5 (Oct 17). (Oct 14–15 clean; Oct 16 reset it: JFK–PUJ fell below bar.) (Oct 12 was clean; Oct 13 reset it: an emailed deal fell below its bar.) (Oct 6–8 were clean, but the user decided on Oct 13 to count conservatively: Oct 9 (deal fell below bar) and the code fixes on Oct 10 and 11 reset the streak.) Fixes from Oct 5 (repeat suppression, fare-spike cap,
   Emirates cabin links, test isolation of balance files, runner pin) had their first real run Oct 6
   and worked. Oct 7's digest came from the hand-clicked cron-job.org test (01:53 UTC), so the
   unattended 10:00 ET dispatch has not yet produced a digest on its own (see layer 2 above). Oct 8
@@ -189,6 +189,17 @@ removed Oct 12), deleting SERPAPI_KEY from the Streamlit Cloud secrets.
   pausing after empties; not shipped. Same day, at the user's request: the digest now records
   `google_coverage`, `make audit` prints it with `THROTTLED`, and a throttled run's email opens with a
   line saying coverage was partial. A visibility change, not a fix for a fault, so not a streak reset.
+- **Oct 15: clean, no code change.** GitHub schedule (13:25 UTC). 4 emailed, all above bar live on Oct 17. Round trips
+  378/715 (53%), THROTTLED. One site-only card (EWR–DEL) on an estimated round trip; not emailed.
+- **Oct 16: not clean, no code fault.** GitHub schedule (13:14 UTC). 3 emailed; 1 repeat by the rule (EWR–JNB United PE).
+  **JFK–PUJ JetBlue 7,200 fell below bar** (checked Oct 17): $229 → $154, 2.41¢ → 1.37¢ vs 2.08. Margin was 16%, so
+  the first emailed card at ≥10% margin to fall; its fare was 1.22× typical $187 (1.83¢ at typical, below bar).
+  Replay Oct 6–17: 12 emailed cards were below bar at the typical fare; 3 fell (NRT, GCM, PUJ). No card above bar
+  at typical has fallen. If one more such card falls, propose "email only if above bar at min(fare, typical)".
+- **Oct 17: clean, no code change.** GitHub schedule at 12:11 UTC (earliest yet). 4 emailed, all above bar live same day
+  and above bar at typical fare. 2 repeats, both by the rule: EWR–PVG Aeroplan 102.5k 2.90¢ (Oct 9) → 3.55¢; EWR–CMN
+  United 88k 2.32¢ (Oct 13) → 3.44¢ (Oct 20 departure, close-in fare). 95 flight lookups (3rd day 80+; watch),
+  selections ≤10 rounds, round trips 658/822 (80%) but one-way 135/254 (53%), THROTTLED.
 - **Google empties on the runner (investigated Oct 15–16).** Every daily run since Oct 10 lost 17–55% of
   round trips (Sep 28–Oct 9: 98–100%, except Oct 4). Not our code (the drop predates the Oct 11 changes) and
   not a block page: the empties are Google's ordinary "no flights" answer, sometimes false (CPT priced from the
@@ -196,7 +207,9 @@ removed Oct 12), deleting SERPAPI_KEY from the Streamlit Cloud secrets.
   (workflow "Google probe") re-runs the latest empties on a runner three ways: fresh client, warmed session,
   session+gl=us. Oct 16 01:12 UTC: 77–83% priced, all three alike; unpaced 73–80%, so not pacing or request
   style. Leading suspect: time of day (daily runs 13:25–16:07 UTC). The probe runs at 01:40/07:40/13:40/19:40
-  UTC to test it — compare `Summary` lines by start time. If nights are clean, the fix is moving the run
+  UTC to test it — compare `Summary` lines by start time. Oct 16–17 probes (GitHub starts them late): 06:09–06:20 UTC
+  30–83% (worst), 12:41/17:41/22:11/11:44 UTC 80–90%. So far nights are *not* cleaner; time of day is weakening as
+  the suspect. Give it a few more days before deciding. If nights are clean, the fix is moving the run
   (the email would arrive in the evening Eastern; ask the user). Options if not: self-hosted runner on the Mac,
   residential proxy (fast-flights `proxy=`), paid API (last resort; the user removed SerpApi).
 - **iCloud evicts this repo's files** (`ls -lO` shows `dataless`; the `.nosync` name doesn't stop it).
