@@ -1354,8 +1354,15 @@ def pick_top(leaders: list[Scored], top: int, min_economy: int | None = None) ->
     return sorted(picked, key=lambda s: -s.rank_value)[:top]
 
 
+# A quote older than this is asked again before publishing. Until Oct 18 the re-price
+# reused any exact-date quote within the normal reuse age (2-7 days): 10-22 of ~30
+# published cards a day (Oct 7-18) carried an earlier day's fare, and JFK-PUJ was
+# emailed at Oct 16's $229 when Google said $154. 6 h covers anything this run priced.
+FRESH_QUOTE_MAX_AGE_DAYS = 0.25
+
+
 def reprice_fresh(deals: list[Scored], log=print) -> dict:
-    """Re-price each reported deal on its exact date, ignoring saved quotes.
+    """Re-price each reported deal on its exact date with a fare from this run.
 
     Reported deals are selected precisely because their fare came in high, and most
     are priced from a quote borrowed from a nearby date: re-checking 9 top deals by
@@ -1368,7 +1375,7 @@ def reprice_fresh(deals: list[Scored], log=print) -> dict:
             continue
         try:
             q = cash_quotes.get_quote(s.c.origin, s.c.dest, s.c.date, price_cabin(s.c.cabin),
-                                      allow_approx=False)
+                                      allow_approx=False, max_age_days=FRESH_QUOTE_MAX_AGE_DAYS)
         except (cash_quotes.OutOfWindow, flight_search.NotConfigured, flight_search.SearchFailed):
             stats["failed"] += 1
             continue

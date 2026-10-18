@@ -388,6 +388,50 @@ def test_shortlist_is_repriced_on_its_own_date_not_a_borrowed_one(monkeypatch):
     assert s.cash == 1190.0 and s.cpp == pytest.approx((1190.0 - 50.0) / 60000 * 100)
 
 
+def _puj_store(monkeypatch, google_prices):
+    """Oct 18: JFK-PUJ (Nov 9) was emailed at $229 from a quote saved on Oct 16; Google
+    said $154 twenty minutes after the run. `google_prices` feeds the fake lookups."""
+    import flight_search
+    now = datetime(2026, 10, 18, 12, 50, tzinfo=timezone.utc)
+    monkeypatch.setattr(cash_quotes, "_now", lambda: now)
+    cash_quotes.save([{"origin": "JFK", "dest": "PUJ", "cabin": "ECONOMY", "date": "2026-11-09",
+                       "price_usd": 229.0, "nonstop_price_usd": 229.0, "provider": "fast-flights",
+                       "fetched_at": "2026-10-16T13:32:51Z", "offers": [[229.0, 0, "AA"]]}])
+    asked, prices = [], list(google_prices)
+
+    def _search(origin, dest, date_str, cabin, max_results=5):
+        asked.append((origin, dest, date_str))
+        p = prices.pop(0)
+        return [flight_search.FlightOffer(p, cabin, 300, [], [])] if p else []
+
+    monkeypatch.setattr(flight_search, "search_cash_price", _search)
+    s = _scored("PUJ", "ECONOMY", "jetblue", "JFK", 5000, 229.0, date="2026-11-09")
+    return s, asked
+
+
+def test_fresh_repricing_asks_google_again_for_a_quote_from_an_earlier_run(monkeypatch):
+    s, asked = _puj_store(monkeypatch, [154.0])
+    stats = deal_finder.reprice_fresh([s], log=lambda m: None)
+    assert asked == [("JFK", "PUJ", "2026-11-09")]
+    assert s.cash == 154.0 and stats["changed"] == 1
+
+
+def test_fresh_repricing_reuses_a_quote_from_this_run(monkeypatch):
+    s, asked = _puj_store(monkeypatch, [])
+    q = cash_quotes.load()
+    q[0]["fetched_at"] = "2026-10-18T12:44:00Z"  # priced six minutes ago, in this run
+    cash_quotes.save(q)
+    deal_finder.reprice_fresh([s], log=lambda m: None)
+    assert asked == [] and s.cash == 229.0
+
+
+def test_an_empty_fresh_answer_does_not_erase_the_saved_fare(monkeypatch):
+    s, asked = _puj_store(monkeypatch, [None])
+    stats = deal_finder.reprice_fresh([s], log=lambda m: None)
+    assert asked and stats["failed"] == 1
+    assert [q["price_usd"] for q in cash_quotes.load()] == [229.0]
+
+
 def test_repricing_keeps_a_cheaper_round_trip(monkeypatch):
     s = _scored("ZRH", "BUSINESS", "aeroplan", "JFK", 60000, 3000)
     s.round_trip_half, s.rt_stay_nights = 1500.0, 7

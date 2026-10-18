@@ -124,7 +124,7 @@ removed Oct 12), deleting SERPAPI_KEY from the Streamlit Cloud secrets.
 - **Goal:** call the system finished after 5 consecutive clean runs — email arrives with no one
   stepping in, every emailed deal verified and still above its bar at live fares, no repeat
   emails, no code fixes needed — then switch to a weekly `make audit-live`.
-- **Clean days so far:** 0 of 5 (Oct 17's one-way retry fix restarts it; Oct 17's own run was clean). (Oct 14–15 clean; Oct 16 reset it: JFK–PUJ fell below bar.) (Oct 12 was clean; Oct 13 reset it: an emailed deal fell below its bar.) (Oct 6–8 were clean, but the user decided on Oct 13 to count conservatively: Oct 9 (deal fell below bar) and the code fixes on Oct 10 and 11 reset the streak.) Fixes from Oct 5 (repeat suppression, fare-spike cap,
+- **Clean days so far:** 0 of 5 (Oct 18: an emailed card fell below bar and a code fix shipped; Oct 17's one-way retry fix restarted it; Oct 17's own run was clean). (Oct 14–15 clean; Oct 16 reset it: JFK–PUJ fell below bar.) (Oct 12 was clean; Oct 13 reset it: an emailed deal fell below its bar.) (Oct 6–8 were clean, but the user decided on Oct 13 to count conservatively: Oct 9 (deal fell below bar) and the code fixes on Oct 10 and 11 reset the streak.) Fixes from Oct 5 (repeat suppression, fare-spike cap,
   Emirates cabin links, test isolation of balance files, runner pin) had their first real run Oct 6
   and worked. Oct 7's digest came from the hand-clicked cron-job.org test (01:53 UTC), so the
   unattended 10:00 ET dispatch has not yet produced a digest on its own (see layer 2 above). Oct 8
@@ -206,6 +206,16 @@ removed Oct 12), deleting SERPAPI_KEY from the Streamlit Cloud secrets.
   a run's empties priced 27 of 30. Read the `One-way retries: N of M` log line. `google_coverage.one_way_empty`
   now counts what is *still* empty after the retry (audit prints "(N on a retry)"). Adds ≤~3 min; runs were
   19–22 min against a 30 min `timeout-minutes` — watch run time. A code change, so the clean-day count restarts.
+- **Oct 18: not clean; code fix.** GitHub schedule (12:36 UTC). **Google unthrottled for the first time since Oct 9:**
+  one-way 232/234, round trips 736/736. Only 2 one-way empties, so the Oct 17 retry barely ran (0 of 2) — still
+  unproven on a throttled day. 95 flight lookups (4th day 80+), selections ≤9 rounds. 6 emailed; 5 held live.
+  **JFK–PUJ JetBlue 5,000 (Nov 9) fell below bar again:** emailed at $229 → $154 live 20 min later, 1.97¢ vs 2.08.
+  Allowed repeat (Oct 16 was 7,200 pts). Cause was ours: the $229 was Oct 16's saved quote. `reprice_fresh` reused
+  any exact-date quote within the normal reuse age (2–7 days); Oct 7–18, 10–22 of ~30 published cards a day were on
+  an earlier day's fare. Fix: re-ask Google unless the quote is ≤6 h old (`FRESH_QUOTE_MAX_AGE_DAYS`); an empty
+  answer keeps the saved fare. Watch Oct 19: `Fresh re-pricing … N moved more than 5%` should jump from ~1, run
+  time (+~1 min), and published cards whose exact-date quote in `cash_quotes.json` has `fetched_at` before the
+  digest's `generated_at` date should be ~0 (only ones whose fresh lookup came back empty).
 - **Google empties on the runner (investigated Oct 15–16).** Every daily run since Oct 10 lost 17–55% of
   round trips (Sep 28–Oct 9: 98–100%, except Oct 4). Not our code (the drop predates the Oct 11 changes) and
   not a block page: the empties are Google's ordinary "no flights" answer, sometimes false (CPT priced from the

@@ -192,7 +192,9 @@ def check_window(travel_date: str, today: date | None = None) -> None:
 
 
 def find_cached(quotes: list[dict], origin: str, dest: str, travel_date: str, cabin: str,
-                allow_approx: bool = True) -> Quote | None:
+                allow_approx: bool = True, max_age_days: float | None = None) -> Quote | None:
+    """Saved quote for this date (or a nearby one if allow_approx). max_age_days, if
+    given, overrides how old an exact-date quote may be."""
     origin, dest, cabin = origin.upper(), dest.upper(), cabin.upper()
     today = _now().date()
     travel_day = _parse_day(travel_date)
@@ -201,6 +203,8 @@ def find_cached(quotes: list[dict], origin: str, dest: str, travel_date: str, ca
 
     for q in same_route:
         max_age = _max_age_days(travel_day, today) if q.get("price_usd") is not None else NO_FARE_MAX_AGE_DAYS
+        if max_age_days is not None:
+            max_age = min(max_age, max_age_days)
         if q["date"] == travel_date and _age_days(q) <= max_age:
             return Quote(**{**q, "approx": False})
 
@@ -220,18 +224,22 @@ def find_cached(quotes: list[dict], origin: str, dest: str, travel_date: str, ca
 
 
 def get_quote(origin: str, dest: str, travel_date: str, cabin: str, *,
-              allow_approx: bool = True, allow_live: bool = True, refresh: bool = False) -> Quote | None:
+              allow_approx: bool = True, allow_live: bool = True, refresh: bool = False,
+              max_age_days: float | None = None) -> Quote | None:
     """Best available quote. Returns None only if allow_live=False and nothing cached.
 
     refresh=True skips saved quotes and asks Google again (used to re-ask a lookup
-    that came back empty earlier in the run).
+    that came back empty earlier in the run). max_age_days asks again unless the
+    exact-date quote is at most that old; if that answer comes back empty, the saved
+    fare is kept in the store rather than replaced by "no fare".
 
     Raises OutOfWindow (no lookup attempted), or flight_search's NotConfigured /
     SearchFailed from the live lookup.
     """
     origin, dest, cabin = origin.strip().upper(), dest.strip().upper(), cabin.strip().upper()
     quotes = load()
-    cached = None if refresh else find_cached(quotes, origin, dest, travel_date, cabin, allow_approx=allow_approx)
+    cached = None if refresh else find_cached(quotes, origin, dest, travel_date, cabin, allow_approx=allow_approx,
+                                              max_age_days=max_age_days)
     if cached is not None:
         return cached
     if not allow_live:
@@ -248,6 +256,10 @@ def get_quote(origin: str, dest: str, travel_date: str, cabin: str, *,
         fetched_at=_now().strftime("%Y-%m-%dT%H:%M:%SZ"),
         offers=[[o.price_usd, o.stops, ",".join(o.carrier_codes)] for o in offers[:MAX_STORED_OFFERS]],
     )
+    if quote.price_usd is None and max_age_days is not None and any(
+            q["origin"] == origin and q["dest"] == dest and q["cabin"] == cabin
+            and q["date"] == travel_date and q.get("price_usd") is not None for q in load()):
+        return quote  # likely a throttled answer; don't erase a real fare with it
     record = {k: v for k, v in asdict(quote).items() if k != "approx"}
     quotes = [q for q in load() if not (q["origin"] == origin and q["dest"] == dest
                                         and q["cabin"] == cabin and q["date"] == travel_date)]

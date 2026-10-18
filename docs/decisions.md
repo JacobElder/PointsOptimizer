@@ -6,6 +6,22 @@ revisit it. Code comments point here; change the entry when you change the decis
 
 ---
 
+## 2026-10-18 — Published cards carry a fare from this run
+
+**Decision.** Before publishing, each card is re-priced on its exact date unless its saved quote
+is at most 6 hours old (`FRESH_QUOTE_MAX_AGE_DAYS`), i.e. from this run. An empty answer to that
+lookup keeps the card's existing fare and doesn't overwrite the saved quote.
+
+**Why.** The "fresh re-pricing" step reused any exact-date quote within the normal reuse age
+(2 days for trips ≤30 days out, else 7). Oct 7–18, 10–22 of ~30 published cards a day carried an
+earlier day's fare. Oct 18 emailed JFK–PUJ JetBlue 5,000 at Oct 16's $229 (3.47¢); Google said
+$154 (1.97¢, bar 2.08) twenty minutes after the run. Costs ~10–20 extra lookups a run.
+
+**Revisit** if run time nears the 30-minute timeout, or throttled days leave many cards on an
+old fare (count "unavailable" in the `Fresh re-pricing` log line).
+
+---
+
 ## 2026-10-13 — Email a deal only when it clears its bar by 10%
 
 **Decision.** A card is emailed only if its CPP is at least `EMAIL_MARGIN` (1.10) × its bar
