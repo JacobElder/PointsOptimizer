@@ -225,7 +225,8 @@ removed Oct 12), deleting SERPAPI_KEY from the Streamlit Cloud secrets.
   style. Leading suspect: time of day (daily runs 13:25–16:07 UTC). The probe runs at 01:40/07:40/13:40/19:40
   UTC to test it — compare `Summary` lines by start time. Oct 16–17 probes (GitHub starts them late): 06:09–06:20 UTC
   30–83% (worst), 12:41/17:41/22:11/11:44 UTC 80–90%. So far nights are *not* cleaner; time of day is weakening as
-  the suspect. Give it a few more days before deciding. If nights are clean, the fix is moving the run
+  the suspect. Oct 17–18 probes: 16:39 57–77%, 21:42 63–67%, 06:34 43–63% (worst again), 12:10 63–90%; yet the
+  Oct 18 daily run at 12:42 priced ~100%. The probe re-asks the previous run's hardest empties, so it reads low. Give it a few more days before deciding. If nights are clean, the fix is moving the run
   (the email would arrive in the evening Eastern; ask the user). Options if not: self-hosted runner on the Mac,
   residential proxy (fast-flights `proxy=`), paid API (last resort; the user removed SerpApi).
 - **iCloud evicts this repo's files** (`ls -lO` shows `dataless`; the `.nosync` name doesn't stop it).
