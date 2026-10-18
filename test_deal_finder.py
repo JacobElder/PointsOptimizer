@@ -1340,6 +1340,16 @@ def test_same_route_on_another_date_is_not_emailed_again():
     assert deal_finder.materially_better({**d, "points": 8500}, prev)  # clearly fewer points
 
 
+def test_long_itineraries_are_not_emailed():
+    """Oct 6-18: 27 of 63 emailed cards were flagged slow, e.g. EWR-PVG Aeroplan via
+    Delhi, 44.8 h door to door. The user: no savings are worth a 15-hour layover."""
+    d = {"cpp": 3.55, "great_floor": 2.62, "slow": True}
+    assert not deal_finder.worth_emailing(d)
+    assert deal_finder.worth_emailing({**d, "slow": False})
+    assert not deal_finder.worth_emailing({**d, "slow": False, "cpp": 2.80})  # under 1.10x the bar
+    assert not deal_finder.worth_emailing({"cpp": 3.0, "great_floor": 1.0, "watch_bar": 2.9, "slow": False})
+
+
 def test_route_history_is_seeded_from_per_award_keys():
     seeded = deal_finder.seed_reported_routes({
         "held:american|JFK|ANU|ECONOMY|9500|2026-10-25": "2026-10-01T10:00:00",

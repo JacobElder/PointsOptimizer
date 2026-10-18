@@ -93,7 +93,8 @@ layer produced that day's digest. Workflows are pinned to `ubuntu-24.04` (see TO
 - Ranking uses `rank_cash` (today's fare capped at 1.25× the route's typical fare); the card's
   CPP and the bar use the real fare. Don't "fix" the mismatch — it's deliberate.
 - Email repeats are suppressed per route/program/cabin (`reported_routes`) unless ≥15% more
-  CPP or ≤90% of the points. A card is emailed only at ≥1.10× its bar (`EMAIL_MARGIN`).
+  CPP or ≤90% of the points. A card is emailed only at ≥1.10× its bar (`EMAIL_MARGIN`) and if not
+  `slow` (long itinerary; user's call Oct 18) — see `worth_emailing`. Slow cards stay on the site.
 - Cash fares: fast-flights (free Google Flights) is the only source; SerpApi was removed
   Oct 12 2026 at the user's request. Google sometimes throttles the Actions runner (empty
   results) — the pauses after empty answers, round-trip retry and estimate exist for that.

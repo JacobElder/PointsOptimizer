@@ -86,6 +86,8 @@ def offline(d: dict) -> int:
             flags.append("UNVERIFIED")
         if x.get("rt_unavailable"):
             flags.append("RT ESTIMATED")
+        if x.get("new") and x.get("slow") and d.get("generated_at", "") >= "2026-10-19":
+            flags.append("SLOW EMAILED")  # long trips aren't emailed from Oct 19 (worth_emailing)
         problems += bool(flags)
         if x.get("new") or flags:
             t = x.get("trip") or {}

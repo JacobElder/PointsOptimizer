@@ -1405,6 +1405,18 @@ REPEAT_FEWER_POINTS = 0.9  # ...or cost this share of the points or less
 EMAIL_MARGIN = 1.10
 
 
+def worth_emailing(d: dict) -> bool:
+    """Clears its bar by EMAIL_MARGIN and isn't a long itinerary (`slow`).
+
+    Slow trips stay on the site, labeled. Oct 6-18, 27 of 63 emailed cards were slow
+    (12 with ~10+ hours on the ground); the user doesn't want savings that cost a
+    15-hour layover, and the 25% ranking discount never kept one out of the email.
+    """
+    if d.get("slow"):
+        return False
+    return d["cpp"] >= d.get("watch_bar", d["great_floor"]) * EMAIL_MARGIN
+
+
 def route_report_key(d: dict) -> str:
     """One trip for email purposes: program, airports and cabin, whatever the date."""
     return "|".join([d["source"], d["origin"], d["dest"], d["cabin"]])
@@ -1897,7 +1909,7 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
     def is_new(key: str, d: dict) -> bool:
         if key in already:
             return False
-        if d["cpp"] < d.get("watch_bar", d["great_floor"]) * EMAIL_MARGIN:
+        if not worth_emailing(d):
             return False
         prev = already_routes.get(route_report_key(d))
         return prev is None or materially_better(d, prev)

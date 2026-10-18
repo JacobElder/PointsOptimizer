@@ -6,6 +6,25 @@ revisit it. Code comments point here; change the entry when you change the decis
 
 ---
 
+## 2026-10-18 — Don't email long itineraries
+
+**Decision.** A card flagged `slow` (the trip takes more than ~5–6 h longer than flying the
+distance nonstop; see `Scored.slow`) is not emailed (`worth_emailing`). It stays on the site with
+its "Long itinerary" label, and keeps the 25% ranking and within-card discount.
+
+**Why.** Oct 6–18, 27 of 63 emailed cards were slow; 12 had roughly 10+ hours on the ground
+(EWR–PVG Aeroplan via Delhi, 44.8 h; EWR–CMN United via Geneva and Frankfurt, 25.8 h). The 25%
+discount only reorders the top list; it never kept a slow card that cleared its bar out of the
+email. The user: no savings are worth a 15-hour layover.
+
+**Rejected.** Only skipping ~8 h+ layovers (would have cut 13 of 63), or a harsher ranking
+discount alone. The user chose the strictest option.
+
+**Revisit** if the email gets too thin, or a faster option on the same card is being missed
+because a slow award leads it (the within-card discount is still 25%).
+
+---
+
 ## 2026-10-18 — Published cards carry a fare from this run
 
 **Decision.** Before publishing, each card is re-priced on its exact date unless its saved quote
