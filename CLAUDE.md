@@ -24,7 +24,8 @@ The user asks "check the digest" / "did it run today? audit and review" most day
    lookups ~50–80 total; round-trip checks mostly priced (>90%); `no_fare` single digits;
    scan `failed`/`aborted` empty. Compare with the previous 2–3 days, not absolutes.
 3. **Audit the digest:** `make audit` (offline: card math, bars, unverified, estimated round
-   trips) then `make audit-live` (re-prices emailed cards against today's Google fares; free,
+   trips, `OLD FARE` = an emailed card priced on an earlier day's fare; the `fares:` line counts
+   all published cards on one, expected ~0 from Oct 19) then `make audit-live` (re-prices emailed cards against today's Google fares; free,
    ~2 min). For a past day: `.venv/bin/python tools/audit_digest.py <git-rev> [--live]`.
    Repeat emails: `tools/audit_digest.py --repeats`. The `google:` line shows how many Google
    lookups got a fare; `THROTTLED` (>30% one-way empty or <70% round trips priced) means deals
@@ -215,8 +216,11 @@ removed Oct 12), deleting SERPAPI_KEY from the Streamlit Cloud secrets.
   any exact-date quote within the normal reuse age (2–7 days); Oct 7–18, 10–22 of ~30 published cards a day were on
   an earlier day's fare. Fix: re-ask Google unless the quote is ≤6 h old (`FRESH_QUOTE_MAX_AGE_DAYS`); an empty
   answer keeps the saved fare. Watch Oct 19: `Fresh re-pricing … N moved more than 5%` should jump from ~1, run
-  time (+~1 min), and published cards whose exact-date quote in `cash_quotes.json` has `fetched_at` before the
-  digest's `generated_at` date should be ~0 (only ones whose fresh lookup came back empty).
+  time (+~1 min), and `make audit`'s `fares:` line should be ~0 (only cards whose fresh lookup came back empty)
+  with no `OLD FARE` on an emailed card. Same evening: that check was added to `make audit` (audit-only; replay:
+  Oct 18 10 of 32, 3 of 6 emailed; Oct 17 15 of 30). Two email rules held back with their data in decisions.md
+  (Oct 18 entry): a ≥$100 "cushion" above the bar (cards under $100: 3 of 9 fell; $100+: 2 of 54) — ship it if
+  a card with no old fare still falls with under $100 of cushion; and a minimum lead time — ask the user first.
 - **Google empties on the runner (investigated Oct 15–16).** Every daily run since Oct 10 lost 17–55% of
   round trips (Sep 28–Oct 9: 98–100%, except Oct 4). Not our code (the drop predates the Oct 11 changes) and
   not a block page: the empties are Google's ordinary "no flights" answer, sometimes false (CPT priced from the

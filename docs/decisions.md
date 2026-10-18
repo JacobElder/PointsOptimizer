@@ -6,6 +6,38 @@ revisit it. Code comments point here; change the entry when you change the decis
 
 ---
 
+## 2026-10-18 — Audit flags cards priced on an earlier day's fare (and two rules held back)
+
+**Decision.** `make audit` now checks each published card's exact-date fare in the
+`cash_quotes.json` committed with the digest. A card whose fare was fetched more than 6 hours
+before the run (`OLD_FARE_HOURS` in `tools/audit_digest.py`) is marked `OLD FARE (date)` if it was
+emailed (counts as a problem) or `old fare (date)` if it's site-only (shown, not counted:
+the fresh re-price keeps a saved fare when Google's answer comes back empty). A summary line
+reads `fares: N of M published card(s) on an earlier day's fare`. Audit-only: the daily run,
+the email and the site are unchanged.
+
+**Why.** It turns the check of the fix above into a routine one instead of a manual one.
+Replayed: Oct 17 had 15 of 30 published cards on an old fare; Oct 18 had 10 of 32, including
+3 of the 6 emailed (JFK–PUJ from Oct 16, JFK–HND from Oct 17, JFK–PTY from Oct 13). From Oct 19 the
+emailed count should be 0 and the total near 0.
+
+**Revert:** `git revert` the commit titled "Audit: flag cards priced on an earlier day's fare".
+It touches only `tools/audit_digest.py`, one test in `test_deal_finder.py`, this entry and CLAUDE.md.
+
+**Held back, with the data, for later:**
+- *Minimum dollar cushion for emailing.* The cushion is how far the fare can fall before the
+  card drops below its bar: (CPP − bar) × points. Oct 6–18, cards under $100 of cushion: 9 emailed,
+  3 fell (JFK–GCM, JFK–PUJ ×2); $100 or more: 54 emailed, 2 fell (NRT, HKG, both under the 10%
+  margin that `EMAIL_MARGIN` now withholds). Cheap Caribbean economy fares move ~$75 a day. Not
+  shipped because today's fall is fully explained by the old fare (fixed above), and testing two
+  changes at once would hide which one worked. **Ship it** (≈"email only if cushion ≥ $100") if
+  a card with an old-fare-free audit still falls with under $100 of cushion.
+- *Minimum lead time for emailing.* 8 emailed cards left within 8 days (MAD, IST, CMN, PMO 3–4 days
+  out); none fell, and some were among the best values (CMN 3.44¢). No data for it; it's a
+  question of whether the user can travel on short notice. Ask before adding one.
+
+---
+
 ## 2026-10-18 — Don't email long itineraries
 
 **Decision.** A card flagged `slow` (the trip takes more than ~5–6 h longer than flying the

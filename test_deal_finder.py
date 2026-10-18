@@ -1488,3 +1488,22 @@ def test_one_way_retries_stop_at_their_limit(monkeypatch):
         s.p_great = 0.9
     stats = deal_finder.price_promising(scored, max_lookups=10, log=lambda m: None)
     assert calls.count(True) == 2 and stats["retried"] == 2 and stats["recovered"] == 0
+
+
+def test_audit_flags_a_card_priced_on_an_earlier_days_fare():
+    """Oct 18 emailed JFK-PUJ at $229, a quote saved on Oct 16; Google said $154 that day.
+    The audit now names any published card whose exact-date fare predates the run."""
+    import tools.audit_digest as audit
+    card = {"origin": "JFK", "dest": "PUJ", "cabin": "ECONOMY", "date": "2026-11-09"}
+
+    def quote(fetched_at, price=229.0):
+        return {"origin": "JFK", "dest": "PUJ", "cabin": "ECONOMY", "date": "2026-11-09",
+                "price_usd": price, "fetched_at": fetched_at}
+    run = "2026-10-18T12:37:00Z"
+    assert audit.old_fare(card, [quote("2026-10-16T13:02:11Z")], run) == "2026-10-16"
+    assert audit.old_fare(card, [quote("2026-10-18T12:49:30Z")], run) is None  # this run
+    assert audit.old_fare(card, [quote("2026-10-18T08:00:00Z")], run) is None  # within 6 h
+    assert audit.old_fare(card, [quote("2026-10-16T13:02:11Z", price=None)], run) is None  # no fare
+    assert audit.old_fare(card, [], run) is None
+    first = {**card, "cabin": "FIRST"}  # first is priced against business fares
+    assert audit.old_fare(first, [{**quote("2026-10-10T00:00:00Z"), "cabin": "BUSINESS"}], run) == "2026-10-10"

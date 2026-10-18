@@ -39,6 +39,35 @@ def cards(d: dict) -> list[tuple[str, dict]]:
             + [("top", x) for x in d.get("top", [])])
 
 
+def load_quotes(rev: str) -> list[dict]:
+    """cash_quotes.json as committed with the digest (the run commits both together)."""
+    out = subprocess.run(["git", "show", f"{rev}:cash_quotes.json"], capture_output=True, text=True, cwd=ROOT)
+    return json.loads(out.stdout).get("quotes", []) if out.returncode == 0 else []
+
+
+# Added Oct 18 2026 (see docs/decisions.md): JFK-PUJ was emailed on a fare saved two days
+# earlier. Same 6 h as deal_finder.FRESH_QUOTE_MAX_AGE_DAYS, written out so the check
+# doesn't move if that constant does.
+OLD_FARE_HOURS = 6
+
+
+def old_fare(x: dict, quotes: list[dict], generated_at: str) -> str | None:
+    """Day the card's exact-date one-way fare was fetched, if earlier than this run.
+    None when the fare is from this run or there is no saved fare for that date."""
+    from deal_finder import price_cabin
+    from datetime import datetime
+    fmt = "%Y-%m-%dT%H:%M:%SZ"
+    run = datetime.strptime(generated_at, fmt)
+    cab = price_cabin(x["cabin"])
+    for q in quotes:
+        if (q["origin"], q["dest"], q["cabin"], q["date"]) == (x["origin"], x["dest"], cab, x["date"]) \
+                and q.get("price_usd") is not None:
+            fetched = datetime.strptime(q["fetched_at"], fmt)
+            if (run - fetched).total_seconds() > OLD_FARE_HOURS * 3600:
+                return q["fetched_at"][:10]
+    return None
+
+
 def bar_of(x: dict) -> float:
     return x.get("watch_bar") or x["great_floor"]
 
@@ -61,8 +90,9 @@ def google_line(d: dict) -> str:
     return f"google: {', '.join(parts)}{'  THROTTLED' if df.throttle_note(cov) else ''}"
 
 
-def offline(d: dict) -> int:
+def offline(d: dict, quotes: list[dict] | None = None) -> int:
     problems = 0
+    old = 0
     v, scan = d.get("verification", {}), d.get("scan", {})
     print(f"generated {d.get('generated_at')}  emailed {d.get('emailed_new')}  "
           f"email_failed {d.get('email_failed') or 'none'}")
@@ -88,7 +118,13 @@ def offline(d: dict) -> int:
             flags.append("RT ESTIMATED")
         if x.get("new") and x.get("slow") and d.get("generated_at", "") >= "2026-10-19":
             flags.append("SLOW EMAILED")  # long trips aren't emailed from Oct 19 (worth_emailing)
-        problems += bool(flags)
+        fetched = old_fare(x, quotes or [], d["generated_at"]) if d.get("generated_at") else None
+        if fetched:
+            old += 1
+            # Only an emailed card counts as a problem: a site card on an old fare happens
+            # when the fresh lookup came back empty (the saved fare is kept on purpose).
+            flags.append(f"OLD FARE ({fetched})" if x.get("new") else f"old fare ({fetched})")
+        problems += any(f for f in flags if not f.startswith("old fare"))
         if x.get("new") or flags:
             t = x.get("trip") or {}
             print(f"{sec:5} {'NEW ' if x.get('new') else '    '}{x['origin']}-{x['dest']} {x['cabin'][:4]} "
@@ -96,6 +132,7 @@ def offline(d: dict) -> int:
                   f"${x['cash_price']:.0f} {x['cpp']:.2f}c/bar {bar_of(x):.2f} "
                   f"| {' · '.join(t.get('flights') or ['no flights'])}"
                   f"{' SLOW' if x.get('slow') else ''} {' '.join(flags)}")
+    print(f"fares: {old} of {len(cards(d))} published card(s) on an earlier day's fare (expected ~0 from Oct 19)")
     print(f"{problems} card(s) with problems")
     return problems
 
@@ -163,7 +200,7 @@ def main() -> None:
         repeats()
         return
     d = load(a.rev)
-    offline(d)
+    offline(d, load_quotes(a.rev))
     if a.live:
         live(d)
 
