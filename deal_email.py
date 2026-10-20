@@ -150,6 +150,10 @@ def _digest_card(d: dict) -> str:
                      if baseline else "them the usual way")
                   + f"<br><span style='font-size:12px; color:#6b7280'>We only flag {_esc(d['program'])} "
                     f"above {bar:.2f}&cent;/pt</span>")
+    typical, at_typical = d.get("typical_fare"), d.get("cpp_at_typical")
+    if typical and at_typical is not None and typical < d["cash_price"]:
+        value_html += (f"<br><span style='font-size:12px; color:#6b7280'>At this route's usual "
+                       f"${typical:,.0f} fare: {at_typical:.2f}&cent;/pt</span>")
     if d.get("history_pct") is not None and d["history_days"] >= 10:
         pct, days = d["history_pct"], d["history_days"]
         phrase = ("the cheapest this route has been in the last "
@@ -258,7 +262,10 @@ def _digest_text(d: dict) -> str:
         + ("about " if d.get("taxes_unknown") or d.get("taxes_estimated") else "") + f"{d['cpp']:.2f} cents/pt",
         f"  {d['program']} · {d['cabin'].replace('_', ' ').title()} · {stops}",
         f"  Award: {d['points']:,} points + {taxes}",
-        f"  Cash fare: ${d['cash_price']:,.0f} ({d.get('cash_basis') or 'cash fare'})",
+        f"  Cash fare: ${d['cash_price']:,.0f} ({d.get('cash_basis') or 'cash fare'})"
+        + (f"; at the usual ${d['typical_fare']:,.0f}: {d['cpp_at_typical']:.2f} cents/pt"
+           if d.get("typical_fare") and d.get("cpp_at_typical") is not None
+           and d["typical_fare"] < d["cash_price"] else ""),
         f"  Date: {places.nice_date(d['date'])}"
         + (f" (+{len(d['other_dates'])} more)" if d.get("other_dates") else ""),
     ]

@@ -94,8 +94,9 @@ layer produced that day's digest. Workflows are pinned to `ubuntu-24.04` (see TO
 - Ranking uses `rank_cash` (today's fare capped at 1.25× the route's typical fare); the card's
   CPP and the bar use the real fare. Don't "fix" the mismatch — it's deliberate.
 - Email repeats are suppressed per route/program/cabin (`reported_routes`) unless ≥15% more
-  CPP or ≤90% of the points. A card is emailed only at ≥1.10× its bar (`EMAIL_MARGIN`) and if not
-  `slow` (long itinerary; user's call Oct 18) — see `worth_emailing`. Slow cards stay on the site.
+  CPP or ≤90% of the points. A card is emailed only at ≥1.10× its bar (`EMAIL_MARGIN`), at ≥1.00× its bar at the route's usual
+  fare (`cpp_at_typical`, user's call Oct 19), and if not `slow` (long itinerary; user's call Oct 18) —
+  see `worth_emailing`. Cards held back stay on the site.
 - Cash fares: fast-flights (free Google Flights) is the only source; SerpApi was removed
   Oct 12 2026 at the user's request. Google sometimes throttles the Actions runner (empty
   results) — the pauses after empty answers, round-trip retry and estimate exist for that.
@@ -126,7 +127,7 @@ removed Oct 12), deleting SERPAPI_KEY from the Streamlit Cloud secrets.
 - **Goal:** call the system finished after 5 consecutive clean runs — email arrives with no one
   stepping in, every emailed deal verified and still above its bar at live fares, no repeat
   emails, no code fixes needed — then switch to a weekly `make audit-live`.
-- **Clean days so far:** 1 of 5 (Oct 19). (Oct 18: an emailed card fell below bar and a code fix shipped; Oct 17's one-way retry fix restarted it; Oct 17's own run was clean). (Oct 14–15 clean; Oct 16 reset it: JFK–PUJ fell below bar.) (Oct 12 was clean; Oct 13 reset it: an emailed deal fell below its bar.) (Oct 6–8 were clean, but the user decided on Oct 13 to count conservatively: Oct 9 (deal fell below bar) and the code fixes on Oct 10 and 11 reset the streak.) Fixes from Oct 5 (repeat suppression, fare-spike cap,
+- **Clean days so far:** 0 of 5 (Oct 19 was clean, but the usual-fare email rule shipped that evening restarts it). (Oct 18: an emailed card fell below bar and a code fix shipped; Oct 17's one-way retry fix restarted it; Oct 17's own run was clean). (Oct 14–15 clean; Oct 16 reset it: JFK–PUJ fell below bar.) (Oct 12 was clean; Oct 13 reset it: an emailed deal fell below its bar.) (Oct 6–8 were clean, but the user decided on Oct 13 to count conservatively: Oct 9 (deal fell below bar) and the code fixes on Oct 10 and 11 reset the streak.) Fixes from Oct 5 (repeat suppression, fare-spike cap,
   Emirates cabin links, test isolation of balance files, runner pin) had their first real run Oct 6
   and worked. Oct 7's digest came from the hand-clicked cron-job.org test (01:53 UTC), so the
   unattended 10:00 ET dispatch has not yet produced a digest on its own (see layer 2 above). Oct 8
@@ -228,6 +229,12 @@ removed Oct 12), deleting SERPAPI_KEY from the Streamlit Cloud secrets.
   round trips 528/582 (91%). 85 flight lookups. One `::warning`: the main selection hit its 12-round limit and the
   safety net checked the 1 unchecked deal (19 deals, 51 lookups — normal 42–59, so slow convergence, not quota churn;
   Oct 6–18 used 5–10 rounds). If it hits 12 again, investigate with a reproducing test.
+- **Oct 19 evening: usual-fare email rule.** At the user's request: a card is emailed only if it also clears its bar at
+  the lower of today's fare and the route's usual fare (`cpp_at_typical`); cards show that CPP when today's fare is
+  higher. Replay Oct 6–19: 11 of 67 emailed would have been held back, including 3 of the 5 that later fell (all 3
+  that a rule like this could catch). Watch Oct 20: `make audit` prints `usual fare: N card(s) … not emailed`.
+  Expect ~1 a day. For two weeks, spot-check those against live fares on nearby dates: the model's usual fare can be
+  low (EWR–NRT PE says $1,200, live Nov–Jan $1,300–1,670), which would wrongly hold a deal back.
 - **Google empties on the runner (investigated Oct 15–16).** Every daily run since Oct 10 lost 17–55% of
   round trips (Sep 28–Oct 9: 98–100%, except Oct 4). Not our code (the drop predates the Oct 11 changes) and
   not a block page: the empties are Google's ordinary "no flights" answer, sometimes false (CPT priced from the

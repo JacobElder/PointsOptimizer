@@ -1382,6 +1382,29 @@ def test_fare_spike_ranks_lower_but_keeps_its_real_cpp():
     assert normal.fare_spike is None and normal.rank_cash == 2600  # within the cap: untouched
 
 
+def test_deal_good_only_on_a_pricey_day_is_not_emailed():
+    """Oct 13: EWR-LIM business, 60.5k points on a $1,518 fare that is usually $861, was
+    emailed at 2.43c. At the usual fare it is 1.34c, under the bar: a flexible traveler
+    would pay cash on another date. Replay Oct 6-19: the rule caught 3 of the 3 emailed
+    cards that later fell below the bar on a fare move away from a spike."""
+    lim = _with_typical(_scored("LIM", "BUSINESS", "united", "EWR", 60500, 1518), 861)
+    assert lim.cpp_at_typical == pytest.approx((861 - 50) / 60500 * 100)
+    d = lim.to_dict()
+    assert d["cpp"] >= 2.0 * 1.10  # clears today's bar with the email margin...
+    assert d["cpp_at_typical"] == pytest.approx(1.34, abs=0.01)
+    assert not deal_finder.worth_emailing(d)  # ...but not at the usual fare
+
+    # Fare below its usual level (EWR-HKG, Oct 11): today's fare is what counts.
+    hkg = _with_typical(_scored("HKG", "BUSINESS", "aeroplan", "EWR", 102500, 2930), 3133)
+    assert hkg.cpp_at_typical == pytest.approx(hkg.cpp)
+    assert deal_finder.worth_emailing(hkg.to_dict())
+
+    # Only 2 real fares on the route: the usual fare isn't trusted, judged on today's.
+    thin = _with_typical(_scored("LIM", "BUSINESS", "united", "EWR", 60500, 1518), 861, obs=2)
+    assert thin.cpp_at_typical is None
+    assert deal_finder.worth_emailing(thin.to_dict())
+
+
 def test_no_cap_without_real_fares_on_the_route():
     """The model's distance-based guess (or 1-2 fares) can be off 30%+: no cap then."""
     guess = _scored("ATH", "BUSINESS", "emirates", "EWR", 59000, 3840)  # basis "model"

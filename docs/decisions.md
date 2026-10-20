@@ -6,6 +6,41 @@ revisit it. Code comments point here; change the entry when you change the decis
 
 ---
 
+## 2026-10-19 — Email a deal only if it also clears its bar at the route's usual fare
+
+**Decision.** Each card now carries `cpp_at_typical`: its CPP at the lower of today's fare and
+the route's usual fare (`Scored.typical_fare`, the fare model's median, known only when it has
+3+ real fares on that route and cabin). `worth_emailing` requires `cpp_at_typical` ≥ the bar.
+The 10% `EMAIL_MARGIN` still applies to today's fare only. With no usual fare known, today's
+fare decides, as before. Cards that fail stay on the site with a note ("At this route's usual
+$X fare it's Y¢/pt, under the bar: only worth it if you must fly this date"). Email and site
+cards show the usual-fare CPP whenever today's fare is above the usual one. The card's
+headline CPP and the bar itself are unchanged.
+
+**Why.** The user (Oct 19) noticed deals looking great because the cash fare that day was
+expensive; a flexible traveler would pay cash on another date. Replay of all 67 emailed cards
+Oct 6–19: 11 were under the bar at the usual fare. That includes 3 of the 5 that fell below the
+bar at the next day's fares (JFK–NRT Oct 9, JFK–GCM Oct 13, JFK–PUJ Oct 16). The other 2 can't
+be caught this way: EWR–HKG's fare was already below usual, and JFK–PUJ Oct 18 was the
+old-fare bug fixed that day. The 8 others "held" at the next day's fares, but mostly because the
+fare stayed high (EWR–LIM business 2.47¢ on $1,518; usual $861 → 1.38¢).
+
+**Rejected.** *Average of today's and the usual fare*: withheld 4 and caught 2 of the 3 (missed
+JFK–NRT, the clearest spike, $3,540 vs $2,895). *Requiring the 10% margin at the usual fare
+too*: holds back more cards for no fall it would have caught. *Ranking or the bar on the usual
+fare*: ranking already caps spikes at 1.25× (2026-10-05), and the CPP shown should stay the real
+one for anyone who must fly that date.
+
+**Watch.** The usual fare can be wrong: for EWR–NRT premium economy the model says $1,200, but
+on Oct 19 every date sampled Nov–Jan was $1,300–1,670 one-way (≤1 stop). A too-low usual fare
+withholds a good deal from the email. `make audit` prints `usual fare: N card(s) under the bar
+at the route's usual fare, not emailed`. For two weeks, check those against live fares on other
+dates. If they're often fine, the fare model's medians need work before this rule stays.
+
+**Revert:** `git revert` the commit titled "Email only deals that clear the bar at the usual fare".
+
+---
+
 ## 2026-10-18 — Audit flags cards priced on an earlier day's fare (and two rules held back)
 
 **Decision.** `make audit` now checks each published card's exact-date fare in the

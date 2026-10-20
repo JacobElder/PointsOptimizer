@@ -339,6 +339,17 @@ class Scored:
         return self.cash if typical is None else min(self.cash, typical * FARE_SPIKE_CAP)
 
     @property
+    def cpp_at_typical(self) -> float | None:
+        """CPP at the lower of today's fare and the route's usual fare (None when the usual
+        fare isn't known from real fares). The email requires the bar here too: a deal
+        that only looks good because today's fare is high isn't one for a flexible
+        traveler, who would pay cash on another date (user, Oct 19; docs/decisions.md)."""
+        typical, cash = self.typical_fare, self.cash
+        if typical is None or cash is None:
+            return None
+        return valuation.compute_cpp(min(cash, typical), self.taxes_usd, self.c.points)
+
+    @property
     def fare_spike(self) -> float | None:
         """Today's fare as a multiple of typical, when ranking capped it."""
         typical, cash = self.typical_fare, self.cash
@@ -514,6 +525,8 @@ class Scored:
             "returns_checked": self.returns_checked,
             "ranked_value_usd": round(self.rank_value) if self.surplus is not None else None,
             "typical_fare": round(self.typical_fare) if self.typical_fare else None,
+            "cpp_at_typical": (round(self.cpp_at_typical, 3)
+                               if self.cpp_at_typical is not None else None),
             "rank_cash": round(self.rank_cash) if self.rank_cash is not None else None,
             "fare_spike": round(self.fare_spike, 2) if self.fare_spike else None,
             "held_miles": self.held_miles, "bookable_now": self.bookable_now,
@@ -1406,15 +1419,25 @@ EMAIL_MARGIN = 1.10
 
 
 def worth_emailing(d: dict) -> bool:
-    """Clears its bar by EMAIL_MARGIN and isn't a long itinerary (`slow`).
+    """Clears its bar by EMAIL_MARGIN, clears it at the route's usual fare too, and isn't
+    a long itinerary (`slow`).
 
     Slow trips stay on the site, labeled. Oct 6-18, 27 of 63 emailed cards were slow
     (12 with ~10+ hours on the ground); the user doesn't want savings that cost a
     15-hour layover, and the 25% ranking discount never kept one out of the email.
+
+    The usual-fare check (Oct 19): of 67 cards emailed Oct 6-19, 11 were under the bar
+    at the usual fare, including 3 of the 5 that later fell below it (the other 2 can't
+    be caught this way). Margin applies to today's fare only; the usual fare just has to
+    clear the bar. No usual fare known (fewer than 3 real fares): today's fare decides.
     """
     if d.get("slow"):
         return False
-    return d["cpp"] >= d.get("watch_bar", d["great_floor"]) * EMAIL_MARGIN
+    bar = d.get("watch_bar", d["great_floor"])
+    at_typical = d.get("cpp_at_typical")
+    if at_typical is not None and at_typical < bar:
+        return False
+    return d["cpp"] >= bar * EMAIL_MARGIN
 
 
 def route_report_key(d: dict) -> str:

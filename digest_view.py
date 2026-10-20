@@ -169,6 +169,11 @@ def _deal_card(d: dict, rank: int | None, bar: float | None, surplus: float | No
         if surplus is not None and cpp is not None:
             st.markdown(safe(f"**${surplus:,.0f} better** than spending these points the usual way "
                              f"(about {baseline:.2f}¢ each; we only flag {program} above {bar:.2f}¢)"))
+        typical, at_typical = d.get("typical_fare"), d.get("cpp_at_typical")
+        if typical and cash and at_typical is not None and typical < cash:
+            st.caption(safe(f"💲 At this route's usual ${typical:,.0f} fare it's {at_typical:.2f}¢/pt"
+                            + (f", under the {bar:.2f}¢ bar: only worth it if you must fly "
+                               "this date (not emailed)" if at_typical < bar else "")))
         if d.get("history_pct") is not None and d.get("history_days", 0) >= 10:
             pct, days = d["history_pct"], d["history_days"]
             st.caption("📉 " + ("Cheapest this route has been in the last "

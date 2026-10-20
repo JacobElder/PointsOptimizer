@@ -93,6 +93,7 @@ def google_line(d: dict) -> str:
 def offline(d: dict, quotes: list[dict] | None = None) -> int:
     problems = 0
     old = 0
+    under_typ: list[str] = []
     v, scan = d.get("verification", {}), d.get("scan", {})
     print(f"generated {d.get('generated_at')}  emailed {d.get('emailed_new')}  "
           f"email_failed {d.get('email_failed') or 'none'}")
@@ -118,6 +119,11 @@ def offline(d: dict, quotes: list[dict] | None = None) -> int:
             flags.append("RT ESTIMATED")
         if x.get("new") and x.get("slow") and d.get("generated_at", "") >= "2026-10-19":
             flags.append("SLOW EMAILED")  # long trips aren't emailed from Oct 19 (worth_emailing)
+        at_typ = x.get("cpp_at_typical")
+        if at_typ is not None and at_typ < bar_of(x):
+            under_typ.append(f"{x['origin']}-{x['dest']} {at_typ:.2f}c")
+            if x.get("new"):
+                flags.append("EMAILED UNDER BAR AT USUAL FARE")  # worth_emailing, from Oct 20
         fetched = old_fare(x, quotes or [], d["generated_at"]) if d.get("generated_at") else None
         if fetched:
             old += 1
@@ -133,6 +139,11 @@ def offline(d: dict, quotes: list[dict] | None = None) -> int:
                   f"| {' · '.join(t.get('flights') or ['no flights'])}"
                   f"{' SLOW' if x.get('slow') else ''} {' '.join(flags)}")
     print(f"fares: {old} of {len(cards(d))} published card(s) on an earlier day's fare (expected ~0 from Oct 19)")
+    if any("cpp_at_typical" in x for _, x in cards(d)):
+        # Kept out of the email by the usual-fare rule (Oct 20). Tally these against
+        # emailed cards that still fall below the bar (docs/decisions.md, Oct 19).
+        print(f"usual fare: {len(under_typ)} card(s) under the bar at the route's usual fare, "
+              f"not emailed{': ' + ', '.join(under_typ) if under_typ else ''}")
     print(f"{problems} card(s) with problems")
     return problems
 
