@@ -126,7 +126,7 @@ removed Oct 12), deleting SERPAPI_KEY from the Streamlit Cloud secrets.
 - **Goal:** call the system finished after 5 consecutive clean runs — email arrives with no one
   stepping in, every emailed deal verified and still above its bar at live fares, no repeat
   emails, no code fixes needed — then switch to a weekly `make audit-live`.
-- **Clean days so far:** 0 of 5 (Oct 18: an emailed card fell below bar and a code fix shipped; Oct 17's one-way retry fix restarted it; Oct 17's own run was clean). (Oct 14–15 clean; Oct 16 reset it: JFK–PUJ fell below bar.) (Oct 12 was clean; Oct 13 reset it: an emailed deal fell below its bar.) (Oct 6–8 were clean, but the user decided on Oct 13 to count conservatively: Oct 9 (deal fell below bar) and the code fixes on Oct 10 and 11 reset the streak.) Fixes from Oct 5 (repeat suppression, fare-spike cap,
+- **Clean days so far:** 1 of 5 (Oct 19). (Oct 18: an emailed card fell below bar and a code fix shipped; Oct 17's one-way retry fix restarted it; Oct 17's own run was clean). (Oct 14–15 clean; Oct 16 reset it: JFK–PUJ fell below bar.) (Oct 12 was clean; Oct 13 reset it: an emailed deal fell below its bar.) (Oct 6–8 were clean, but the user decided on Oct 13 to count conservatively: Oct 9 (deal fell below bar) and the code fixes on Oct 10 and 11 reset the streak.) Fixes from Oct 5 (repeat suppression, fare-spike cap,
   Emirates cabin links, test isolation of balance files, runner pin) had their first real run Oct 6
   and worked. Oct 7's digest came from the hand-clicked cron-job.org test (01:53 UTC), so the
   unattended 10:00 ET dispatch has not yet produced a digest on its own (see layer 2 above). Oct 8
@@ -221,6 +221,13 @@ removed Oct 12), deleting SERPAPI_KEY from the Streamlit Cloud secrets.
   Oct 18 10 of 32, 3 of 6 emailed; Oct 17 15 of 30). Two email rules held back with their data in decisions.md
   (Oct 18 entry): a ≥$100 "cushion" above the bar (cards under $100: 3 of 9 fell; $100+: 2 of 54) — ship it if
   a card with no old fare still falls with under $100 of cushion; and a minimum lead time — ask the user first.
+- **Oct 19: clean, no code change.** GitHub schedule (15:35 UTC; job 22 min). 4 emailed, 0 repeats, 0 offline problems, all 4
+  above bar live the same day (lowest margin: EWR–NRT United PE 65k 2.27¢ vs 1.80; EWR–VIE Aeroplan 75k 4.36¢ → 4.06¢ live).
+  Oct 18's fresh-fare fix worked: `fares:` 0 of 35 on an earlier day's fare, `Fresh re-pricing` 6 moved >5% (was ~1).
+  Oct 17's one-way retry had its first real test: 20 of 24 empties priced on the retry. Google mostly fine: one-way 263/267,
+  round trips 528/582 (91%). 85 flight lookups. One `::warning`: the main selection hit its 12-round limit and the
+  safety net checked the 1 unchecked deal (19 deals, 51 lookups — normal 42–59, so slow convergence, not quota churn;
+  Oct 6–18 used 5–10 rounds). If it hits 12 again, investigate with a reproducing test.
 - **Google empties on the runner (investigated Oct 15–16).** Every daily run since Oct 10 lost 17–55% of
   round trips (Sep 28–Oct 9: 98–100%, except Oct 4). Not our code (the drop predates the Oct 11 changes) and
   not a block page: the empties are Google's ordinary "no flights" answer, sometimes false (CPT priced from the
