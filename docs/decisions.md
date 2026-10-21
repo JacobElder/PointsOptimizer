@@ -6,6 +6,32 @@ revisit it. Code comments point here; change the entry when you change the decis
 
 ---
 
+## 2026-10-21 — Only departures 30+ days out
+
+**Decision.** `scan_config.json` `min_days_out` 3 → 30. The daily scan (and the roadmap
+preview, which reads the same config) asks seats.aero only for departures 30–330 days out, so
+close-in dates leave the email, the site and the watchlist. Flight Search and the return-leg
+scan pass their own dates and are unaffected.
+
+**Why.** The user (Oct 21): "I can't recall a time when I booked an international flight a
+week out"; a month or more is realistic. Oct 6–21, of 83 emailed cards 11 left within 7 days,
+22 within 14, 28 within 21 and 35 within 30 (42%). The 30-day cutoff also covers 3 of the 5
+emailed cards that fell below their bar a day later (JFK–NRT 18 days out, JFK–PUJ 24 and 22):
+close-in fares swing. The scan's call count doesn't depend on the window, and the selection
+slots and Google lookups close-in dates used now go to later dates.
+
+**Rejected.** 14 days (27% of emails, none of the 5 that fell) and 21 days (34%, 1 of 5); the
+user chose 30. Filtering only the email: close-in cards would still take shortlist slots and
+lookups for trips the user won't book.
+
+**Watch.** The email count may dip for a few days; `make audit`'s card count shows it. Fare-model
+training and `award_history` no longer see close-in dates, which is fine as long as nothing
+is scored there.
+
+**Revert:** set `min_days_out` back to 3 (and update `test_daily_scan_skips_departures_under_30_days_out`).
+
+---
+
 ## 2026-10-19 — Email a deal only if it also clears its bar at the route's usual fare
 
 **Decision.** Each card now carries `cpp_at_typical`: its CPP at the lower of today's fare and

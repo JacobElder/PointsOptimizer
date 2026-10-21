@@ -80,3 +80,20 @@ def test_a_bad_key_still_fails_loudly(monkeypatch):
     s = _Session({"aeroplan": [_Resp(401)]})
     with pytest.raises(requests.HTTPError):
         _scan(s, ["aeroplan"], monkeypatch)
+
+
+def test_daily_scan_skips_departures_under_30_days_out(monkeypatch):
+    """User, Oct 21: never books an international trip a week out; a month or more is
+    realistic. Oct 6-21, 42% of emailed cards left within 30 days, including 3 of the 5
+    that fell below their bar a day later (close-in fares swing)."""
+    class _Capture(_Session):
+        def get(self, url, **kw):
+            self.params = kw["params"]
+            return _Resp()
+
+    monkeypatch.setattr(award_scanner, "transferable_sources", lambda *a, **k: ["aeroplan"])
+    today = date(2026, 10, 21)
+    s = _Capture({})
+    cfg = {**award_scanner.load_config(), "sources": ["aeroplan"], "cabins": ["ECONOMY"]}
+    award_scanner.scan(cfg, today=today, session=s)
+    assert s.params["start_date"] == "2026-11-20"

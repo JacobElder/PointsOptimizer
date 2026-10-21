@@ -78,7 +78,7 @@
     "FIRST"
   ],
   "sources": [],
-  "min_days_out": 3,
+  "min_days_out": 30,
   "max_days_out": 330,
   "max_data_age_days": 10,
   "_watchlist_help": "Watchlist entries are always reported when they clear their bar, even outside the top list. Fields: label, dests (required), origins, cabins (ECONOMY/PREMIUM_ECONOMY/BUSINESS/FIRST), start/end (YYYY-MM-DD), bar (CPP; omit for the cabin's usual 1.5/2.0). Example: {\"label\": \"Japan cherry blossoms\", \"dests\": [\"NRT\", \"HND\"], \"cabins\": [\"BUSINESS\"], \"start\": \"2027-03-20\", \"end\": \"2027-04-10\", \"bar\": 1.8}",
