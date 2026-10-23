@@ -127,7 +127,7 @@ removed Oct 12), deleting SERPAPI_KEY from the Streamlit Cloud secrets.
 - **Goal:** call the system finished after 5 consecutive clean runs — email arrives with no one
   stepping in, every emailed deal verified and still above its bar at live fares, no repeat
   emails, no code fixes needed — then switch to a weekly `make audit-live`.
-- **Clean days so far:** 1 of 5 (Oct 22). (Oct 20–21 were clean; the 30-day lead-time change on Oct 21 evening restarts it, as the usual-fare rule did). (Oct 19 was clean, but the usual-fare email rule shipped that evening restarted it.) (Oct 18: an emailed card fell below bar and a code fix shipped; Oct 17's one-way retry fix restarted it; Oct 17's own run was clean). (Oct 14–15 clean; Oct 16 reset it: JFK–PUJ fell below bar.) (Oct 12 was clean; Oct 13 reset it: an emailed deal fell below its bar.) (Oct 6–8 were clean, but the user decided on Oct 13 to count conservatively: Oct 9 (deal fell below bar) and the code fixes on Oct 10 and 11 reset the streak.) Fixes from Oct 5 (repeat suppression, fare-spike cap,
+- **Clean days so far:** 2 of 5 (Oct 22–23). (Oct 20–21 were clean; the 30-day lead-time change on Oct 21 evening restarts it, as the usual-fare rule did). (Oct 19 was clean, but the usual-fare email rule shipped that evening restarted it.) (Oct 18: an emailed card fell below bar and a code fix shipped; Oct 17's one-way retry fix restarted it; Oct 17's own run was clean). (Oct 14–15 clean; Oct 16 reset it: JFK–PUJ fell below bar.) (Oct 12 was clean; Oct 13 reset it: an emailed deal fell below its bar.) (Oct 6–8 were clean, but the user decided on Oct 13 to count conservatively: Oct 9 (deal fell below bar) and the code fixes on Oct 10 and 11 reset the streak.) Fixes from Oct 5 (repeat suppression, fare-spike cap,
   Emirates cabin links, test isolation of balance files, runner pin) had their first real run Oct 6
   and worked. Oct 7's digest came from the hand-clicked cron-job.org test (01:53 UTC), so the
   unattended 10:00 ET dispatch has not yet produced a digest on its own (see layer 2 above). Oct 8
@@ -263,6 +263,12 @@ removed Oct 12), deleting SERPAPI_KEY from the Streamlit Cloud secrets.
   JFK–ZRH Oct 12, the "better" CPP came from the fare, not the points. If it keeps happening, consider judging repeats at the
   usual fare (`cpp_at_typical`) instead of today's; not proposed yet. Usual-fare rule held back nothing new (JFK–FRA 1.89¢
   was under the margin anyway).
+- **Oct 23: clean, no code change.** GitHub schedule (13:25 UTC; 17 min). 1 emailed, the fewest yet: EWR–BKK United
+  business 110k (watchlist Thailand, Feb 9) 2.54¢ → 2.63¢ live vs 2.10. The other 28 cards: ~16 already emailed within
+  14 days and not materially better, 12 slow, 1 under bar at the usual fare (JFK–FRA). Expected with the 30-day rule: the
+  pool is the same far-out deals day to day. Google: one-way 242/248, round trips 687/687 (100%). 85 flight lookups (just
+  over the ~80 norm). Selection 12 rounds/62 lookups, no warning (nothing left unchecked); rounds Oct 20–23: 11, 7, 8, 12.
+  If it hits 12 with the warning again, investigate with a reproducing test.
 - **Google empties on the runner (investigated Oct 15–16).** Every daily run since Oct 10 lost 17–55% of
   round trips (Sep 28–Oct 9: 98–100%, except Oct 4). Not our code (the drop predates the Oct 11 changes) and
   not a block page: the empties are Google's ordinary "no flights" answer, sometimes false (CPT priced from the
