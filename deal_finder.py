@@ -1440,6 +1440,40 @@ def worth_emailing(d: dict) -> bool:
     return d["cpp"] >= bar * EMAIL_MARGIN
 
 
+STILL_AVAILABLE_MULTIPLE = 1.5  # a repeat must clear its bar by this much to be shown again
+STILL_AVAILABLE_MAX = 3  # per email
+STILL_AVAILABLE_GAP_DAYS = 7  # since it was last emailed or last shown here
+
+
+def pick_still_available(pairs: list[tuple[str, dict]], routes: dict[str, dict],
+                         shown: dict[str, str], now: datetime) -> list[dict]:
+    """Deals emailed before, still listed today and exceptional: shown again in their
+    own email section, never as new.
+
+    Oct 23: 16 of 29 site cards were held back as repeats, 6 of them at 1.5x+ their bar.
+    One email is easy to miss, and nothing in the inbox says a deal is still bookable.
+    Each is shown at most once a week. The original email date in `routes` is left
+    alone, so the 14-day repeat rule works as before.
+    """
+    best: dict[str, tuple[float, dict]] = {}
+    for _, d in pairs:
+        if d.get("new"):
+            continue
+        rk = route_report_key(d)
+        prev = routes.get(rk)
+        if prev is None or not worth_emailing(d):  # never sent, or held back for a reason
+            continue
+        ratio = d["cpp"] / d.get("watch_bar", d["great_floor"])
+        if ratio < STILL_AVAILABLE_MULTIPLE:
+            continue
+        last = max(prev["at"], shown.get(rk, ""))
+        if now - datetime.fromisoformat(last) < timedelta(days=STILL_AVAILABLE_GAP_DAYS):
+            continue
+        if rk not in best or ratio > best[rk][0]:
+            best[rk] = (ratio, d)
+    return [d for _, d in sorted(best.values(), key=lambda t: -t[0])][:STILL_AVAILABLE_MAX]
+
+
 def route_report_key(d: dict) -> str:
     """One trip for email purposes: program, airports and cabin, whatever the date."""
     return "|".join([d["source"], d["origin"], d["dest"], d["cabin"]])
@@ -2048,6 +2082,9 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
     fresh_watch = sorted([(k, d) for k, d in watch_pairs if d["new"]], key=lambda kd: -kd[1]["watch_surplus_usd"])
     fresh = ([(k, d) for k, d in held_pairs if d["new"]] + fresh_watch[:WATCH_EMAIL_MAX]
              + [(k, d) for k, d in top_pairs if d["new"]])
+    shown_before = {k: v for k, v in digest.get("still_available_shown", {}).items() if v >= cutoff}
+    still_available = pick_still_available(top_pairs + held_pairs + watch_pairs, already_routes,
+                                           shown_before, started)
     emailed = 0
     out_email_failed: list[str] = []
     if send_email and fresh and not deal_email.is_configured():
@@ -2077,7 +2114,11 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
                  ("🥂 Best in business and first",
                   "Bigger numbers, but measured against fares that run several times the "
                   "economy price — worth it if you'd fly up front, not cash you'd have spent.",
-                  [d for d in top_new if is_premium(d)])],
+                  [d for d in top_new if is_premium(d)]),
+                 ("🔁 Still available from earlier emails",
+                  "Not new: sent at least a week ago, still bookable, and re-checked today at "
+                  f"{STILL_AVAILABLE_MULTIPLE:g}x its bar or better. Each is shown here at most "
+                  "once a week.", still_available)],
                 subject=(f"✈️ {n_unique} new award deal{'s' if n_unique != 1 else ''}: "
                          f"{places.city(lead['dest'])} {'~' if lead.get('rt_unavailable') else ''}"
                          f"{lead['cpp']:.1f}¢/pt"
@@ -2095,6 +2136,9 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
                 reported.setdefault(k, started.isoformat())
                 reported_routes[route_report_key(d)] = {
                     "at": started.isoformat(), "cpp": d["cpp"], "points": d["points"]}
+            for d in still_available:
+                d["reminded"] = True
+                shown_before[route_report_key(d)] = started.isoformat()
         except Exception as e:
             log(f"::error::Deal Finder could not send the digest email: {type(e).__name__}: {e}")
             out_email_failed.append(str(e))
@@ -2128,6 +2172,7 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
         "emailed_new": emailed, "email_failed": out_email_failed,
         "reported": reported,
         "reported_routes": reported_routes,
+        "still_available_shown": shown_before,
     }
     # The site recomputes "how to pay" locally from your balances, so the public
     # digest never carries them.

@@ -1530,3 +1530,33 @@ def test_audit_flags_a_card_priced_on_an_earlier_days_fare():
     assert audit.old_fare(card, [], run) is None
     first = {**card, "cabin": "FIRST"}  # first is priced against business fares
     assert audit.old_fare(first, [{**quote("2026-10-10T00:00:00Z"), "cabin": "BUSINESS"}], run) == "2026-10-10"
+
+
+def _card(dest, cpp, bar=2.0, **kw):
+    return {"source": "aeroplan", "origin": "JFK", "dest": dest, "cabin": "BUSINESS",
+            "cpp": cpp, "great_floor": bar, "new": False, "slow": False, "cpp_at_typical": None, **kw}
+
+
+def test_still_available_picks_only_exceptional_repeats_best_first_capped_at_three():
+    from datetime import datetime, timezone
+    now = datetime(2026, 10, 23, 13, 0, tzinfo=timezone.utc)
+    week_ago = "2026-10-15T13:00:00+00:00"
+    cards = [_card("A", 3.2), _card("B", 4.0), _card("C", 3.6), _card("D", 3.4),
+             _card("E", 2.9),                         # 1.45x: good, not exceptional
+             _card("F", 5.0, slow=True),              # long itinerary: never emailed
+             _card("G", 5.0, cpp_at_typical=1.9),     # under the bar at the usual fare
+             _card("H", 5.0),                         # never emailed before
+             _card("I", 5.0, new=True)]               # new today: goes in the normal sections
+    routes = {f"aeroplan|JFK|{c}|BUSINESS": {"at": week_ago, "cpp": 3.0, "points": 1}
+              for c in "ABCDEFGI"}
+    picked = deal_finder.pick_still_available([(c["dest"], c) for c in cards], routes, {}, now)
+    assert [d["dest"] for d in picked] == ["B", "C", "D"]
+
+
+def test_still_available_lists_an_award_once_when_it_is_in_two_sections():
+    from datetime import datetime, timezone
+    now = datetime(2026, 10, 23, tzinfo=timezone.utc)
+    routes = {"aeroplan|JFK|A|BUSINESS": {"at": "2026-10-10T00:00:00+00:00", "cpp": 3, "points": 1}}
+    top, watch = _card("A", 4.0), _card("A", 4.0, watch_bar=2.0)
+    picked = deal_finder.pick_still_available([("A", top), ("watch:x|A", watch)], routes, {}, now)
+    assert len(picked) == 1

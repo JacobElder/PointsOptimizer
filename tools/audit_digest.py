@@ -90,6 +90,11 @@ def google_line(d: dict) -> str:
     return f"google: {', '.join(parts)}{'  THROTTLED' if df.throttle_note(cov) else ''}"
 
 
+def emailed(x: dict) -> bool:
+    """In the email: new, or shown again under "Still available" (from Oct 24)."""
+    return bool(x.get("new") or x.get("reminded"))
+
+
 def offline(d: dict, quotes: list[dict] | None = None) -> int:
     problems = 0
     old = 0
@@ -117,23 +122,23 @@ def offline(d: dict, quotes: list[dict] | None = None) -> int:
             flags.append("UNVERIFIED")
         if x.get("rt_unavailable"):
             flags.append("RT ESTIMATED")
-        if x.get("new") and x.get("slow") and d.get("generated_at", "") >= "2026-10-19":
+        if emailed(x) and x.get("slow") and d.get("generated_at", "") >= "2026-10-19":
             flags.append("SLOW EMAILED")  # long trips aren't emailed from Oct 19 (worth_emailing)
         at_typ = x.get("cpp_at_typical")
         if at_typ is not None and at_typ < bar_of(x):
             under_typ.append(f"{x['origin']}-{x['dest']} {at_typ:.2f}c")
-            if x.get("new"):
+            if emailed(x):
                 flags.append("EMAILED UNDER BAR AT USUAL FARE")  # worth_emailing, from Oct 20
         fetched = old_fare(x, quotes or [], d["generated_at"]) if d.get("generated_at") else None
         if fetched:
             old += 1
             # Only an emailed card counts as a problem: a site card on an old fare happens
             # when the fresh lookup came back empty (the saved fare is kept on purpose).
-            flags.append(f"OLD FARE ({fetched})" if x.get("new") else f"old fare ({fetched})")
+            flags.append(f"OLD FARE ({fetched})" if emailed(x) else f"old fare ({fetched})")
         problems += any(f for f in flags if not f.startswith("old fare"))
-        if x.get("new") or flags:
+        if emailed(x) or flags:
             t = x.get("trip") or {}
-            print(f"{sec:5} {'NEW ' if x.get('new') else '    '}{x['origin']}-{x['dest']} {x['cabin'][:4]} "
+            print(f"{sec:5} {'NEW  ' if x.get('new') else 'AGAIN' if x.get('reminded') else '     '}{x['origin']}-{x['dest']} {x['cabin'][:4]} "
                   f"{x['program'][:18]:18} {x['date']} {x['points']:>7,}+${x['taxes_usd']:.0f} "
                   f"${x['cash_price']:.0f} {x['cpp']:.2f}c/bar {bar_of(x):.2f} "
                   f"| {' · '.join(t.get('flights') or ['no flights'])}"
@@ -144,6 +149,9 @@ def offline(d: dict, quotes: list[dict] | None = None) -> int:
         # emailed cards that still fall below the bar (docs/decisions.md, Oct 19).
         print(f"usual fare: {len(under_typ)} card(s) under the bar at the route's usual fare, "
               f"not emailed{': ' + ', '.join(under_typ) if under_typ else ''}")
+    again = [x for _, x in cards(d) if x.get("reminded")]
+    if again:
+        print(f"still available: {len(again)} earlier deal(s) shown again (AGAIN), not counted as repeats")
     print(f"{problems} card(s) with problems")
     return problems
 
@@ -154,7 +162,7 @@ def live(d: dict) -> None:
     cutoff = (date.today() + timedelta(days=1)).isoformat()
     print("\nLive re-price of emailed cards (Google Flights; one-way and half a round trip):")
     for sec, x in cards(d):
-        if not x.get("new") or x["date"] <= cutoff:
+        if not emailed(x) or x["date"] <= cutoff:
             continue
         cab, dep = price_cabin(x["cabin"]), date.fromisoformat(x["date"])
         nonstop = (x.get("trip") or {}).get("nonstop")

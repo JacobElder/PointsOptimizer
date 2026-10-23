@@ -96,7 +96,8 @@ layer produced that day's digest. Workflows are pinned to `ubuntu-24.04` (see TO
 - Email repeats are suppressed per route/program/cabin (`reported_routes`) unless ≥15% more
   CPP or ≤90% of the points. A card is emailed only at ≥1.10× its bar (`EMAIL_MARGIN`), at ≥1.00× its bar at the route's usual
   fare (`cpp_at_typical`, user's call Oct 19), and if not `slow` (long itinerary; user's call Oct 18) —
-  see `worth_emailing`. Cards held back stay on the site.
+  see `worth_emailing`. Cards held back stay on the site. Up to 3 earlier deals at ≥1.5× their bar, emailed 7+ days ago, come back in a
+  last "🔁 Still available" section (`pick_still_available`, Oct 23); `make audit` marks them `AGAIN`. They aren't repeats.
 - Cash fares: fast-flights (free Google Flights) is the only source; SerpApi was removed
   Oct 12 2026 at the user's request. Google sometimes throttles the Actions runner (empty
   results) — the pauses after empty answers, round-trip retry and estimate exist for that.
@@ -126,8 +127,8 @@ removed Oct 12), deleting SERPAPI_KEY from the Streamlit Cloud secrets.
 
 - **Goal:** call the system finished after 5 consecutive clean runs — email arrives with no one
   stepping in, every emailed deal verified and still above its bar at live fares, no repeat
-  emails, no code fixes needed — then switch to a weekly `make audit-live`.
-- **Clean days so far:** 2 of 5 (Oct 22–23). (Oct 20–21 were clean; the 30-day lead-time change on Oct 21 evening restarts it, as the usual-fare rule did). (Oct 19 was clean, but the usual-fare email rule shipped that evening restarted it.) (Oct 18: an emailed card fell below bar and a code fix shipped; Oct 17's one-way retry fix restarted it; Oct 17's own run was clean). (Oct 14–15 clean; Oct 16 reset it: JFK–PUJ fell below bar.) (Oct 12 was clean; Oct 13 reset it: an emailed deal fell below its bar.) (Oct 6–8 were clean, but the user decided on Oct 13 to count conservatively: Oct 9 (deal fell below bar) and the code fixes on Oct 10 and 11 reset the streak.) Fixes from Oct 5 (repeat suppression, fare-spike cap,
+  emails (outside the labeled "Still available" section), no code fixes needed — then switch to a weekly `make audit-live`.
+- **Clean days so far:** 0 of 5 (Oct 22–23 were clean; the "Still available" email section shipped Oct 23 evening restarts it). (Oct 20–21 were clean; the 30-day lead-time change on Oct 21 evening restarts it, as the usual-fare rule did). (Oct 19 was clean, but the usual-fare email rule shipped that evening restarted it.) (Oct 18: an emailed card fell below bar and a code fix shipped; Oct 17's one-way retry fix restarted it; Oct 17's own run was clean). (Oct 14–15 clean; Oct 16 reset it: JFK–PUJ fell below bar.) (Oct 12 was clean; Oct 13 reset it: an emailed deal fell below its bar.) (Oct 6–8 were clean, but the user decided on Oct 13 to count conservatively: Oct 9 (deal fell below bar) and the code fixes on Oct 10 and 11 reset the streak.) Fixes from Oct 5 (repeat suppression, fare-spike cap,
   Emirates cabin links, test isolation of balance files, runner pin) had their first real run Oct 6
   and worked. Oct 7's digest came from the hand-clicked cron-job.org test (01:53 UTC), so the
   unattended 10:00 ET dispatch has not yet produced a digest on its own (see layer 2 above). Oct 8
@@ -269,6 +270,10 @@ removed Oct 12), deleting SERPAPI_KEY from the Streamlit Cloud secrets.
   pool is the same far-out deals day to day. Google: one-way 242/248, round trips 687/687 (100%). 85 flight lookups (just
   over the ~80 norm). Selection 12 rounds/62 lookups, no warning (nothing left unchecked); rounds Oct 20–23: 11, 7, 8, 12.
   If it hits 12 with the warning again, investigate with a reproducing test.
+- **Oct 23 evening: "Still available" email section** (user's call). Up to 3 cards emailed 7+ days ago, still listed at
+  ≥1.5× their bar, are shown again at the end of the email, each at most once a week, only alongside new deals. Replay
+  Oct 15–23: 6 shown in 9 emails. Watch Oct 24: `make audit` `still available:` line and `AGAIN` rows (expect 1–3:
+  EWR–JNB United premium economy, then JFK–CMN / EWR–ATH / JFK–PTY from Oct 25–26), and `make audit-live` covers them.
 - **Google empties on the runner (investigated Oct 15–16).** Every daily run since Oct 10 lost 17–55% of
   round trips (Sep 28–Oct 9: 98–100%, except Oct 4). Not our code (the drop predates the Oct 11 changes) and
   not a block page: the empties are Google's ordinary "no flights" answer, sometimes false (CPT priced from the

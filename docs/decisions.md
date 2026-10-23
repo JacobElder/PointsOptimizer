@@ -6,6 +6,37 @@ revisit it. Code comments point here; change the entry when you change the decis
 
 ---
 
+## 2026-10-23 — Show exceptional earlier deals again, in their own section
+
+**Decision.** The email gets a last section, "🔁 Still available from earlier emails"
+(`pick_still_available`). It lists up to 3 cards (`STILL_AVAILABLE_MAX`) that were emailed
+before and are still on today's list, re-checked today, and still pass every email rule
+(`worth_emailing`) at **1.5× their bar** or better (`STILL_AVAILABLE_MULTIPLE`). The best go
+first. A card goes in only if it was last emailed, or last shown here, **7+ days** ago
+(`STILL_AVAILABLE_GAP_DAYS`), so each one shows at most once a week. The section only goes
+out with an email that has at least one new deal, so there's never a reminders-only email.
+It doesn't change `reported_routes`: the 14-day repeat rule works as before. The digest
+records `still_available_shown` and marks those cards `reminded`; `make audit` shows them
+as `AGAIN` and `make audit-live` re-prices them.
+
+**Why.** The user (Oct 23): "Should we recycle old listings in emails that are exceptionally
+good if they're still there?" That day 1 card was emailed, and 16 of the 29 site cards were
+held back as repeats. 6 of those were at 1.5× their bar or better (JFK–LHR Virgin premium
+economy 10,500 points at 2.15×, JFK–PTY Flying Blue business 23,500 at 1.73×). One email is
+easy to miss, and the inbox never says a deal is still bookable. Replay over Oct 15–23:
+6 cards shown again in 9 emails, 0–2 per email (Oct 23 would have shown EWR–JNB United
+premium economy 55k, 1.60×, first emailed Oct 16).
+
+**Rejected.** Dropping the 14-day repeat rule: before Oct 5, 49% of emailed cards repeated
+a trip already sent, and they read as new deals. A separate weekly email: one more thing to
+read. A lower 1.25× multiple: it would fill the section daily with ordinary deals.
+
+**Watch.** `make audit`'s `still available:` line. If the section is the same 3 cards every
+week, lengthen the gap. The "no repeat emails" test in the 5-clean-days goal now means
+"no repeats outside this section."
+
+---
+
 ## 2026-10-21 — Only departures 30+ days out
 
 **Decision.** `scan_config.json` `min_days_out` 3 → 30. The daily scan (and the roadmap

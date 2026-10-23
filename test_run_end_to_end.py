@@ -214,3 +214,54 @@ def test_throttled_run_records_google_coverage_and_says_so_in_the_email(tmp_path
     assert cov["round_trips"] >= 1 and cov["round_trips_priced"] == 0
     assert cov["one_way"] >= 1 and cov["one_way_empty"] == 0
     assert warnings and "Google Flights limited" in warnings[0]
+
+
+def _reminder_run(tmp_path, monkeypatch, emailed_days_ago, shown_days_ago=None):
+    """ZRH (~1.7x its bar) was emailed before; FRA (~1.3x) is new, so an email goes out."""
+    from datetime import datetime, timezone
+    now = datetime.now(timezone.utc)
+    ago = lambda days: (now - timedelta(days=days)).isoformat()
+    great = _award("ZRH", "BUSINESS", "aeroplan", 40000, 60)
+    fresh = _award("FRA", "BUSINESS", "aeroplan", 50000, 61)
+    _fake_pipeline(tmp_path, monkeypatch, [great, fresh])
+    digest = {"reported_routes": {"aeroplan|JFK|ZRH|BUSINESS": {
+        "at": ago(emailed_days_ago), "cpp": 9.0, "points": 40000}}}
+    if shown_days_ago is not None:
+        digest["still_available_shown"] = {"aeroplan|JFK|ZRH|BUSINESS": ago(shown_days_ago)}
+    monkeypatch.setattr(deal_finder, "_load_digest", lambda: digest)
+    sent = []
+    monkeypatch.setattr(deal_finder.deal_email, "is_configured", lambda: True)
+    monkeypatch.setattr(deal_finder.deal_email, "send_digest_email",
+                        lambda sections, subject, intro, **kw: sent.append(
+                            {title: [d["dest"] for d in ds] for title, _, ds in sections}))
+    out = deal_finder.run(max_lookups=10, top=5, send_email=True, log=lambda m: None)
+    assert len(sent) == 1
+    reminders = next((v for k, v in sent[0].items() if k.startswith("🔁")), [])
+    return out, sent[0], reminders
+
+
+def test_exceptional_deal_emailed_a_week_ago_comes_back_as_still_available(tmp_path, monkeypatch):
+    """Oct 23: 16 of 29 site cards were held back as repeats, 6 of them at 1.5x+ their bar
+    (JFK-LHR Virgin premium economy 10,500 pts at 2.15x). One email is easy to miss, and
+    the inbox can't say a deal is still bookable. Show it again once, in its own section,
+    never as a new deal."""
+    out, sections, reminders = _reminder_run(tmp_path, monkeypatch, emailed_days_ago=8)
+    zrh = next(d for d in out["top"] if d["dest"] == "ZRH")
+    assert zrh["cpp"] / zrh["great_floor"] >= 1.5  # the setup is what it says
+    assert zrh["new"] is False
+    assert reminders == ["ZRH"]
+    assert all("ZRH" not in v for k, v in sections.items() if not k.startswith("🔁"))
+    assert zrh["reminded"] is True
+    assert "aeroplan|JFK|ZRH|BUSINESS" in out["still_available_shown"]
+    # Its 14-day repeat clock isn't reset: it was not emailed as new.
+    assert out["reported_routes"]["aeroplan|JFK|ZRH|BUSINESS"]["cpp"] == 9.0
+
+
+def test_still_available_waits_a_week_after_the_email(tmp_path, monkeypatch):
+    _, _, reminders = _reminder_run(tmp_path, monkeypatch, emailed_days_ago=3)
+    assert reminders == []
+
+
+def test_still_available_shows_a_deal_at_most_once_a_week(tmp_path, monkeypatch):
+    _, _, reminders = _reminder_run(tmp_path, monkeypatch, emailed_days_ago=12, shown_days_ago=2)
+    assert reminders == []
