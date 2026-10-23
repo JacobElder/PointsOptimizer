@@ -983,11 +983,15 @@ def _price_one(s: Scored, state: dict, stats: dict, log, allow_live: bool = True
         stats["live"] += 1
         stats["failed"] += 1
         # Stop early only if EVERY attempt so far has failed (e.g. Google blocked the scraper).
-        if stats["failed"] >= 5 and stats["failed"] == stats["live"] + stats["watch_live"]:
+        # Tracked in `state`, not by comparing counters: _explore_pass takes its lookups
+        # back out of stats["live"], so one failed exploration lookup made failed > live
+        # for the rest of the run and this stop could never fire.
+        if stats["failed"] >= 5 and not state.get("live_answered"):
             log(f"Cash lookups failing ({e}); stopping.")
             state["stop"] = True
         return "live"
     stats["live"] += 1
+    state["live_answered"] = True  # Google answered (a fare or "no flights")
     if q is None or q.price_usd is None:
         stats["no_fare"] += 1
         state.setdefault("empty", {})[_quote_key(s)] = True

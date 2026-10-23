@@ -236,6 +236,30 @@ def _load_local_program_balances() -> dict[str, int]:
     return out
 
 
+def _write_atomic(path: str, data: dict, sort_keys: bool = False) -> None:
+    """Dump to a temp file in the SAME directory, then os.replace.
+
+    os.replace is atomic on POSIX, so a crash mid-write can never truncate or corrupt
+    the existing file: readers see either the old or the new one, never half of it.
+    """
+    fd, tmp_path = tempfile.mkstemp(dir=os.path.dirname(path) or ".",
+                                    prefix=".balances-", suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w") as f:
+            json.dump(data, f, indent=2, sort_keys=sort_keys)
+            f.write("\n")
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp_path, path)
+    except BaseException:
+        # Leave no temp file behind; the existing file is untouched because replace never ran.
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
+        raise
+
+
 def save_program_balances(balances: dict[str, int]) -> bool:
     """Saves locally, and to the Gist when configured. Returns True if the Gist was updated.
 
@@ -247,9 +271,7 @@ def save_program_balances(balances: dict[str, int]) -> bool:
         return False
     balances = {k: int(v) for k, v in balances.items() if int(v) > 0}
     synced = gist_enabled() and _gist_update("programs", balances)
-    with open(PROGRAM_BALANCES_PATH, "w") as f:
-        json.dump(balances, f, indent=2, sort_keys=True)
-        f.write("\n")
+    _write_atomic(PROGRAM_BALANCES_PATH, balances, sort_keys=True)
     return bool(synced)
 
 
@@ -262,26 +284,5 @@ def save_balances(balances: dict[str, int]) -> bool:
         logger.warning("Refusing to save balances: the Gist could not be read")
         return False
     synced = gist_enabled() and _gist_update("cards", {k: int(v) for k, v in balances.items()})
-    # Atomic write: dump to a temp file in the SAME directory, then os.replace.
-    # os.replace is atomic on POSIX, so a crash mid-write can never truncate or
-    # corrupt the existing balances.json — readers see either the old or the
-    # new file, never a half-written one.
-    directory = os.path.dirname(BALANCES_PATH) or "."
-    fd, tmp_path = tempfile.mkstemp(
-        dir=directory, prefix=".balances-", suffix=".tmp"
-    )
-    try:
-        with os.fdopen(fd, "w") as f:
-            json.dump(balances, f, indent=2)
-            f.flush()
-            os.fsync(f.fileno())
-        os.replace(tmp_path, BALANCES_PATH)
-    except BaseException:
-        # Clean up the temp file on any failure so we don't leave litter behind;
-        # the pre-existing balances.json is untouched because replace never ran.
-        try:
-            os.unlink(tmp_path)
-        except OSError:
-            pass
-        raise
+    _write_atomic(BALANCES_PATH, balances)
     return bool(synced)

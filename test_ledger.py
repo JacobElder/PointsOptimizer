@@ -205,9 +205,17 @@ def test_gist_write_is_refused_when_someone_else_changed_it(monkeypatch):
     monkeypatch.setattr(ledger, "_gist_id", None)
     monkeypatch.setattr(ledger, "_gist_unavailable", False)
     monkeypatch.setenv("GIST_TOKEN", "t")
+    # Local balances to seed from: without them no gist is created, the read "fails",
+    # and the save below is refused by gist_failed() instead -- the test passed that
+    # way without ever reaching the concurrent-change check (found Oct 23).
+    with open(ledger.BALANCES_PATH, "w") as f:
+        json.dump({"chase_ur": 137000}, f)
     ledger.load_balances()  # seeds the gist and records its updated_at
+    assert ledger.gist_failed() is False and len(fake.gists) == 1
     fake.bump()  # another writer (the site, or the daily run) saves
     assert ledger.save_balances({"chase_ur": 1}) is False
+    (content,) = fake.gists["g1"].values()
+    assert json.loads(content)["cards"] == {"chase_ur": 137000}  # their copy survives
 
 
 def test_missing_gist_is_not_created_from_nothing(monkeypatch):
@@ -231,3 +239,138 @@ def test_tests_never_touch_the_real_balance_files():
     real_dir = os.path.dirname(os.path.abspath(ledger.__file__))
     assert os.path.dirname(ledger.BALANCES_PATH) != real_dir
     assert os.path.dirname(ledger.PROGRAM_BALANCES_PATH) != real_dir
+
+
+# ── Gist edge cases ───────────────────────────────────────────────────────
+def _gist_on(monkeypatch, fake):
+    monkeypatch.setattr(ledger.requests, "request", fake)
+    monkeypatch.setattr(ledger, "GIST_DISABLED", False)
+    monkeypatch.setenv("GIST_TOKEN", "t")
+
+
+def test_token_comes_from_streamlit_secrets_when_not_in_the_env(monkeypatch):
+    import sys
+    import types
+    monkeypatch.setattr(ledger, "GIST_DISABLED", False)
+    monkeypatch.delenv("GIST_TOKEN", raising=False)
+    monkeypatch.setitem(sys.modules, "streamlit", types.SimpleNamespace(secrets={"GIST_TOKEN": "s"}))
+    assert ledger._gist_token() == "s" and ledger.gist_enabled() is True
+    monkeypatch.setitem(sys.modules, "streamlit", types.SimpleNamespace(secrets={"GIST_TOKEN": ""}))
+    assert ledger._gist_token() is None and ledger.gist_enabled() is False
+    monkeypatch.setitem(sys.modules, "streamlit", None)  # import fails
+    assert ledger._gist_token() is None
+
+
+def test_a_failed_first_read_during_save_writes_nothing_to_the_gist(monkeypatch):
+    """The save is the first Gist access in this process and the read fails: the
+    page's values must not be pushed over the real balances."""
+    calls = []
+
+    def flaky(method, url, **kw):
+        calls.append(method)
+        raise ledger.requests.ConnectionError("offline")
+
+    _gist_on(monkeypatch, flaky)
+    assert ledger.save_program_balances({"JetBlue TrueBlue": 1}) is False
+    assert calls == ["GET"]  # only the failed read; no PATCH or POST
+    assert ledger.gist_failed() is True
+    # From now on, saves are refused outright, locally too.
+    assert ledger.save_program_balances({"JetBlue TrueBlue": 2}) is False
+    assert ledger._load_local_program_balances() == {"JetBlue TrueBlue": 1}
+
+
+def test_gist_write_failure_reports_not_synced(monkeypatch):
+    fake = _FakeGitHub()
+    ledger.save_balances({"bilt": 103000})
+    _gist_on(monkeypatch, fake)
+    ledger.load_balances()  # seeds
+
+    def no_patch(method, url, **kw):
+        if method == "PATCH":
+            raise ledger.requests.HTTPError("403")
+        return fake(method, url, **kw)
+
+    monkeypatch.setattr(ledger.requests, "request", no_patch)
+    assert ledger.save_balances({"bilt": 90000}) is False
+    assert ledger._load_local_balances() == {"bilt": 90000}  # the local file still saved
+
+
+def test_seeded_gist_that_cannot_be_found_again_returns_the_seed(monkeypatch):
+    ledger.save_balances({"chase_ur": 5})
+    monkeypatch.setattr(ledger, "_find_gist_id", lambda: None)
+    wrote = []
+    monkeypatch.setattr(ledger, "_gist_write", wrote.append)
+    data = ledger._gist_read()
+    assert data["cards"] == {"chase_ur": 5} and wrote[0]["cards"] == {"chase_ur": 5}
+
+
+def test_gist_values_are_coerced_and_zero_programs_dropped(monkeypatch):
+    fake = _FakeGitHub()
+    fake.gists["g1"] = {ledger.GIST_FILENAME: json.dumps(
+        {"cards": {"chase_ur": "139915", "bilt": "lots", "wf": 0.0},
+         "programs": {"JetBlue TrueBlue": 22516.7, "Delta SkyMiles": 0, "X": None}})}
+    _gist_on(monkeypatch, fake)
+    assert ledger.load_balances() == {"chase_ur": 139915, "wf": 0}
+    assert ledger.load_program_balances() == {"JetBlue TrueBlue": 22516}
+
+
+def test_gist_lookup_pages_until_a_short_page(monkeypatch):
+    pages = {1: [{"id": f"x{i}", "files": {"other.json": {}}} for i in range(100)],
+             2: [{"id": "real", "files": {ledger.GIST_FILENAME: {}}}]}
+    asked = []
+
+    def gh(method, path, params=None, **kw):
+        asked.append(params["page"])
+        return pages.get(params["page"], [])
+
+    monkeypatch.setattr(ledger, "_gh", gh)
+    assert ledger._find_gist_id() == "real" and asked == [1, 2]
+    assert ledger._find_gist_id() == "real" and asked == [1, 2]  # remembered
+
+
+def test_local_program_balances_skip_bad_values(monkeypatch):
+    monkeypatch.delenv("PROGRAM_BALANCES", raising=False)
+    with open(ledger.PROGRAM_BALANCES_PATH, "w") as f:
+        json.dump({"JetBlue TrueBlue": "22516", "United MileagePlus": "n/a", "Delta SkyMiles": -3}, f)
+    assert ledger.load_program_balances() == {"JetBlue TrueBlue": 22516}
+    monkeypatch.setenv("PROGRAM_BALANCES", "[1, 2]")  # valid JSON, not an object: ignored
+    assert ledger.load_program_balances() == {"JetBlue TrueBlue": 22516}
+
+
+def test_balances_temp_file_cleanup_survives_a_missing_temp(paths, monkeypatch):
+    def boom(src, dst):
+        os.unlink(src)  # the temp file is already gone when cleanup runs
+        raise RuntimeError("crash")
+
+    monkeypatch.setattr(ledger.os, "replace", boom)
+    with pytest.raises(RuntimeError, match="crash"):
+        ledger.save_balances({"amex_mr": 1})
+
+
+def test_balances_never_reach_a_tracked_file():
+    """Public repo: both balance files must be gitignored."""
+    import subprocess
+    repo = os.path.dirname(os.path.abspath(ledger.__file__))
+    for name in ("balances.json", "program_balances.json"):
+        r = subprocess.run(["git", "check-ignore", "-q", name], cwd=repo)
+        assert r.returncode == 0, f"{name} is not gitignored"
+
+
+def test_failed_program_balance_save_keeps_the_old_file(monkeypatch):
+    """save_balances already writes atomically; program balances were written in place,
+    so a crash mid-write could leave program_balances.json truncated."""
+    import json as _json
+    monkeypatch.delenv("GIST_TOKEN", raising=False)
+    ledger.save_program_balances({"United MileagePlus": 5980})
+    from pathlib import Path
+    before = Path(ledger.PROGRAM_BALANCES_PATH).read_text()
+
+    def _boom(*a, **k):
+        raise OSError("disk full")
+    monkeypatch.setattr(ledger.json, "dump", _boom)
+    try:
+        ledger.save_program_balances({"United MileagePlus": 9999})
+    except OSError:
+        pass
+    monkeypatch.setattr(ledger.json, "dump", _json.dump)
+    assert Path(ledger.PROGRAM_BALANCES_PATH).read_text() == before

@@ -143,3 +143,107 @@ def test_no_pauses_unless_the_run_turns_them_on(monkeypatch):
     flight_search._fetch_offers_fast_flights("JFK", "ZRH", "2026-11-12", "BUSINESS")
     flight_search._fetch_offers_fast_flights("JFK", "ZRH", "2026-11-13", "BUSINESS")
     assert sleeps == []
+
+
+# ── Window checks, reuse tiers, save safety ───────────────────────────────
+from datetime import date, datetime, timezone
+
+import pytest
+
+
+def test_quote_with_no_fare_has_no_comparable():
+    q = Quote("JFK", "ZRH", "BUSINESS", "2026-11-12", None, None, "fast-flights", "2026-09-16T00:00:00Z")
+    assert comparable_fare(q, direct=True) is None
+
+
+def test_check_window_rejects_past_and_beyond_google_window():
+    today = date(2026, 10, 23)
+    cash_quotes.check_window("2026-10-23", today)  # today is fine
+    cash_quotes.check_window("2027-09-18", today)  # 330 days out: still listed
+    with pytest.raises(cash_quotes.OutOfWindow, match="in the past"):
+        cash_quotes.check_window("2026-10-22", today)
+    with pytest.raises(cash_quotes.OutOfWindow, match="331 days out"):
+        cash_quotes.check_window("2027-09-19", today)
+
+
+def test_reuse_tiers_tighten_as_the_trip_nears():
+    today = date(2026, 10, 23)
+    assert cash_quotes._reuse_limits(date(2026, 12, 7), today) == (2, 3)  # 45 days out
+    assert cash_quotes._reuse_limits(date(2026, 12, 8), today) == (7, 7)  # 46
+    assert cash_quotes._reuse_limits(date(2027, 2, 20), today) == (7, 7)  # 120
+    assert cash_quotes._reuse_limits(date(2027, 2, 21), today) == (14, 14)  # 121
+
+
+def test_reuse_falls_back_to_the_approx_limits_past_every_tier(monkeypatch):
+    monkeypatch.setattr(cash_quotes, "REUSE_TIERS", ((45, 2, 3),))
+    assert cash_quotes._reuse_limits(date(2027, 3, 1), date(2026, 10, 23)) == (7, 14)
+
+
+def test_exact_date_quote_age_limit_is_2_days_close_in_and_7_further_out(monkeypatch):
+    monkeypatch.setattr(cash_quotes, "_now", lambda: datetime(2026, 10, 23, 12, 0, tzinfo=timezone.utc))
+    near = [_stored("2026-11-20", 500.0, "2026-10-21T11:00:00Z")]  # 28 days out, 2.04 days old
+    assert cash_quotes.find_cached(near, "EWR", "CPT", "2026-11-20", "ECONOMY", allow_approx=False) is None
+    far = [_stored("2027-01-20", 500.0, "2026-10-17T11:00:00Z")]  # 6.04 days old
+    assert cash_quotes.find_cached(far, "EWR", "CPT", "2027-01-20", "ECONOMY", allow_approx=False).price_usd == 500.0
+    # max_age_days tightens it further (the fresh re-pricing before publishing).
+    assert cash_quotes.find_cached(far, "EWR", "CPT", "2027-01-20", "ECONOMY", allow_approx=False,
+                                   max_age_days=0.25) is None
+
+
+def test_malformed_dates_in_the_store_are_ignored(monkeypatch):
+    monkeypatch.setattr(cash_quotes, "_now", lambda: datetime(2026, 10, 23, 12, 0, tzinfo=timezone.utc))
+    quotes = [_stored("11/20/2026", 400.0, "2026-10-23T11:00:00Z"), _stored("2027-01-20", 500.0, "2026-10-23T11:00:00Z")]
+    assert cash_quotes.find_cached(quotes, "ewr", "cpt", "2027-01-20", "economy").price_usd == 500.0
+
+
+def test_get_quote_offline_returns_none_without_a_lookup(monkeypatch):
+    monkeypatch.setattr(flight_search, "search_cash_price",
+                        lambda *a, **k: (_ for _ in ()).throw(AssertionError("no live lookup")))
+    assert cash_quotes.get_quote("EWR", "CPT", "2027-01-20", "ECONOMY", allow_live=False) is None
+
+
+def test_get_quote_never_looks_up_outside_the_window(monkeypatch):
+    monkeypatch.setattr(flight_search, "search_cash_price",
+                        lambda *a, **k: (_ for _ in ()).throw(AssertionError("no live lookup")))
+    with pytest.raises(cash_quotes.OutOfWindow):
+        cash_quotes.get_quote("EWR", "CPT", "2020-01-01", "ECONOMY")
+
+
+def test_get_quote_saves_live_offers_and_reuses_them(monkeypatch):
+    from datetime import timedelta
+    day = (date.today() + timedelta(days=60)).isoformat()
+
+    def offer(price, codes):
+        segs = [flight_search.FlightSegment("A", f"{c} 1", "EWR", "", "", "CPT", "", "", 60, c) for c in codes]
+        lay = [flight_search.Layover("X", "", 60)] * (len(codes) - 1)
+        return flight_search.FlightOffer(price, "ECONOMY", 0, segs, lay)
+
+    calls = []
+
+    def search(o, d, dt, cabin, max_results):
+        calls.append((o, d, dt, cabin, max_results))
+        return [offer(900.0, ["ET", "ET"]), offer(1500.0, ["UA"])]
+
+    monkeypatch.setattr(flight_search, "search_cash_price", search)
+    q = cash_quotes.get_quote(" ewr", "cpt ", day, "economy")
+    assert (q.price_usd, q.nonstop_price_usd, q.offers) == (900.0, 1500.0, [[900.0, 1, "ET,ET"], [1500.0, 0, "UA"]])
+    assert calls == [("EWR", "CPT", day, "ECONOMY", 100)]
+    again = cash_quotes.get_quote("EWR", "CPT", day, "ECONOMY")
+    assert again.price_usd == 900.0 and again.approx is False and len(calls) == 1
+
+
+def test_failed_save_leaves_the_old_store_and_no_temp_file(tmp_path, monkeypatch):
+    import os
+    from datetime import timedelta
+    day = (date.today() + timedelta(days=60)).isoformat()
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    cash_quotes.save([_stored(day, 700.0, now)])
+
+    def boom(*a, **k):
+        raise RuntimeError("disk full")
+
+    monkeypatch.setattr(cash_quotes.os, "replace", boom)
+    with pytest.raises(RuntimeError):
+        cash_quotes.save([])
+    assert [q["price_usd"] for q in cash_quotes.load()] == [700.0]
+    assert [p for p in os.listdir(os.path.dirname(cash_quotes.QUOTES_PATH)) if p.startswith(".cash_quotes-")] == []

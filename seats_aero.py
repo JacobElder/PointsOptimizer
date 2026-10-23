@@ -169,13 +169,13 @@ def search_award_availability(
                 source=item.get("Source", "unknown"),
                 cabin=cabin.upper(),
                 date=item.get("Date", start_date),
-                points=int(item.get(f"{prefix}MileageCostRaw", 0)),
+                points=int(item.get(f"{prefix}MileageCostRaw") or 0),
                 # TotalTaxesRaw is in minor currency units (cents), confirmed against the
                 # live API 2026-07-23 (e.g. JFK-LHR business TotalTaxesRaw=73350 => $733.50).
                 # The alert-email path already yields dollars, so divide here to match.
-                taxes_fees=float(item.get(f"{prefix}TotalTaxesRaw", 0)) / 100.0,
+                taxes_fees=float(item.get(f"{prefix}TotalTaxesRaw") or 0) / 100.0,
                 taxes_currency=item.get("TaxesCurrency", "USD"),
-                remaining_seats=int(item.get(f"{prefix}RemainingSeatsRaw", 0)),
+                remaining_seats=int(item.get(f"{prefix}RemainingSeatsRaw") or 0),
                 airlines=item.get(f"{prefix}Airlines", ""),
                 direct=bool(item.get(f"{prefix}DirectRaw", False)),
                 origin=route.get("OriginAirport", origin.upper()),

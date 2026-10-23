@@ -274,6 +274,14 @@ removed Oct 12), deleting SERPAPI_KEY from the Streamlit Cloud secrets.
   ≥1.5× their bar, are shown again at the end of the email, each at most once a week, only alongside new deals. Replay
   Oct 15–23: 6 shown in 9 emails. Watch Oct 24: `make audit` `still available:` line and `AGAIN` rows (expect 1–3:
   EWR–JNB United premium economy, then JFK–CMN / EWR–ATH / JFK–PTY from Oct 25–26), and `make audit-live` covers them.
+- **Oct 23 evening: test-coverage audit** (user's request; 4 subagents). 200 → 486 tests, line coverage 87% → 97%
+  (`tools/audit_digest.py` 29% → 99%, `route_search.py` 53% → 100%, `deal_finder.py` 87% → 98%). The Streamlit pages in
+  `views/` stay at 47–83% (UI, covered by the AppTest smoke test). Bugs it found, all fixed with a test that fails without the fix:
+  the stop when every Google lookup fails could never fire after a failed exploration lookup (a fully blocked day would make
+  ~190 failing lookups, not 5); `make audit` crashed on a digest with no `scan` block; the audit's `usual fare: … not emailed`
+  list included emailed cards; site cards named the wrong airline on the same-carrier fare line and dropped the year on
+  other dates in another year; `seats_aero.search_award_availability` crashed on a null seat count; `program_balances.json`
+  wasn't written atomically. One existing ledger test passed without reaching the check it was named for (repaired).
 - **Google empties on the runner (investigated Oct 15–16).** Every daily run since Oct 10 lost 17–55% of
   round trips (Sep 28–Oct 9: 98–100%, except Oct 4). Not our code (the drop predates the Oct 11 changes) and
   not a block page: the empties are Google's ordinary "no flights" answer, sometimes false (CPT priced from the

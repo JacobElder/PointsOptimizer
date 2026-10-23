@@ -102,7 +102,8 @@ def offline(d: dict, quotes: list[dict] | None = None) -> int:
     v, scan = d.get("verification", {}), d.get("scan", {})
     print(f"generated {d.get('generated_at')}  emailed {d.get('emailed_new')}  "
           f"email_failed {d.get('email_failed') or 'none'}")
-    print(f"scan: {scan.get('candidates', '?'):,} awards, {scan.get('calls')} calls, "
+    n = scan.get("candidates")
+    print(f"scan: {f'{n:,}' if isinstance(n, int) else '?'} awards, {scan.get('calls')} calls, "
           f"failed {scan.get('failed') or 'none'}, aborted {scan.get('aborted', False)}, "
           f"quota_exhausted {scan.get('quota_exhausted', False)}")
     print(f"verification: {v.get('trip_lookups')} flight lookups (normal ~50-80), "
@@ -126,9 +127,10 @@ def offline(d: dict, quotes: list[dict] | None = None) -> int:
             flags.append("SLOW EMAILED")  # long trips aren't emailed from Oct 19 (worth_emailing)
         at_typ = x.get("cpp_at_typical")
         if at_typ is not None and at_typ < bar_of(x):
-            under_typ.append(f"{x['origin']}-{x['dest']} {at_typ:.2f}c")
-            if emailed(x):
+            if emailed(x):  # broke the rule: a problem, not a card the rule held back
                 flags.append("EMAILED UNDER BAR AT USUAL FARE")  # worth_emailing, from Oct 20
+            else:
+                under_typ.append(f"{x['origin']}-{x['dest']} {at_typ:.2f}c")
         fetched = old_fare(x, quotes or [], d["generated_at"]) if d.get("generated_at") else None
         if fetched:
             old += 1

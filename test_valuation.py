@@ -61,3 +61,80 @@ def test_recorded_fares_reads_deals(tmp_path, monkeypatch):
     assert valuation.recorded_fares() == [{"origin": "JFK", "cash_price": 500}]
     monkeypatch.setattr(valuation, "RECORDED_FARES_PATH", str(tmp_path / "missing.json"))
     assert valuation.recorded_fares() == []
+
+
+def _offline(*a, **k):
+    raise valuation.requests.ConnectionError("offline")
+
+
+@pytest.mark.parametrize("cur, rate", [("AED", 0.2723), ("QAR", 0.2747), ("SAR", 0.2666), ("aed", 0.2723)])
+def test_gulf_currencies_fall_back_to_their_dollar_pegs(monkeypatch, cur, rate):
+    """Emirates/Qatar/Etihad quote taxes in AED/QAR/SAR, which the ECB-backed API lacks.
+    Treated 1:1, 2,000 AED of taxes read as $2,000 and buried every such deal."""
+    monkeypatch.setattr(valuation.requests, "get", _offline)
+    assert valuation.fx_rate(cur) == rate
+
+
+def test_a_currency_with_no_rate_warns_and_is_treated_one_to_one(monkeypatch):
+    monkeypatch.setattr(valuation.requests, "get", _offline)
+    with pytest.warns(UserWarning, match="No FX rate for XYZ"):
+        assert valuation.fx_rate("xyz") == 1.0
+    assert valuation.fx_rate("XYZ") == 1.0  # cached: no second warning (warnings are errors here)
+
+
+def test_live_rate_is_used_and_cached(monkeypatch):
+    calls = []
+
+    class _R:
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {"rates": {"USD": 0.7}}
+
+    def get(url, params, timeout):
+        calls.append(params)
+        return _R()
+
+    monkeypatch.setattr(valuation.requests, "get", get)
+    assert valuation.fx_rate("CAD") == 0.7
+    assert valuation.fx_rate("CAD") == 0.7
+    assert calls == [{"from": "CAD", "to": "USD"}]
+    assert valuation.fx_rate(None) == 1.0 and valuation.fx_rate("") == 1.0
+
+
+def test_a_malformed_live_answer_uses_the_fallback(monkeypatch):
+    class _R:
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {"rates": {}}  # KeyError
+
+    monkeypatch.setattr(valuation.requests, "get", lambda *a, **k: _R())
+    assert valuation.fx_rate("EUR") == 1.08
+
+
+def test_compute_cpp_edge_cases():
+    assert valuation.compute_cpp(1000.0, 0.0, 50000) == 2.0
+    assert valuation.compute_cpp(1000.0, 0.0, -5) is None
+    assert valuation.compute_cpp(0.0, 0.0, 10000) == 0.0
+    assert valuation.compute_cpp(250.0, 250.0, 10000) == 0.0  # never negative
+
+
+def test_missing_program_values_file_uses_a_flat_default(tmp_path, monkeypatch):
+    monkeypatch.setattr(valuation, "PROGRAM_VALUES_PATH", str(tmp_path / "missing.json"))
+    monkeypatch.setattr(valuation, "_program_values", None)
+    assert valuation.baseline_cpp("United MileagePlus") == 1.3
+    assert valuation.baseline_cpp("United MileagePlus", "BUSINESS") == pytest.approx(1.82)  # 1.3 x 1.4
+    assert valuation.great_floor("BUSINESS", "United MileagePlus") == pytest.approx(2.275)
+
+
+def test_unknown_cabin_uses_the_default_multiple_and_a_1_8_floor(monkeypatch):
+    monkeypatch.setattr(valuation, "_program_values", {"values": {"P": 1.0}, "default_cpp": 1.3})
+    assert valuation.great_floor("", "P") == 1.8
+    monkeypatch.setattr(valuation, "_program_values", {"values": {"P": 2.0}, "default_cpp": 1.3})
+    assert valuation.great_floor("COACH", "P") == pytest.approx(3.2)
+    # SKIP below max(baseline, 1.0), BORDERLINE between it and the bar.
+    assert valuation.verdict_for(1.99, "ECONOMY", "P") == "SKIP"
+    assert valuation.verdict_for(2.5, "ECONOMY", "P") == "BORDERLINE"

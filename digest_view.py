@@ -185,7 +185,10 @@ def _deal_card(d: dict, rank: int | None, bar: float | None, surplus: float | No
             st.caption("⚖️ Ranked lower because " + safe("; ".join(d["rank_notes"])))
         own = d.get("same_carrier_cash")
         if own and cash and own < cash and points:
-            carrier = places.airline_names(d.get("airlines") or "").split(",")[0] or "that airline"
+            # The fare is on same_carrier_code's airline, not necessarily the first of
+            # `airlines` (EWR-TLV lists "AC, H3, LH, LO, OS"; the fare can be LOT's).
+            code = d.get("same_carrier_code")
+            carrier = places.airline_names(code) if code else "the airline flying it"
             st.caption(safe(f"↘️ On {carrier} itself the fare is ${own:,.0f}, which would make this "
                             f"{(own - taxes) / points * 100:.2f}¢/pt."))
         if d.get("round_trip_half") is not None and d.get("one_way_cash") and cash and cash < d["one_way_cash"]:
@@ -233,7 +236,8 @@ def _deal_card(d: dict, rank: int | None, bar: float | None, surplus: float | No
                                "before you transfer.")
             if d.get("other_dates"):
                 st.markdown("**📅 Also available**")
-                st.caption(", ".join(places.nice_date(x, weekday=False) for x in d["other_dates"][:12])
+                st.caption(", ".join(places.nice_date(x, weekday=False, year=x[:4] != d["date"][:4])
+                                     for x in d["other_dates"][:12])
                            + (f" and {len(d['other_dates']) - 12} more" if len(d["other_dates"]) > 12 else "")
                            + (" — on this many dates it's standard pricing, not a flash sale."
                               if len(d["other_dates"]) > 30 else ""))
