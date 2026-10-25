@@ -1691,6 +1691,7 @@ def verify_selection(scored: list[Scored], select, rt_cache: dict | None, trip_c
     selection: list[Scored] = current_selection()
     calls_before = _trip_calls(trip_cache) if trip_cache is not None else 0
     rounds_used = 0
+    round_notes: list[str] = []  # logged only for a slow selection (see below)
     for round_no in range(max_rounds):
         rounds_used = round_no + 1
         # Stage 1, free: settle the round-trip checks before spending anything.
@@ -1716,6 +1717,7 @@ def verify_selection(scored: list[Scored], select, rt_cache: dict | None, trip_c
                    if trip_cache is not None and s.trip is None and not s.trip_checked]
         if not pending:
             break
+        before = {id(s) for s in selection}
         attach_trips(pending, trip_cache, log=log, budget=max_trip_lookups)
         for s in pending:
             if not still_bookable(s, sources_reporting_seats):
@@ -1723,6 +1725,7 @@ def verify_selection(scored: list[Scored], select, rt_cache: dict | None, trip_c
             elif round_trip and rt_cache is not None and s.trip is not None:
                 apply_round_trip(s, rt_cache)  # cached offers: re-match now stops are known
         selection = current_selection()
+        round_notes.append(_round_note(rounds_used, pending, selection, before, bar_fn))
     else:
         # Out of rounds with some of the selection still unchecked (Sep 30: four
         # deals, including JFK-HND, were emailed without a live check or a round
@@ -1736,10 +1739,39 @@ def verify_selection(scored: list[Scored], select, rt_cache: dict | None, trip_c
         _verify(unchecked, rt_cache, trip_cache, sources_reporting_seats, round_trip, log=log)
         selection = [s for s in selection
                      if not s.dropped and s.cpp is not None and s.cpp >= bar_fn(s)]
+    if log and round_notes and (rounds_used >= SLOW_SELECTION_ROUNDS or rounds_used == max_rounds):
+        # Oct 23-25 used all 12 rounds and the totals alone couldn't say why.
+        log("Selection rounds: " + " | ".join(round_notes))
     if log and trip_cache is not None:
         log(f"Selection: {len(selection)} deal(s) settled in {rounds_used} round(s), "
             f"{_trip_calls(trip_cache) - calls_before} seats.aero lookup(s)")
     return [s for s in selection if not s.dropped]
+
+
+SLOW_SELECTION_ROUNDS = 8  # Oct 6-22 settled in 5-11; log round detail from here
+
+
+def _round_note(n: int, checked: list[Scored], selection: list[Scored], before: set[int],
+                bar_fn) -> str:
+    """One selection round in a line: each deal checked and what became of it
+    (kept, gone, below bar, or replaced by another option), plus what moved in."""
+    now = {id(s) for s in selection}
+
+    def tag(s: Scored) -> str:
+        return f"{s.c.origin}-{s.c.dest} {s.c.cabin[:1]} {s.c.source} {s.c.date}"
+
+    def fate(s: Scored) -> str:
+        if s.dropped:
+            return "gone"
+        if s.cpp is None or s.cpp < bar_fn(s):
+            return "below bar"
+        if id(s) not in now:
+            return "replaced" + (" (connects)" if s.connecting else "")
+        return "kept"
+
+    moved_in = [tag(s) for s in selection if id(s) not in before]
+    return (f"r{n} checked {len(checked)}: " + ", ".join(f"{tag(s)} {fate(s)}" for s in checked)
+            + (f"; in: {', '.join(moved_in)}" if moved_in else ""))
 
 
 def _verify(deals, rt_cache, trip_cache, sources_reporting_seats, round_trip, log=None) -> None:

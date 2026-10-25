@@ -802,3 +802,37 @@ def test_selection_out_of_rounds_says_so_in_the_log(monkeypatch):
                                  log=logs.append)
     assert logs[0] == ("::warning::Selection didn't settle in 0 rounds; checking the 2 unchecked "
                        "deal(s) it would publish")
+
+
+def test_slow_selection_logs_what_each_round_checked(monkeypatch):
+    """Oct 23-25: the main selection used 12 rounds three days running, and the log
+    gave only the totals, so nothing showed which deals kept it going. A slow
+    selection now logs, per round, what it checked and what happened to each."""
+    # Every check turns out to be a connection on a route with nonstops elsewhere, so
+    # each checked leader loses to the next unchecked date on its card.
+    monkeypatch.setattr(award_trips, "fetch",
+                        lambda aid, cabin, points, **k: _trip(nonstop=False, current_points=points))
+    scored = []
+    for d in ("ZRH", "FRA"):
+        for i in range(4):
+            s = _scored(d, "BUSINESS", "aeroplan", "JFK", 60000, 3000 - 10 * i)
+            s.c.id = f"{d}:{i}"
+            scored.append(s)
+    logs = []
+    deal_finder.verify_selection(scored, lambda ls: ls[:2], rt_cache=None, trip_cache={},
+                                 sources_reporting_seats=set(), round_trip=False, max_rounds=1,
+                                 log=logs.append)
+    rounds = [m for m in logs if m.startswith("Selection rounds:")]
+    assert len(rounds) == 1, logs
+    assert "r1 checked 2" in rounds[0] and "ZRH" in rounds[0] and "FRA" in rounds[0], rounds[0]
+
+
+def test_quick_selection_logs_no_round_detail(monkeypatch):
+    monkeypatch.setattr(award_trips, "fetch", lambda aid, cabin, points, **k: _trip(current_points=points))
+    scored = [_scored(d, "BUSINESS", "aeroplan", "JFK", 60000, 3000) for d in ("ZRH", "FRA")]
+    for s in scored:
+        s.c.id = f"{s.c.dest}:id"
+    logs = []
+    deal_finder.verify_selection(scored, lambda ls: ls[:2], rt_cache=None, trip_cache={},
+                                 sources_reporting_seats=set(), round_trip=False, log=logs.append)
+    assert not any(m.startswith("Selection rounds:") for m in logs), logs

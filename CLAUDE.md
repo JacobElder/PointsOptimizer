@@ -128,7 +128,7 @@ removed Oct 12), deleting SERPAPI_KEY from the Streamlit Cloud secrets.
 - **Goal:** call the system finished after 5 consecutive clean runs — email arrives with no one
   stepping in, every emailed deal verified and still above its bar at live fares, no repeat
   emails (outside the labeled "Still available" section), no code fixes needed — then switch to a weekly `make audit-live`.
-- **Clean days so far:** 0 of 5 (Oct 22–23 were clean; the "Still available" email section shipped Oct 23 evening restarts it). (Oct 20–21 were clean; the 30-day lead-time change on Oct 21 evening restarts it, as the usual-fare rule did). (Oct 19 was clean, but the usual-fare email rule shipped that evening restarted it.) (Oct 18: an emailed card fell below bar and a code fix shipped; Oct 17's one-way retry fix restarted it; Oct 17's own run was clean). (Oct 14–15 clean; Oct 16 reset it: JFK–PUJ fell below bar.) (Oct 12 was clean; Oct 13 reset it: an emailed deal fell below its bar.) (Oct 6–8 were clean, but the user decided on Oct 13 to count conservatively: Oct 9 (deal fell below bar) and the code fixes on Oct 10 and 11 reset the streak.) Fixes from Oct 5 (repeat suppression, fare-spike cap,
+- **Clean days so far:** 2 of 5 (Oct 24–25). (Oct 22–23 were clean; the "Still available" email section shipped Oct 23 evening restarted it). (Oct 20–21 were clean; the 30-day lead-time change on Oct 21 evening restarts it, as the usual-fare rule did). (Oct 19 was clean, but the usual-fare email rule shipped that evening restarted it.) (Oct 18: an emailed card fell below bar and a code fix shipped; Oct 17's one-way retry fix restarted it; Oct 17's own run was clean). (Oct 14–15 clean; Oct 16 reset it: JFK–PUJ fell below bar.) (Oct 12 was clean; Oct 13 reset it: an emailed deal fell below its bar.) (Oct 6–8 were clean, but the user decided on Oct 13 to count conservatively: Oct 9 (deal fell below bar) and the code fixes on Oct 10 and 11 reset the streak.) Fixes from Oct 5 (repeat suppression, fare-spike cap,
   Emirates cabin links, test isolation of balance files, runner pin) had their first real run Oct 6
   and worked. Oct 7's digest came from the hand-clicked cron-job.org test (01:53 UTC), so the
   unattended 10:00 ET dispatch has not yet produced a digest on its own (see layer 2 above). Oct 8
@@ -282,6 +282,21 @@ removed Oct 12), deleting SERPAPI_KEY from the Streamlit Cloud secrets.
   list included emailed cards; site cards named the wrong airline on the same-carrier fare line and dropped the year on
   other dates in another year; `seats_aero.search_award_availability` crashed on a null seat count; `program_balances.json`
   wasn't written atomically. One existing ledger test passed without reaching the check it was named for (repaired).
+- **Oct 24: clean, no code change.** GitHub schedule (12:40 UTC; 18 min). 2 emailed, both above bar live Oct 25: EWR–JNB
+  United business 80k (Nov 27) 5.16¢ → 4.81¢ vs 2.10; EWR–GRU United PE 55k 2.26¢ (unchanged) vs 1.80. 1 repeat by the rule:
+  EWR–JNB business 3.74¢ (Oct 21) → 5.16¢, same 80k points on a pricier date (third fare-driven repeat after JFK–ZRH, JFK–LHR).
+  Google: one-way 252/257, round trips 747/747 (100%). 84 flight lookups. Selection hit 12 rounds with the warning (1 unchecked,
+  checked by the safety net), 60 lookups. No "Still available" cards: none qualified (EWR–JNB PE fell to 1.47× its bar; the
+  ≥1.5× ones were emailed 3–4 days earlier).
+- **Oct 25: clean; logging added.** GitHub schedule (13:11 UTC; 20 min). 1 emailed: JFK–PLS Alaska business 15k (watchlist
+  Caribbean, Jan 2) 3.04¢ vs 2.71, unchanged live. Google: one-way 238/244 (8 of 14 on the retry), round trips 630/708 (89%).
+  83 flight lookups. Selection hit 12 rounds with the warning again (2 unchecked, checked by the safety net), 54 lookups.
+  Rounds Oct 20–25: 11, 7, 8, 12, 12, 12, up since the 30-day rule (Oct 21). Lookups stay in the normal range, so this is
+  slow convergence, not quota churn, but the log gave only totals. Added a `Selection rounds:` line, printed when a
+  selection takes 8+ rounds, listing per round each deal checked and its fate (kept / gone / below bar / replaced, and
+  whether it connects) and what moved in. Logging only, so not a streak reset. **Read that line on Oct 26** and write the
+  reproducing test from what it shows. Still available: none qualified again; EWR–ATH, JFK–EZE PE and JFK–LHR Virgin PE
+  become eligible Oct 27–28.
 - **Google empties on the runner (investigated Oct 15–16).** Every daily run since Oct 10 lost 17–55% of
   round trips (Sep 28–Oct 9: 98–100%, except Oct 4). Not our code (the drop predates the Oct 11 changes) and
   not a block page: the empties are Google's ordinary "no flights" answer, sometimes false (CPT priced from the
