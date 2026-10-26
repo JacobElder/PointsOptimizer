@@ -1,7 +1,7 @@
 {
   "_help": "Active transfer bonuses. bonus_pct 20 means 1,000 card points -> 1,200 partner points. Partner must match cards_data.py exactly. Expired entries are ignored automatically. Check roame.travel/guides/points-transfer-bonuses or awardtravelfinder.com/transfer-bonuses; Bilt runs Rent Day bonuses on the 1st of each month. A partner not in that pool's list in cards_data.py can never match, so it is a data error, not a no-op.",
   "_checked_help": "Date the whole list was last checked against a source, even if nothing was added. An empty list checked recently is fine; the email only nags when this is over 21 days old.",
-  "checked": "2026-10-12",
+  "checked": "2026-10-26",
   "bonuses": [
     {
       "pool": "chase_ur",
@@ -25,7 +25,7 @@
       "bonus_pct": 20,
       "starts": "2026-10-01",
       "ends": "2026-10-31",
-      "verified": "2026-10-12"
+      "verified": "2026-10-26"
     },
     {
       "pool": "citi_ty",
@@ -33,8 +33,26 @@
       "bonus_pct": 15,
       "starts": "2026-10-01",
       "ends": "2026-10-31",
-      "verified": "2026-10-12",
+      "verified": "2026-10-26",
       "note": "Tiered: 15% under 50k, 25% for 50k-99,999, 35% for 100k+ per transfer; the minimum is recorded."
+    },
+    {
+      "pool": "cap1_miles",
+      "partner": "Virgin Red",
+      "bonus_pct": 30,
+      "starts": "2026-10-21",
+      "ends": "2026-11-20",
+      "verified": "2026-10-26",
+      "note": "Applies to both Virgin Atlantic Flying Club and Virgin Red; cards_data.py lists Capital One's partner as Virgin Red."
+    },
+    {
+      "pool": "citi_ty",
+      "partner": "Cathay Pacific Asia Miles",
+      "bonus_pct": 10,
+      "starts": "2026-10-25",
+      "ends": "2026-11-14",
+      "verified": "2026-10-26",
+      "note": "10% on premium Citi cards (Strata Elite, Strata Premier, Prestige, AT&T Access More); select no-annual-fee cards get 770 per 1,000 instead."
     }
   ]
 }
