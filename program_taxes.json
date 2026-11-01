@@ -59,28 +59,28 @@
  },
  "learned": {
   "aeroplan|BUSINESS": {
-   "n": 6125,
-   "updated": "2026-10-31",
-   "usd": 75.31
+   "n": 6050,
+   "updated": "2026-11-01",
+   "usd": 75.24
   },
   "aeroplan|ECONOMY": {
-   "n": 18336,
-   "updated": "2026-10-31",
-   "usd": 65.22
+   "n": 18308,
+   "updated": "2026-11-01",
+   "usd": 65.15
   },
   "aeroplan|PREMIUM_ECONOMY": {
-   "n": 560,
-   "updated": "2026-10-31",
-   "usd": 29.21
+   "n": 483,
+   "updated": "2026-11-01",
+   "usd": 28.99
   },
   "alaska|BUSINESS": {
-   "n": 3759,
-   "updated": "2026-10-31",
+   "n": 3737,
+   "updated": "2026-11-01",
    "usd": 75.52
   },
   "alaska|ECONOMY": {
-   "n": 10019,
-   "updated": "2026-10-31",
+   "n": 9995,
+   "updated": "2026-11-01",
    "usd": 30.3
   },
   "alaska|FIRST": {
@@ -89,128 +89,128 @@
    "usd": 1018.9
   },
   "alaska|PREMIUM_ECONOMY": {
-   "n": 1139,
-   "updated": "2026-10-31",
+   "n": 1114,
+   "updated": "2026-11-01",
    "usd": 65.7
   },
   "american|BUSINESS": {
-   "n": 6062,
-   "updated": "2026-10-31",
+   "n": 5983,
+   "updated": "2026-11-01",
    "usd": 45.6
   },
   "american|ECONOMY": {
-   "n": 11177,
-   "updated": "2026-10-31",
+   "n": 11094,
+   "updated": "2026-11-01",
    "usd": 9.0
   },
   "american|FIRST": {
    "n": 43,
-   "updated": "2026-10-31",
+   "updated": "2026-11-01",
    "usd": 24.21
   },
   "american|PREMIUM_ECONOMY": {
-   "n": 1327,
-   "updated": "2026-10-31",
+   "n": 1381,
+   "updated": "2026-11-01",
    "usd": 5.6
   },
   "british|BUSINESS": {
-   "n": 517,
-   "updated": "2026-10-31",
+   "n": 519,
+   "updated": "2026-11-01",
    "usd": 497.5
   },
   "british|ECONOMY": {
-   "n": 551,
-   "updated": "2026-10-31",
+   "n": 553,
+   "updated": "2026-11-01",
    "usd": 124.1
   },
   "british|PREMIUM_ECONOMY": {
-   "n": 542,
-   "updated": "2026-10-31",
+   "n": 544,
+   "updated": "2026-11-01",
    "usd": 268.5
   },
   "delta|BUSINESS": {
-   "n": 2229,
-   "updated": "2026-10-31",
-   "usd": 35.1
+   "n": 2396,
+   "updated": "2026-11-01",
+   "usd": 35.2
   },
   "delta|ECONOMY": {
-   "n": 11895,
-   "updated": "2026-10-31",
+   "n": 12112,
+   "updated": "2026-11-01",
    "usd": 5.6
   },
   "delta|PREMIUM_ECONOMY": {
-   "n": 2143,
-   "updated": "2026-10-31",
+   "n": 2110,
+   "updated": "2026-11-01",
    "usd": 5.6
   },
   "emirates|BUSINESS": {
-   "n": 638,
-   "updated": "2026-10-31",
+   "n": 639,
+   "updated": "2026-11-01",
    "usd": 434.0
   },
   "emirates|ECONOMY": {
    "n": 857,
-   "updated": "2026-10-31",
+   "updated": "2026-11-01",
    "usd": 123.0
   },
   "emirates|PREMIUM_ECONOMY": {
-   "n": 291,
-   "updated": "2026-10-31",
+   "n": 286,
+   "updated": "2026-11-01",
    "usd": 203.4
   },
   "etihad|BUSINESS": {
-   "n": 1228,
-   "updated": "2026-10-31",
+   "n": 1230,
+   "updated": "2026-11-01",
    "usd": 334.9
   },
   "etihad|ECONOMY": {
-   "n": 3390,
-   "updated": "2026-10-31",
+   "n": 3378,
+   "updated": "2026-11-01",
    "usd": 194.9
   },
   "etihad|FIRST": {
-   "n": 213,
-   "updated": "2026-10-31",
+   "n": 214,
+   "updated": "2026-11-01",
    "usd": 772.8
   },
   "flyingblue|BUSINESS": {
-   "n": 2942,
-   "updated": "2026-10-31",
+   "n": 2867,
+   "updated": "2026-11-01",
    "usd": 364.4
   },
   "flyingblue|ECONOMY": {
-   "n": 12530,
-   "updated": "2026-10-31",
+   "n": 12492,
+   "updated": "2026-11-01",
    "usd": 152.3
   },
   "flyingblue|PREMIUM_ECONOMY": {
-   "n": 6512,
-   "updated": "2026-10-31",
-   "usd": 242.3
+   "n": 6705,
+   "updated": "2026-11-01",
+   "usd": 241.5
   },
   "iberia|BUSINESS": {
-   "n": 89,
-   "updated": "2026-10-31",
+   "n": 498,
+   "updated": "2026-11-01",
    "usd": 1594.38
   },
   "iberia|ECONOMY": {
-   "n": 105,
-   "updated": "2026-10-31",
+   "n": 551,
+   "updated": "2026-11-01",
    "usd": 89.44
   },
   "iberia|PREMIUM_ECONOMY": {
-   "n": 11,
-   "updated": "2026-10-31",
+   "n": 103,
+   "updated": "2026-11-01",
    "usd": 100.62
   },
   "jetblue|BUSINESS": {
-   "n": 2217,
-   "updated": "2026-10-31",
+   "n": 2201,
+   "updated": "2026-11-01",
    "usd": 102.2
   },
   "jetblue|ECONOMY": {
-   "n": 10848,
-   "updated": "2026-10-31",
+   "n": 10829,
+   "updated": "2026-11-01",
    "usd": 15.6
   },
   "jetblue|FIRST": {
@@ -219,53 +219,53 @@
    "usd": 15.6
   },
   "jetblue|PREMIUM_ECONOMY": {
-   "n": 221,
-   "updated": "2026-10-31",
+   "n": 222,
+   "updated": "2026-11-01",
    "usd": 22.3
   },
   "lifemiles|BUSINESS": {
-   "n": 1039,
-   "updated": "2026-10-31",
-   "usd": 49.7
+   "n": 1043,
+   "updated": "2026-11-01",
+   "usd": 49.1
   },
   "lifemiles|ECONOMY": {
-   "n": 9095,
-   "updated": "2026-10-31",
-   "usd": 43.5
+   "n": 9325,
+   "updated": "2026-11-01",
+   "usd": 44.0
   },
   "united|BUSINESS": {
-   "n": 5277,
-   "updated": "2026-10-31",
-   "usd": 24.21
+   "n": 4963,
+   "updated": "2026-11-01",
+   "usd": 23.9
   },
   "united|ECONOMY": {
-   "n": 19343,
-   "updated": "2026-10-31",
+   "n": 18861,
+   "updated": "2026-11-01",
    "usd": 10.3
   },
   "united|FIRST": {
-   "n": 223,
-   "updated": "2026-10-31",
+   "n": 214,
+   "updated": "2026-11-01",
    "usd": 9.9
   },
   "united|PREMIUM_ECONOMY": {
-   "n": 236,
-   "updated": "2026-10-31",
+   "n": 230,
+   "updated": "2026-11-01",
    "usd": 5.6
   },
   "virginatlantic|BUSINESS": {
-   "n": 1200,
-   "updated": "2026-10-31",
+   "n": 1178,
+   "updated": "2026-11-01",
    "usd": 62.85
   },
   "virginatlantic|ECONOMY": {
-   "n": 5600,
-   "updated": "2026-10-31",
+   "n": 5673,
+   "updated": "2026-11-01",
    "usd": 55.55
   },
   "virginatlantic|PREMIUM_ECONOMY": {
-   "n": 645,
-   "updated": "2026-10-31",
+   "n": 667,
+   "updated": "2026-11-01",
    "usd": 295.8
   }
  }
