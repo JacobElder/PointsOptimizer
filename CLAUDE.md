@@ -297,6 +297,19 @@ removed Oct 12), deleting SERPAPI_KEY from the Streamlit Cloud secrets.
   whether it connects) and what moved in. Logging only, so not a streak reset. **Read that line on Oct 26** and write the
   reproducing test from what it shows. Still available: none qualified again; EWR–ATH, JFK–EZE PE and JFK–LHR Virgin PE
   become eligible Oct 27–28.
+- **Oct 26–Nov 7: audited together on Nov 7; no code change in that span.** A digest every day (GitHub schedule,
+  or the Claude routine on Nov 2–5; cron-job.org still never fired). 37 emailed. Offline audit: no emailed card with
+  a problem except Oct 29's "Still available" EWR–TLV on a 3-day-old fare. Live: Nov 6's 3 and Nov 7's 3 all above
+  bar (thinnest JFK–CPH Flying Blue 45k, 2.80¢ → 2.42¢ vs 2.27); earlier days weren't live-checked within a day.
+  THROTTLED Oct 28 (58%) and Nov 7 (55%; 10 of 23 site cards on an old fare, none emailed). Selection hit 12 rounds
+  Nov 2, 4, 5 without the warning; lookups normal (45–65). Flight lookups 110 on Nov 6 (cap 260).
+  **Re-sends after the 14-day memory:** 18 of the 37 emailed cards repeated a trip emailed 14–26 days earlier, none
+  materially better (e.g. JFK–EZE Alaska PE 32.5k 4.09¢ Oct 19 → shown "Still available" Oct 27 → "new" Nov 2;
+  EWR–ATH Emirates 5.51¢ Oct 20 → 3.31¢ "new" Nov 3). By the letter (14-day rule, `--repeats`) these aren't repeats;
+  with the 30-day lead time the pool is the same far-out deals, so it re-emails them every ~2 weeks. Proposed to the
+  user (not shipped): keep route memory longer and send unimproved old deals only via "Still available".
+  Transfer-bonus PRs #2–#4 unmerged (the digest warns "last checked 26 days ago"); #4 has Chase 30% to
+  Iberia/BA/Aer Lingus through Dec 1.
 - **Google empties on the runner (investigated Oct 15–16).** Every daily run since Oct 10 lost 17–55% of
   round trips (Sep 28–Oct 9: 98–100%, except Oct 4). Not our code (the drop predates the Oct 11 changes) and
   not a block page: the empties are Google's ordinary "no flights" answer, sometimes false (CPT priced from the
