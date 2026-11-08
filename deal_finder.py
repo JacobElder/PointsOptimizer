@@ -17,8 +17,9 @@ Pipeline (one run, ~8 minutes, ~200-300 seats.aero calls of 1,000/day):
   6. RANK      by dollars saved above the bar: (cash - taxes) - points * bar / 100.
                One entry per destination + cabin, other dates/origins/programs
                listed under it, 5 slots reserved for economy.
-  7. REPORT    deal_digest.json (Deal Radar) + email of deals not reported in the
-               last REPORT_COOLDOWN_DAYS: watchlist hits first, then the top list.
+  7. REPORT    deal_digest.json (Deal Radar) + email of trips not emailed in the
+               last ROUTE_MEMORY_DAYS (or materially better since): watchlist hits
+               first, then the top list.
 
 Usage:
     python deal_finder.py                 # scan, price, save digest, email new deals
@@ -60,6 +61,11 @@ DEFAULT_MAX_LOOKUPS = 150
 DEFAULT_MAX_WATCH_LOOKUPS = 80  # separate budget so a long watchlist can't starve the general scan
 DEFAULT_TOP = 20
 REPORT_COOLDOWN_DAYS = 14
+# How long a route/program/cabin emailed once is remembered: within it, the trip is
+# emailed as new again only if materially better. Oct 26-Nov 7, with 14 days, 18 of 37
+# emailed cards re-sent a trip emailed 14-26 days earlier at no better value; departures
+# are 30+ days out, so the same awards stay listed for weeks.
+ROUTE_MEMORY_DAYS = 60
 ROUND_TRIP_STAY_DAYS = 7
 ROUND_TRIP_FALLBACK_STAYS = (7, 4, 2)  # shorter stays when the 7-night return is past the booking window
 # When no round trip can be priced, value the award at this share of the one-way
@@ -1457,7 +1463,7 @@ def pick_still_available(pairs: list[tuple[str, dict]], routes: dict[str, dict],
     Oct 23: 16 of 29 site cards were held back as repeats, 6 of them at 1.5x+ their bar.
     One email is easy to miss, and nothing in the inbox says a deal is still bookable.
     Each is shown at most once a week. The original email date in `routes` is left
-    alone, so the 14-day repeat rule works as before.
+    alone, so the repeat rule (ROUTE_MEMORY_DAYS) works as before.
     """
     best: dict[str, tuple[float, dict]] = {}
     for _, d in pairs:
@@ -1995,8 +2001,9 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
     # (JFK-ANU on American went out on 5 different days). report_key includes the date
     # and points, so every new date counted as a new deal.
     reported_routes = seed_reported_routes(reported)
+    route_cutoff = (started - timedelta(days=ROUTE_MEMORY_DAYS)).isoformat()
     reported_routes.update({k: v for k, v in digest.get("reported_routes", {}).items()
-                            if v.get("at", "") >= cutoff})
+                            if v.get("at", "") >= route_cutoff})
     already_routes = {} if resend else reported_routes
 
     def is_new(key: str, d: dict) -> bool:

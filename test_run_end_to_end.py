@@ -265,3 +265,26 @@ def test_still_available_waits_a_week_after_the_email(tmp_path, monkeypatch):
 def test_still_available_shows_a_deal_at_most_once_a_week(tmp_path, monkeypatch):
     _, _, reminders = _reminder_run(tmp_path, monkeypatch, emailed_days_ago=12, shown_days_ago=2)
     assert reminders == []
+
+
+def test_deal_emailed_three_weeks_ago_is_not_emailed_as_new_again(tmp_path, monkeypatch):
+    """Oct 26-Nov 7: 18 of 37 emailed cards were trips emailed 14-26 days earlier, none
+    materially better (JFK-EZE Alaska premium economy 32,500 pts at 4.09c on Oct 19,
+    "Still available" Oct 27, "new" Nov 2). The route memory lasted 14 days, and with
+    departures 30+ days out the same awards are listed for weeks. An unimproved trip
+    comes back only in the Still available section."""
+    out, sections, reminders = _reminder_run(tmp_path, monkeypatch, emailed_days_ago=20)
+    zrh = next(d for d in out["top"] if d["dest"] == "ZRH")
+    assert zrh["cpp"] < 9.0 * 1.15  # not materially better than the earlier email
+    assert zrh["new"] is False
+    assert all("ZRH" not in v for k, v in sections.items() if not k.startswith("🔁"))
+    assert reminders == ["ZRH"]
+    # The earlier email is still remembered in the digest the next run reads.
+    assert out["reported_routes"]["aeroplan|JFK|ZRH|BUSINESS"]["cpp"] == 9.0
+
+
+def test_route_memory_runs_out_after_sixty_days(tmp_path, monkeypatch):
+    out, sections, _ = _reminder_run(tmp_path, monkeypatch, emailed_days_ago=61)
+    zrh = next(d for d in out["top"] if d["dest"] == "ZRH")
+    assert zrh["new"] is True
+    assert any("ZRH" in v for k, v in sections.items() if not k.startswith("🔁"))

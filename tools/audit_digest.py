@@ -194,21 +194,42 @@ def live(d: dict) -> None:
               f"{'  BELOW BAR NOW' if cpp < bar_of(x) else ''}")
 
 
+# Added Nov 7 2026: same 60 days as deal_finder.ROUTE_MEMORY_DAYS, written out so the
+# check doesn't move if that constant does. Reading only the last 10 digests hid 18
+# re-sends of trips emailed 14-26 days earlier (Oct 26-Nov 7).
+REPEAT_WINDOW_DAYS = 60
+
+
 def repeats(n: int = 10) -> None:
+    """Per emailed digest (last n printed), new cards whose trip was emailed in the 60 days
+    before. Re-sends that are materially better are allowed by the rule and counted apart."""
     import deal_finder as df
-    revs = subprocess.run(["git", "log", f"-{n}", "--format=%h %ad", "--date=short", "--", "deal_digest.json"],
-                          capture_output=True, text=True, cwd=ROOT).stdout.split("\n")
-    seen: dict[str, str] = {}
+    from datetime import date
+    revs = subprocess.run(["git", "log", f"-{n + REPEAT_WINDOW_DAYS}", "--format=%h %ad", "--date=short",
+                           "--", "deal_digest.json"], capture_output=True, text=True, cwd=ROOT).stdout.split("\n")
+    seen: dict[str, tuple[str, dict]] = {}
+    lines: list[str] = []
     for rev, day in [r.split() for r in revs if r][::-1]:
         d = load(rev)
         if not d.get("emailed_new"):
             continue
         new = [x for _, x in cards(d) if x.get("new")]
-        rep = [df.route_report_key(x) for x in new if df.route_report_key(x) in seen]
+        rep, better = [], 0
         for x in new:
-            seen.setdefault(df.route_report_key(x), day)
-        print(f"{day} {rev}: {len(new)} emailed, {len(rep)} repeat a trip emailed before"
-              + (f": {', '.join(rep[:6])}" if rep else ""))
+            k = df.route_report_key(x)
+            prev = seen.get(k)
+            if prev and (date.fromisoformat(day) - date.fromisoformat(prev[0])).days < REPEAT_WINDOW_DAYS:
+                if df.materially_better(x, prev[1]):
+                    better += 1
+                else:
+                    rep.append(k)
+        for x in new:
+            seen[df.route_report_key(x)] = (day, x)
+        lines.append(f"{day} {rev}: {len(new)} emailed, {len(rep)} repeat a trip emailed before"
+                     + (f": {', '.join(rep[:6])}" if rep else "")
+                     + (f" (+{better} re-sent materially better, allowed)" if better else ""))
+    for line in lines[-n:]:
+        print(line)
 
 
 def main() -> None:

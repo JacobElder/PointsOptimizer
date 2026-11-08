@@ -2994,6 +2994,546 @@
    "at": "2026-11-07T14:53:53.739681+00:00",
    "cpp": 2.802,
    "points": 45000
+  },
+  "united|EWR|JNB|BUSINESS": {
+   "at": "2026-10-24T12:40:38.076028+00:00",
+   "cpp": 5.156,
+   "points": 80000
+  },
+  "united|EWR|GRU|PREMIUM_ECONOMY": {
+   "at": "2026-10-24T12:40:38.076028+00:00",
+   "cpp": 2.261,
+   "points": 55000
+  },
+  "united|EWR|BKK|BUSINESS": {
+   "at": "2026-10-23T13:26:15.112737+00:00",
+   "cpp": 2.545,
+   "points": 110000
+  },
+  "united|EWR|PMO|PREMIUM_ECONOMY": {
+   "at": "2026-10-21T13:48:05.264170+00:00",
+   "cpp": 3.07,
+   "points": 50000
+  },
+  "flyingblue|JFK|ATH|BUSINESS": {
+   "at": "2026-10-21T13:48:05.264170+00:00",
+   "cpp": 3.721,
+   "points": 60000
+  },
+  "flyingblue|JFK|MUC|BUSINESS": {
+   "at": "2026-10-21T13:48:05.264170+00:00",
+   "cpp": 3.084,
+   "points": 60000
+  },
+  "alaska|JFK|AMS|BUSINESS": {
+   "at": "2026-10-21T13:48:05.264170+00:00",
+   "cpp": 3.372,
+   "points": 55000
+  },
+  "aeroplan|JFK|VIE|BUSINESS": {
+   "at": "2026-10-20T13:33:24.168993+00:00",
+   "cpp": 3.735,
+   "points": 75000
+  },
+  "united|EWR|DEL|BUSINESS": {
+   "at": "2026-10-20T13:33:24.168993+00:00",
+   "cpp": 2.844,
+   "points": 88000
+  },
+  "alaska|JFK|MXP|BUSINESS": {
+   "at": "2026-10-20T13:33:24.168993+00:00",
+   "cpp": 3.746,
+   "points": 55000
+  },
+  "united|EWR|NRT|PREMIUM_ECONOMY": {
+   "at": "2026-10-19T15:35:55.262060+00:00",
+   "cpp": 2.274,
+   "points": 65000
+  },
+  "aeroplan|EWR|VIE|BUSINESS": {
+   "at": "2026-10-19T15:35:55.262060+00:00",
+   "cpp": 4.361,
+   "points": 75000
+  },
+  "jetblue|JFK|PUJ|ECONOMY": {
+   "at": "2026-10-18T12:37:00.650201+00:00",
+   "cpp": 3.47,
+   "points": 5000
+  },
+  "aeroplan|JFK|HND|BUSINESS": {
+   "at": "2026-10-18T12:37:00.650201+00:00",
+   "cpp": 3.027,
+   "points": 115000
+  },
+  "flyingblue|JFK|PTY|BUSINESS": {
+   "at": "2026-10-18T12:37:00.650201+00:00",
+   "cpp": 3.829,
+   "points": 23500
+  },
+  "united|EWR|CMN|BUSINESS": {
+   "at": "2026-10-17T12:11:24.495735+00:00",
+   "cpp": 3.444,
+   "points": 88000
+  },
+  "aeroplan|EWR|PVG|BUSINESS": {
+   "at": "2026-10-17T12:11:24.495735+00:00",
+   "cpp": 3.549,
+   "points": 102500
+  },
+  "aeroplan|EWR|RAK|BUSINESS": {
+   "at": "2026-10-17T12:11:24.495735+00:00",
+   "cpp": 3.209,
+   "points": 75000
+  },
+  "flyingblue|JFK|LIS|PREMIUM_ECONOMY": {
+   "at": "2026-10-17T12:11:24.495735+00:00",
+   "cpp": 2.411,
+   "points": 37430
+  },
+  "united|EWR|CPT|PREMIUM_ECONOMY": {
+   "at": "2026-10-16T13:15:22.859404+00:00",
+   "cpp": 3.943,
+   "points": 55000
+  },
+  "united|JFK|NRT|BUSINESS": {
+   "at": "2026-10-15T13:26:04.937066+00:00",
+   "cpp": 2.885,
+   "points": 140000
+  },
+  "united|JFK|IST|BUSINESS": {
+   "at": "2026-10-15T13:26:04.937066+00:00",
+   "cpp": 3.004,
+   "points": 88000
+  },
+  "aeroplan|EWR|ICN|BUSINESS": {
+   "at": "2026-10-15T13:26:04.937066+00:00",
+   "cpp": 2.942,
+   "points": 102500
+  },
+  "jetblue|JFK|KEF|ECONOMY": {
+   "at": "2026-10-13T15:58:24.965648+00:00",
+   "cpp": 2.557,
+   "points": 12700
+  },
+  "american|JFK|GCM|ECONOMY": {
+   "at": "2026-10-13T15:58:24.965648+00:00",
+   "cpp": 2.314,
+   "points": 10000
+  },
+  "united|EWR|RAK|BUSINESS": {
+   "at": "2026-10-13T15:58:24.965648+00:00",
+   "cpp": 3.914,
+   "points": 90000
+  },
+  "united|EWR|LIM|BUSINESS": {
+   "at": "2026-10-13T15:58:24.965648+00:00",
+   "cpp": 2.469,
+   "points": 60500
+  },
+  "united|JFK|PTY|BUSINESS": {
+   "at": "2026-10-14T13:43:24.858772+00:00",
+   "cpp": 3.026,
+   "points": 38500
+  },
+  "united|JFK|SIN|BUSINESS": {
+   "at": "2026-10-13T15:58:24.965648+00:00",
+   "cpp": 3.428,
+   "points": 110000
+  },
+  "british|EWR|LHR|BUSINESS": {
+   "at": "2026-10-13T15:58:24.965648+00:00",
+   "cpp": 4.667,
+   "points": 33000
+  },
+  "aeroplan|JFK|IST|BUSINESS": {
+   "at": "2026-10-14T13:43:24.858772+00:00",
+   "cpp": 3.148,
+   "points": 75000
+  },
+  "united|EWR|SIN|BUSINESS": {
+   "at": "2026-10-14T13:43:24.858772+00:00",
+   "cpp": 3.402,
+   "points": 110000
+  },
+  "united|EWR|TLV|BUSINESS": {
+   "at": "2026-10-14T13:43:24.858772+00:00",
+   "cpp": 3.052,
+   "points": 88000
+  },
+  "aeroplan|EWR|CTA|BUSINESS": {
+   "at": "2026-10-12T16:07:13.392135+00:00",
+   "cpp": 3.958,
+   "points": 75000
+  },
+  "aeroplan|JFK|ZRH|BUSINESS": {
+   "at": "2026-10-12T16:07:13.392135+00:00",
+   "cpp": 3.989,
+   "points": 60000
+  },
+  "british|EWR|LHR|PREMIUM_ECONOMY": {
+   "at": "2026-10-12T16:07:13.392135+00:00",
+   "cpp": 2.649,
+   "points": 27500
+  },
+  "united|EWR|RAK|PREMIUM_ECONOMY": {
+   "at": "2026-10-11T14:55:03.427384+00:00",
+   "cpp": 1.903,
+   "points": 55000
+  },
+  "united|EWR|ATH|BUSINESS": {
+   "at": "2026-10-11T14:55:03.427384+00:00",
+   "cpp": 2.857,
+   "points": 88000
+  },
+  "united|JFK|VIE|BUSINESS": {
+   "at": "2026-10-11T14:55:03.427384+00:00",
+   "cpp": 3.601,
+   "points": 88000
+  },
+  "aeroplan|EWR|HKG|BUSINESS": {
+   "at": "2026-10-11T14:55:03.427384+00:00",
+   "cpp": 2.803,
+   "points": 102500
+  },
+  "aeroplan|JFK|DEL|BUSINESS": {
+   "at": "2026-10-11T14:55:03.427384+00:00",
+   "cpp": 2.732,
+   "points": 90000
+  },
+  "united|EWR|IST|BUSINESS": {
+   "at": "2026-10-09T15:18:27.723292+00:00",
+   "cpp": 2.955,
+   "points": 88000
+  },
+  "flyingblue|JFK|NRT|BUSINESS": {
+   "at": "2026-10-09T15:18:27.723292+00:00",
+   "cpp": 2.471,
+   "points": 115000
+  },
+  "aeroplan|JFK|ICN|BUSINESS": {
+   "at": "2026-10-09T15:18:27.723292+00:00",
+   "cpp": 3.376,
+   "points": 102500
+  },
+  "jetblue|JFK|SJU|ECONOMY": {
+   "at": "2026-10-08T15:36:41.084541+00:00",
+   "cpp": 2.125,
+   "points": 7900
+  },
+  "jetblue|JFK|SXM|ECONOMY": {
+   "at": "2026-10-08T15:36:41.084541+00:00",
+   "cpp": 2.236,
+   "points": 4400
+  },
+  "united|JFK|HND|BUSINESS": {
+   "at": "2026-10-08T15:36:41.084541+00:00",
+   "cpp": 2.609,
+   "points": 110000
+  },
+  "alaska|JFK|BGI|BUSINESS": {
+   "at": "2026-10-08T15:36:41.084541+00:00",
+   "cpp": 2.756,
+   "points": 25000
+  },
+  "alaska|EWR|MAD|BUSINESS": {
+   "at": "2026-10-08T15:36:41.084541+00:00",
+   "cpp": 4.062,
+   "points": 55000
+  },
+  "aeroplan|EWR|HND|BUSINESS": {
+   "at": "2026-10-06T15:11:54.751887+00:00",
+   "cpp": 3.611,
+   "points": 102500
+  },
+  "alaska|JFK|FCO|BUSINESS": {
+   "at": "2026-10-06T15:11:54.751887+00:00",
+   "cpp": 3.404,
+   "points": 55000
+  },
+  "flyingblue|JFK|CPT|PREMIUM_ECONOMY": {
+   "at": "2026-10-06T15:11:54.751887+00:00",
+   "cpp": 2.249,
+   "points": 65000
+  },
+  "flyingblue|JFK|RAK|BUSINESS": {
+   "at": "2026-10-07T01:54:02.027268+00:00",
+   "cpp": 3.081,
+   "points": 60000
+  },
+  "aeroplan|EWR|DEL|BUSINESS": {
+   "at": "2026-10-07T01:54:02.027268+00:00",
+   "cpp": 3.689,
+   "points": 90000
+  },
+  "united|EWR|MUC|PREMIUM_ECONOMY": {
+   "at": "2026-10-07T01:54:02.027268+00:00",
+   "cpp": 2.117,
+   "points": 50000
+  },
+  "flyingblue|EWR|RAK|PREMIUM_ECONOMY": {
+   "at": "2026-10-05T16:05:24.471945+00:00",
+   "cpp": Infinity,
+   "points": 40000
+  },
+  "alaska|JFK|LIM|BUSINESS": {
+   "at": "2026-10-05T16:05:24.471945+00:00",
+   "cpp": Infinity,
+   "points": 50000
+  },
+  "united|EWR|VIE|BUSINESS": {
+   "at": "2026-10-05T16:05:24.471945+00:00",
+   "cpp": Infinity,
+   "points": 88000
+  },
+  "united|EWR|CPT|BUSINESS": {
+   "at": "2026-10-05T16:05:24.471945+00:00",
+   "cpp": Infinity,
+   "points": 88000
+  },
+  "united|EWR|HKG|BUSINESS": {
+   "at": "2026-10-05T16:05:24.471945+00:00",
+   "cpp": Infinity,
+   "points": 110000
+  },
+  "aeroplan|JFK|SIN|BUSINESS": {
+   "at": "2026-10-05T16:05:24.471945+00:00",
+   "cpp": Infinity,
+   "points": 102500
+  },
+  "united|EWR|BCN|PREMIUM_ECONOMY": {
+   "at": "2026-10-05T16:05:24.471945+00:00",
+   "cpp": Infinity,
+   "points": 50000
+  },
+  "jetblue|EWR|KEF|ECONOMY": {
+   "at": "2026-10-04T14:05:04.639844+00:00",
+   "cpp": Infinity,
+   "points": 12700
+  },
+  "united|EWR|CTA|BUSINESS": {
+   "at": "2026-10-04T14:05:04.639844+00:00",
+   "cpp": Infinity,
+   "points": 88000
+  },
+  "aeroplan|EWR|CMN|BUSINESS": {
+   "at": "2026-10-04T14:05:04.639844+00:00",
+   "cpp": Infinity,
+   "points": 75000
+  },
+  "aeroplan|EWR|PMO|BUSINESS": {
+   "at": "2026-10-04T14:05:04.639844+00:00",
+   "cpp": Infinity,
+   "points": 75000
+  },
+  "aeroplan|EWR|IST|BUSINESS": {
+   "at": "2026-10-04T14:05:04.639844+00:00",
+   "cpp": Infinity,
+   "points": 75000
+  },
+  "flyingblue|JFK|SCL|BUSINESS": {
+   "at": "2026-10-04T14:05:04.639844+00:00",
+   "cpp": Infinity,
+   "points": 55000
+  },
+  "aeroplan|EWR|CUZ|BUSINESS": {
+   "at": "2026-10-03T13:24:02.843991+00:00",
+   "cpp": Infinity,
+   "points": 50000
+  },
+  "alaska|JFK|PLS|ECONOMY": {
+   "at": "2026-10-03T13:24:02.843991+00:00",
+   "cpp": Infinity,
+   "points": 7500
+  },
+  "aeroplan|EWR|ATH|BUSINESS": {
+   "at": "2026-10-03T13:24:02.843991+00:00",
+   "cpp": Infinity,
+   "points": 75000
+  },
+  "aeroplan|EWR|GRU|BUSINESS": {
+   "at": "2026-10-03T13:24:02.843991+00:00",
+   "cpp": Infinity,
+   "points": 68990
+  },
+  "aeroplan|EWR|SIN|BUSINESS": {
+   "at": "2026-10-03T13:24:02.843991+00:00",
+   "cpp": Infinity,
+   "points": 102500
+  },
+  "alaska|JFK|HND|BUSINESS": {
+   "at": "2026-10-03T13:24:02.843991+00:00",
+   "cpp": Infinity,
+   "points": 85000
+  },
+  "virginatlantic|EWR|ARN|PREMIUM_ECONOMY": {
+   "at": "2026-10-03T13:24:02.843991+00:00",
+   "cpp": Infinity,
+   "points": 37500
+  },
+  "turkish|JFK|IST|BUSINESS": {
+   "at": "2026-10-02T14:44:33.411006+00:00",
+   "cpp": Infinity,
+   "points": 65000
+  },
+  "alaska|JFK|MNL|BUSINESS": {
+   "at": "2026-10-02T14:44:33.411006+00:00",
+   "cpp": Infinity,
+   "points": 85000
+  },
+  "flyingblue|JFK|DUB|PREMIUM_ECONOMY": {
+   "at": "2026-10-02T14:44:33.411006+00:00",
+   "cpp": Infinity,
+   "points": 34940
+  },
+  "united|EWR|PMO|BUSINESS": {
+   "at": "2026-10-01T16:04:30.185386+00:00",
+   "cpp": Infinity,
+   "points": 88000
+  },
+  "flyingblue|EWR|RAK|BUSINESS": {
+   "at": "2026-10-01T16:04:30.185386+00:00",
+   "cpp": Infinity,
+   "points": 60000
+  },
+  "alaska|JFK|ANU|BUSINESS": {
+   "at": "2026-10-01T16:04:30.185386+00:00",
+   "cpp": Infinity,
+   "points": 25000
+  },
+  "virginatlantic|JFK|LIM|BUSINESS": {
+   "at": "2026-10-01T16:04:30.185386+00:00",
+   "cpp": Infinity,
+   "points": 50000
+  },
+  "jetblue|EWR|SDQ|ECONOMY": {
+   "at": "2026-09-30T14:55:17.496770+00:00",
+   "cpp": Infinity,
+   "points": 4800
+  },
+  "jetblue|JFK|PLS|ECONOMY": {
+   "at": "2026-09-30T14:55:17.496770+00:00",
+   "cpp": Infinity,
+   "points": 7200
+  },
+  "united|EWR|TPE|BUSINESS": {
+   "at": "2026-09-30T14:55:17.496770+00:00",
+   "cpp": Infinity,
+   "points": 110000
+  },
+  "jetblue|JFK|CUN|ECONOMY": {
+   "at": "2026-09-29T14:12:27.347623+00:00",
+   "cpp": Infinity,
+   "points": 4500
+  },
+  "alaska|JFK|BCN|BUSINESS": {
+   "at": "2026-09-29T14:12:27.347623+00:00",
+   "cpp": Infinity,
+   "points": 55000
+  },
+  "united|JFK|TPE|BUSINESS": {
+   "at": "2026-09-29T14:12:27.347623+00:00",
+   "cpp": Infinity,
+   "points": 110000
+  },
+  "flyingblue|JFK|KEF|PREMIUM_ECONOMY": {
+   "at": "2026-09-28T14:35:50.600342+00:00",
+   "cpp": Infinity,
+   "points": 28430
+  },
+  "aeroplan|EWR|ZRH|BUSINESS": {
+   "at": "2026-09-28T14:35:50.600342+00:00",
+   "cpp": Infinity,
+   "points": 60000
+  },
+  "united|JFK|EDI|BUSINESS": {
+   "at": "2026-09-28T14:35:50.600342+00:00",
+   "cpp": Infinity,
+   "points": 115000
+  },
+  "united|EWR|LIS|BUSINESS": {
+   "at": "2026-09-28T14:35:50.600342+00:00",
+   "cpp": Infinity,
+   "points": 88000
+  },
+  "american|JFK|BGI|ECONOMY": {
+   "at": "2026-09-27T13:31:55.067961+00:00",
+   "cpp": Infinity,
+   "points": 9500
+  },
+  "flyingblue|JFK|CMN|BUSINESS": {
+   "at": "2026-09-27T13:31:55.067961+00:00",
+   "cpp": Infinity,
+   "points": 60000
+  },
+  "flyingblue|JFK|SGN|BUSINESS": {
+   "at": "2026-09-27T13:31:55.067961+00:00",
+   "cpp": Infinity,
+   "points": 115000
+  },
+  "flyingblue|JFK|NBO|BUSINESS": {
+   "at": "2026-09-27T13:31:55.067961+00:00",
+   "cpp": Infinity,
+   "points": 115000
+  },
+  "united|EWR|PLS|ECONOMY": {
+   "at": "2026-09-27T13:31:55.067961+00:00",
+   "cpp": Infinity,
+   "points": 16100
+  },
+  "flyingblue|JFK|AKL|PREMIUM_ECONOMY": {
+   "at": "2026-09-27T13:31:55.067961+00:00",
+   "cpp": Infinity,
+   "points": 74500
+  },
+  "american|JFK|UVF|ECONOMY": {
+   "at": "2026-09-26T12:40:28.341010+00:00",
+   "cpp": Infinity,
+   "points": 9500
+  },
+  "american|JFK|PLS|ECONOMY": {
+   "at": "2026-09-25T13:15:22.481950+00:00",
+   "cpp": Infinity,
+   "points": 10000
+  },
+  "aeroplan|JFK|NRT|BUSINESS": {
+   "at": "2026-09-25T13:15:22.481950+00:00",
+   "cpp": Infinity,
+   "points": 115000
+  },
+  "flyingblue|EWR|RAK|ECONOMY": {
+   "at": "2026-09-25T13:15:22.481950+00:00",
+   "cpp": Infinity,
+   "points": 25000
+  },
+  "flyingblue|JFK|CPT|BUSINESS": {
+   "at": "2026-09-25T13:15:22.481950+00:00",
+   "cpp": Infinity,
+   "points": 145000
+  },
+  "united|EWR|CPT|ECONOMY": {
+   "at": "2026-09-25T13:15:22.481950+00:00",
+   "cpp": Infinity,
+   "points": 45000
+  },
+  "flyingblue|JFK|RAK|PREMIUM_ECONOMY": {
+   "at": "2026-09-24T13:12:49.560837+00:00",
+   "cpp": Infinity,
+   "points": 40000
+  },
+  "emirates|JFK|DXB|BUSINESS": {
+   "at": "2026-09-24T13:12:49.560837+00:00",
+   "cpp": Infinity,
+   "points": 96000
+  },
+  "flyingblue|JFK|EDI|BUSINESS": {
+   "at": "2026-09-24T13:12:49.560837+00:00",
+   "cpp": Infinity,
+   "points": 60000
+  },
+  "jetblue|JFK|FRA|PREMIUM_ECONOMY": {
+   "at": "2026-09-24T13:12:49.560837+00:00",
+   "cpp": Infinity,
+   "points": 35600
   }
  },
  "still_available_shown": {

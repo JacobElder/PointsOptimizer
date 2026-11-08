@@ -312,8 +312,34 @@ def test_repeats_counts_only_new_cards_by_route_key(monkeypatch, capsys):
     audit.repeats(3)
     assert capsys.readouterr().out.splitlines() == [
         "2026-10-21 c1: 3 emailed, 0 repeat a trip emailed before",
-        "2026-10-23 c3: 1 emailed, 1 repeat a trip emailed before: aeroplan|EWR|TLV|BUSINESS",
+        "2026-10-23 c3: 1 emailed, 0 repeat a trip emailed before (+1 re-sent materially better, allowed)",
     ]
+
+
+def test_repeats_flags_an_unimproved_resend_weeks_later_but_not_after_sixty_days(monkeypatch, capsys):
+    """Nov 2: JFK-EZE went out as new 14 days after the same 32,500-pt award was emailed;
+    --repeats read only the last 10 digests and reported 0."""
+    FakeGit(monkeypatch, [
+        ("e3", "2027-01-15", digest([base_card(new=True)])),
+        ("e2", "2026-11-02", digest([base_card(new=True)])),
+        ("e1", "2026-10-19", digest([base_card(new=True)])),
+    ])
+    audit.repeats()
+    assert capsys.readouterr().out.splitlines() == [
+        "2026-10-19 e1: 1 emailed, 0 repeat a trip emailed before",
+        "2026-11-02 e2: 1 emailed, 1 repeat a trip emailed before: aeroplan|EWR|TLV|BUSINESS",
+        "2027-01-15 e3: 1 emailed, 0 repeat a trip emailed before",
+    ]
+
+
+def test_repeats_prints_only_the_last_n_but_remembers_older_emails(monkeypatch, capsys):
+    FakeGit(monkeypatch, [
+        ("f2", "2026-11-02", digest([base_card(new=True)])),
+        ("f1", "2026-10-19", digest([base_card(new=True)])),
+    ])
+    audit.repeats(1)
+    assert capsys.readouterr().out.splitlines() == [
+        "2026-11-02 f2: 1 emailed, 1 repeat a trip emailed before: aeroplan|EWR|TLV|BUSINESS"]
 
 
 def test_repeats_reminded_card_does_not_seed_history(monkeypatch, capsys):

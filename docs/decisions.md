@@ -6,6 +6,39 @@ revisit it. Code comments point here; change the entry when you change the decis
 
 ---
 
+## 2026-11-07 — Remember emailed trips for 60 days, not 14
+
+**Decision.** A route/program/cabin that was emailed is remembered for **60 days**
+(`ROUTE_MEMORY_DAYS`, was the 14-day `REPORT_COOLDOWN_DAYS`). Within that time it is emailed
+as new again only if materially better (≥15% more CPP or ≤90% of the points, unchanged).
+An unimproved trip comes back only in "Still available" (1.5× its bar, at most weekly,
+unchanged). The per-award `reported` keys still use 14 days. On Nov 7 the committed
+digest's `reported_routes` was refilled from git history (37 → 145 trips, back to Sep 24),
+because each run had dropped entries older than 14 days. `tools/audit_digest.py --repeats`
+now reads 60 days of digests (it read 10, so it missed all of these) and counts materially
+better re-sends apart.
+
+**Why.** Oct 26–Nov 7: 18 of 37 emailed cards were trips emailed 14–26 days earlier, none
+materially better. JFK–EZE Alaska premium economy 32,500 pts at 4.09¢: emailed Oct 19,
+"Still available" Oct 27, "new" Nov 2. EWR–ATH Emirates: 5.51¢ Oct 20, then "new" at 3.31¢
+Nov 3. Since Oct 21 departures are 30+ days out, so the same far-out awards stay listed for
+weeks and a 14-day memory re-emails them every two weeks. Replay of Oct 26–Nov 7 (the replay
+of the old rule matched what was sent: 37 cards, 20 re-sent trips, 9 "Still available"):
+with 30, 60, 90 or 365 days, 19 cards emailed, 2 re-sent trips (both materially better:
+JFK–LHR Alaska 1.19×, JFK–PRG Flying Blue 1.19×), "Still available" 15, emails on 10 of
+13 days instead of 13.
+
+**Rejected.** 30 days: the replay can't tell the windows apart, but the observed re-sends
+came at 14–26 days and the same awards stay listed for months, so 30 days would re-send
+them in another two weeks. No expiry at all: a trip from months ago is reasonably new
+again. "Still available" once per email instead of weekly: 12 vs 15 over the replay; kept
+the user's weekly rule.
+
+**Revisit** if `--repeats` shows re-sends just after 60 days, or the user finds the same
+deal in "Still available" too often (it can now show weekly for up to 60 days).
+
+---
+
 ## 2026-10-23 — Show exceptional earlier deals again, in their own section
 
 **Decision.** The email gets a last section, "🔁 Still available from earlier emails"

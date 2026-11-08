@@ -1,4 +1,4 @@
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 
 import deal_finder
 import route_search
@@ -174,8 +174,13 @@ def pipeline(monkeypatch):
     return state
 
 
+def _utc_today():
+    # route_search clips to the UTC date; date.today() is a day behind on a US evening.
+    return datetime.now(timezone.utc).date()
+
+
 def _days(n):
-    return (date.today() + timedelta(days=n)).isoformat()
+    return (_utc_today() + timedelta(days=n)).isoformat()
 
 
 def test_search_window_outside_bookable_range_never_scans(pipeline):
@@ -187,8 +192,8 @@ def test_search_window_outside_bookable_range_never_scans(pipeline):
 
 
 def test_search_window_is_clipped_to_tomorrow_and_the_lookahead(pipeline):
-    route_search.search("jfk", "lis", ["BUSINESS"], date.today() - timedelta(days=3),
-                        date.today() + timedelta(days=900))
+    route_search.search("jfk", "lis", ["BUSINESS"], _utc_today() - timedelta(days=3),
+                        _utc_today() + timedelta(days=900))
     cfg = pipeline.config
     assert cfg["start_date"] == _days(1)
     assert cfg["end_date"] == _days(330)
