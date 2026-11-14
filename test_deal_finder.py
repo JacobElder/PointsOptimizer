@@ -384,7 +384,7 @@ def test_shortlist_is_repriced_on_its_own_date_not_a_borrowed_one(monkeypatch):
     s = _scored("CMN", "BUSINESS", "flyingblue", "JFK", 60000, 3685)
     stats = deal_finder.reprice_fresh([s], log=lambda m: None)
     assert asked == [False]  # never a borrowed quote
-    assert stats == {"repriced": 1, "changed": 1, "failed": 0}
+    assert stats == {"repriced": 1, "changed": 1, "failed": 0, "retried": 0}
     assert s.cash == 1190.0 and s.cpp == pytest.approx((1190.0 - 50.0) / 60000 * 100)
 
 
@@ -426,7 +426,8 @@ def test_fresh_repricing_reuses_a_quote_from_this_run(monkeypatch):
 
 
 def test_an_empty_fresh_answer_does_not_erase_the_saved_fare(monkeypatch):
-    s, asked = _puj_store(monkeypatch, [None])
+    monkeypatch.setattr(deal_finder, "FRESH_RETRY_PAUSE_S", 0)
+    s, asked = _puj_store(monkeypatch, [None, None])  # empty, and empty again on the retry
     stats = deal_finder.reprice_fresh([s], log=lambda m: None)
     assert asked and stats["failed"] == 1
     assert [q["price_usd"] for q in cash_quotes.load()] == [229.0]
@@ -1560,3 +1561,16 @@ def test_still_available_lists_an_award_once_when_it_is_in_two_sections():
     top, watch = _card("A", 4.0), _card("A", 4.0, watch_bar=2.0)
     picked = deal_finder.pick_still_available([("A", top), ("watch:x|A", watch)], routes, {}, now)
     assert len(picked) == 1
+
+
+def test_an_empty_fresh_answer_is_asked_again_before_the_old_fare_is_kept(monkeypatch):
+    """Nov 13-14 (Google throttled): 8 of 29 and 10 of 28 published cards kept an
+    earlier day's fare because their one fresh lookup came back empty, and 4 of 12
+    emailed cards Nov 8-14 went out that way (JFK-EZE on a 13-day-old fare). The
+    end-of-run one-way retry recovers ~80% of empties; the fresh check had none."""
+    monkeypatch.setattr(deal_finder, "FRESH_RETRY_PAUSE_S", 0)
+    s, asked = _puj_store(monkeypatch, [None, 154.0])
+    stats = deal_finder.reprice_fresh([s], log=lambda m: None)
+    assert asked == [("JFK", "PUJ", "2026-11-09")] * 2
+    assert s.cash == 154.0
+    assert stats["repriced"] == 1 and stats["failed"] == 0 and stats["retried"] == 1

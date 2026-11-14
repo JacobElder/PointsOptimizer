@@ -1382,6 +1382,8 @@ def pick_top(leaders: list[Scored], top: int, min_economy: int | None = None) ->
 # published cards a day (Oct 7-18) carried an earlier day's fare, and JFK-PUJ was
 # emailed at Oct 16's $229 when Google said $154. 6 h covers anything this run priced.
 FRESH_QUOTE_MAX_AGE_DAYS = 0.25
+FRESH_RETRY_MAX = 40  # fresh lookups that came back empty, asked once more at the end
+FRESH_RETRY_PAUSE_S = 2.0
 
 
 def reprice_fresh(deals: list[Scored], log=print) -> dict:
@@ -1392,27 +1394,52 @@ def reprice_fresh(deals: list[Scored], log=print) -> dict:
     hand found all 9 lower, one by 68% (a 5.52c "deal" was really 1.36c). This is
     ~50 free lookups and removes the single largest error in the digest.
     """
-    stats = {"repriced": 0, "changed": 0, "failed": 0}
-    for s in deals:
-        if s.cash is None:
-            continue
+    stats = {"repriced": 0, "changed": 0, "failed": 0, "retried": 0}
+
+    def _fresh(s: Scored, retry: bool = False) -> bool | None:
+        """True if priced; False if the answer was empty (worth asking again); None if
+        it can't be asked (outside Google's date window, or no flight source)."""
         try:
+            # refresh on the retry: an empty answer may have been saved a moment ago,
+            # and the cache would hand it back without asking Google.
             q = cash_quotes.get_quote(s.c.origin, s.c.dest, s.c.date, price_cabin(s.c.cabin),
-                                      allow_approx=False, max_age_days=FRESH_QUOTE_MAX_AGE_DAYS)
-        except (cash_quotes.OutOfWindow, flight_search.NotConfigured, flight_search.SearchFailed):
-            stats["failed"] += 1
-            continue
+                                      allow_approx=False, max_age_days=FRESH_QUOTE_MAX_AGE_DAYS,
+                                      refresh=retry)
+        except (cash_quotes.OutOfWindow, flight_search.NotConfigured):
+            return None
+        except flight_search.SearchFailed:
+            return False
         if q is None or q.price_usd is None:
-            stats["failed"] += 1
-            continue
+            return False
         before = s.cash
         stats["repriced"] += 1
         _apply_quote(s, q)  # keeps the round-trip floor via _finalize_cash
         if before and abs(s.cash - before) / before > 0.05:
             stats["changed"] += 1
-    if stats["repriced"]:
+        return True
+
+    empty = []
+    for s in deals:
+        if s.cash is None:
+            continue
+        got = _fresh(s)
+        if got is None:
+            stats["failed"] += 1
+        elif not got:
+            empty.append(s)
+    # Asked once more, spaced: Google's empties come in bursts (Nov 13-14, 8-10 of ~28
+    # published cards kept an earlier day's fare after one empty answer).
+    for i, s in enumerate(empty[:FRESH_RETRY_MAX]):
+        if i and FRESH_RETRY_PAUSE_S:
+            time.sleep(FRESH_RETRY_PAUSE_S)
+        stats["retried"] += 1
+        if not _fresh(s, retry=True):
+            stats["failed"] += 1
+    stats["failed"] += max(len(empty) - FRESH_RETRY_MAX, 0)
+    if stats["repriced"] or stats["failed"]:
         log(f"Fresh re-pricing of the shortlist: {stats['repriced']} re-checked, "
-            f"{stats['changed']} moved more than 5%, {stats['failed']} unavailable")
+            f"{stats['changed']} moved more than 5%, {stats['failed']} unavailable"
+            + (f" ({stats['retried']} asked twice)" if stats["retried"] else ""))
     return stats
 
 

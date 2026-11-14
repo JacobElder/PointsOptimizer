@@ -787,8 +787,9 @@ def test_fresh_repricing_keeps_the_fare_when_google_errors(monkeypatch):
     unpriced = _unpriced()
     logs = []
     stats = deal_finder.reprice_fresh([s, unpriced], log=logs.append)
-    assert stats == {"repriced": 0, "changed": 0, "failed": 1} and s.cash == 5000.0
-    assert logs == []  # nothing re-priced, nothing to report
+    assert stats == {"repriced": 0, "changed": 0, "failed": 1, "retried": 1} and s.cash == 5000.0
+    assert logs == ["Fresh re-pricing of the shortlist: 0 re-checked, 0 moved more than 5%, "
+                    "1 unavailable (1 asked twice)"]  # a fully failed check is worth seeing
 
 
 def test_selection_out_of_rounds_says_so_in_the_log(monkeypatch):

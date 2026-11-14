@@ -128,7 +128,7 @@ removed Oct 12), deleting SERPAPI_KEY from the Streamlit Cloud secrets.
 - **Goal:** call the system finished after 5 consecutive clean runs — email arrives with no one
   stepping in, every emailed deal verified and still above its bar at live fares, no repeat
   emails (outside the labeled "Still available" section), no code fixes needed — then switch to a weekly `make audit-live`.
-- **Clean days so far:** 0 of 5 (the 60-day route memory shipped Nov 7 restarts it; Oct 26–Nov 7 had no code change
+- **Clean days so far:** 0 of 5 (Nov 14 fresh-fare retry restarts it; Nov 8–14 had OLD FARE emails, see below) (the 60-day route memory shipped Nov 7 restarted it; Oct 26–Nov 7 had no code change
   but re-sent 18 unimproved deals as new, so not counted). (Oct 24–25 clean.) (Oct 22–23 were clean; the "Still available" email section shipped Oct 23 evening restarted it). (Oct 20–21 were clean; the 30-day lead-time change on Oct 21 evening restarts it, as the usual-fare rule did). (Oct 19 was clean, but the usual-fare email rule shipped that evening restarted it.) (Oct 18: an emailed card fell below bar and a code fix shipped; Oct 17's one-way retry fix restarted it; Oct 17's own run was clean). (Oct 14–15 clean; Oct 16 reset it: JFK–PUJ fell below bar.) (Oct 12 was clean; Oct 13 reset it: an emailed deal fell below its bar.) (Oct 6–8 were clean, but the user decided on Oct 13 to count conservatively: Oct 9 (deal fell below bar) and the code fixes on Oct 10 and 11 reset the streak.) Fixes from Oct 5 (repeat suppression, fare-spike cap,
   Emirates cabin links, test isolation of balance files, runner pin) had their first real run Oct 6
   and worked. Oct 7's digest came from the hand-clicked cron-job.org test (01:53 UTC), so the
@@ -314,6 +314,22 @@ removed Oct 12), deleting SERPAPI_KEY from the Streamlit Cloud secrets.
   emails and some "Still available" cards; a day with nothing new sends no email (that's correct).
   Transfer-bonus PRs #2–#4 unmerged (the digest warns "last checked 26 days ago"); #4 has Chase 30% to
   Iberia/BA/Aer Lingus through Dec 1.
+- **Nov 8–14: audited together on Nov 14; one code fix.** A digest every day (GitHub schedule Nov 8–9 and 14,
+  the Claude routine Nov 10–13). 12 emailed, 0 unimproved repeats (`--repeats`: every re-send was materially
+  better); the 60-day memory works. Live (Nov 14): all emailed cards from Nov 12–14 still above bar, none moved down
+  (JFK–EZE Alaska business 50k 3.40¢ → 4.37¢, EWR–DEL United 88k 3.32¢ → 4.10¢). But by the letter not clean:
+  THROTTLED Nov 10, 11, 13, 14 (round trips 57–61% on 11/13/14), and **published cards on an earlier day's fare
+  climbed to 5, 8, 10 of ~28** (Nov 11/13/14), 4 of them emailed (`OLD FARE`: JFK–CMN Qatar, JFK–LHR Virgin PE
+  on an Oct 16 fare, JFK–DUB, JFK–EZE on Nov 1's), plus EWR–DEL Nov 12 emailed on an estimated round trip. Every one
+  held live (most went *up*), so holding such cards back would have cost 4 good emails; not done. Cause: the
+  fresh re-pricing asked Google once, and on an empty answer kept the saved fare. Fix: empties are asked once
+  more at the end, 2 s apart, with `refresh` (`FRESH_RETRY_MAX` 40). Log line now ends `(N asked twice)`. **Watch
+  Nov 15:** `make audit` `fares:` back toward ~0–3 on a throttled day; run time (+≤80 s). Clean-day count: 0 of 5.
+  Also seen, not fixed: flight lookups 99–129 a day (86 Nov 8; norm ~50–80, cap 260). Selection hit 12 rounds with
+  the warning Nov 13 and 14 (54–55 lookups); the `Selection rounds:` line shows the tail: from round ~5, one card per
+  round, each Aeroplan/United connecting route (EWR–CAI 8 times, then EWR–CUZ, –PMO, –CTA) "replaced (connects)"
+  by a sibling date on the same route that is assumed nonstop until checked. That is the reproducing test to
+  write next: a route already seen connecting should mark its unchecked siblings as connecting.
 - **Google empties on the runner (investigated Oct 15–16).** Every daily run since Oct 10 lost 17–55% of
   round trips (Sep 28–Oct 9: 98–100%, except Oct 4). Not our code (the drop predates the Oct 11 changes) and
   not a block page: the empties are Google's ordinary "no flights" answer, sometimes false (CPT priced from the
