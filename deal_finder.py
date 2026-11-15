@@ -2299,6 +2299,11 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
                                            shown_before, started)
     emailed = 0
     out_email_failed: list[str] = []
+    # Which cards the user actually received. `new` only says a card qualified: a
+    # watchlist card past WATCH_EMAIL_MAX or a failed send never arrives, and Still
+    # available cards aren't new. Set to True below once the send succeeds.
+    for _, d in top_pairs + held_pairs + watch_pairs:
+        d["emailed"] = False
     if send_email and fresh and not deal_email.is_configured():
         log("::warning::Gmail isn't configured (GMAIL_ADDRESS / GMAIL_APP_PASSWORD): no digest email sent.")
     if send_email and fresh and deal_email.is_configured():
@@ -2345,10 +2350,11 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
             )
             emailed = n_unique
             for k, d in fresh:
+                d["emailed"] = True
                 reported.setdefault(k, started.isoformat())
                 reported_routes[route_report_key(d)] = route_memory_entry(d, started.isoformat())
             for d in still_available:
-                d["reminded"] = True
+                d["reminded"] = d["emailed"] = True
                 shown_before[route_report_key(d)] = started.isoformat()
         except Exception as e:
             log(f"::error::Deal Finder could not send the digest email: {type(e).__name__}: {e}")

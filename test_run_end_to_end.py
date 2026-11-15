@@ -297,6 +297,31 @@ def test_route_memory_runs_out_after_sixty_days(tmp_path, monkeypatch):
     assert any("ZRH" in v for k, v in sections.items() if not k.startswith("🔁"))
 
 
+def test_cards_in_the_sent_email_are_marked_emailed(tmp_path, monkeypatch):
+    """`new` says a card qualified, not that it went out (watchlist cards past
+    WATCH_EMAIL_MAX, a failed send) and misses Still available cards, so the audit
+    couldn't tell which cards the user actually received."""
+    out, _, reminders = _reminder_run(tmp_path, monkeypatch, emailed_days_ago=8)
+    by_dest = {d["dest"]: d for d in out["top"]}
+    assert reminders == ["ZRH"]
+    assert by_dest["FRA"]["new"] is True and by_dest["FRA"]["emailed"] is True
+    assert by_dest["ZRH"]["new"] is False and by_dest["ZRH"]["emailed"] is True  # Still available
+
+
+def test_nothing_is_marked_emailed_when_the_send_fails(tmp_path, monkeypatch):
+    _fake_pipeline(tmp_path, monkeypatch, [_award("FRA", "BUSINESS", "aeroplan", 50000, 61)])
+    monkeypatch.setattr(deal_finder, "_load_digest", lambda: {})
+    monkeypatch.setattr(deal_finder.deal_email, "is_configured", lambda: True)
+
+    def _fail(*a, **k):
+        raise OSError("smtp down")
+
+    monkeypatch.setattr(deal_finder.deal_email, "send_digest_email", _fail)
+    out = deal_finder.run(max_lookups=10, top=5, send_email=True, log=lambda m: None)
+    fra = next(d for d in out["top"] if d["dest"] == "FRA")
+    assert out["email_failed"] and fra["new"] is True and fra["emailed"] is False
+
+
 def test_every_flight_lookup_is_logged_by_the_phase_that_made_it(tmp_path, monkeypatch):
     """Nov 8-14 logged 99-129 flight lookups a day, but the per-selection lines didn't
     add up to that total: the held-miles selection and the alternatives check made
