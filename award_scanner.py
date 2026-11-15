@@ -75,34 +75,41 @@ def transferable_sources(include_planned: bool = False) -> dict[str, list[str]]:
 
 
 def _parse(item: dict, cabin: str) -> AwardCandidate | None:
+    """One seats.aero row as a candidate, or None if it has no space or can't be read.
+
+    A malformed row (a non-numeric tax or seat count, a missing Route) is skipped:
+    it used to raise and end the scan.
+    """
     p = _CABIN_PREFIX[cabin]
-    if not item.get(f"{p}Available"):
-        return None
     try:
+        if not item.get(f"{p}Available"):
+            return None
         points = int(item.get(f"{p}MileageCostRaw") or item.get(f"{p}MileageCost") or 0)
-    except (TypeError, ValueError):
+        if points <= 0:
+            return None
+        route = item["Route"]
+        if not (route.get("OriginAirport") and route.get("DestinationAirport")):
+            return None
+        source = item.get("Source", "")
+        return AwardCandidate(
+            id=item.get("ID", ""),
+            source=source,
+            program=seats_aero.SOURCE_TO_PARTNER.get(source, source),
+            origin=route.get("OriginAirport", ""),
+            dest=route.get("DestinationAirport", ""),
+            date=item.get("Date", ""),
+            cabin=cabin,
+            points=points,
+            taxes=float(item.get(f"{p}TotalTaxesRaw") or 0) / 100.0,
+            taxes_currency=item.get("TaxesCurrency") or "USD",
+            seats=int(item.get(f"{p}RemainingSeatsRaw") or 0),
+            direct=bool(item.get(f"{p}DirectRaw")),
+            airlines=item.get(f"{p}AirlinesRaw") or item.get(f"{p}Airlines") or "",
+            distance=int(route.get("Distance") or 0),
+            updated_at=item.get("UpdatedAt") or "",
+        )
+    except (AttributeError, KeyError, TypeError, ValueError):
         return None
-    if points <= 0:
-        return None
-    route = item.get("Route", {})
-    source = item.get("Source", "")
-    return AwardCandidate(
-        id=item.get("ID", ""),
-        source=source,
-        program=seats_aero.SOURCE_TO_PARTNER.get(source, source),
-        origin=route.get("OriginAirport", ""),
-        dest=route.get("DestinationAirport", ""),
-        date=item.get("Date", ""),
-        cabin=cabin,
-        points=points,
-        taxes=float(item.get(f"{p}TotalTaxesRaw") or 0) / 100.0,
-        taxes_currency=item.get("TaxesCurrency") or "USD",
-        seats=int(item.get(f"{p}RemainingSeatsRaw") or 0),
-        direct=bool(item.get(f"{p}DirectRaw")),
-        airlines=item.get(f"{p}AirlinesRaw") or item.get(f"{p}Airlines") or "",
-        distance=int(route.get("Distance") or 0),
-        updated_at=item.get("UpdatedAt", ""),
-    )
 
 
 def sources_for_pool(pool_key: str) -> list[str]:
@@ -214,6 +221,14 @@ def scan(config: dict | None = None, include_planned: bool = False, today: date 
         for page_no in range(MAX_PAGES_PER_CABIN):
             page = dict(params, skip=skip, **({"cursor": cursor} if cursor else {}))
             resp = _get_page(http, key, page, stats)
+            payload = None
+            if resp is not None and resp.status_code != 429:
+                try:
+                    payload = resp.json()
+                except ValueError:  # a 200 that isn't JSON (an error page)
+                    payload = None
+                if not isinstance(payload, dict):
+                    resp = None  # counts as a failed slice, like a timeout
             if resp is None:
                 # Still timing out or erroring after retries: skip this program/cabin
                 # and keep going. On Oct 1 one 90-second timeout, uncaught, killed the
@@ -235,8 +250,9 @@ def scan(config: dict | None = None, include_planned: bool = False, today: date 
                 stats["quota_exhausted"] = True
                 stats["candidates"] = len(found)
                 return list(found.values()), stats
-            payload = resp.json()
-            rows = payload.get("data", [])
+            rows = payload.get("data") or []
+            if not isinstance(rows, list):
+                rows = []
             stats["rows"] += len(rows)
             for item in rows:
                 c = _parse(item, cabin)
@@ -244,11 +260,13 @@ def scan(config: dict | None = None, include_planned: bool = False, today: date 
                     continue
                 try:
                     updated = datetime.fromisoformat(c.updated_at.replace("Z", "+00:00"))
+                    if updated.tzinfo is None:  # no timezone given: seats.aero times are UTC
+                        updated = updated.replace(tzinfo=timezone.utc)
                     if now - updated > max_age:
                         stats["stale"] += 1
                         continue
-                except ValueError:
-                    pass
+                except (TypeError, ValueError, AttributeError):
+                    pass  # unreadable age: kept, as before
                 k = (c.source, c.origin, c.dest, c.date, c.cabin)
                 if k not in found or c.points < found[k].points:
                     found[k] = c
