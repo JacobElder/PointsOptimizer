@@ -112,7 +112,14 @@ def test_a_malformed_live_answer_uses_the_fallback(monkeypatch):
             return {"rates": {}}  # KeyError
 
     monkeypatch.setattr(valuation.requests, "get", lambda *a, **k: _R())
-    assert valuation.fx_rate("EUR") == 1.08
+    assert valuation.fx_rate("EUR") == 1.10
+
+
+@pytest.mark.parametrize("cur, rate", [("CAD", 0.70), ("GBP", 1.32), ("EUR", 1.10)])
+def test_fallback_rates_are_roughly_current(monkeypatch, cur, rate):
+    # Nov 2026: CAD ~0.70, GBP ~1.32, EUR ~1.10 (the table had 0.73 / 1.27 / 1.08).
+    monkeypatch.setattr(valuation.requests, "get", _offline)
+    assert valuation.fx_rate(cur) == rate
 
 
 def test_compute_cpp_edge_cases():

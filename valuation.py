@@ -67,7 +67,8 @@ def baseline_cpp(program: str, cabin: str = "") -> float:
 # Etihad, Qatar and Emirates quote taxes in. Falling through to 1.0 there treated
 # 2,000 AED of taxes as $2,000 and silently buried every deal those programs list.
 # The Gulf currencies are hard USD pegs, so these are exact, not estimates.
-_FX_FALLBACK = {"USD": 1.0, "CAD": 0.73, "EUR": 1.08, "GBP": 1.27,
+# CAD/EUR/GBP float: refreshed to roughly current rates 2026-11-15.
+_FX_FALLBACK = {"USD": 1.0, "CAD": 0.70, "EUR": 1.10, "GBP": 1.32,
                 "AED": 0.2723, "QAR": 0.2747, "SAR": 0.2666, "OMR": 2.6008,
                 "BHD": 2.6525, "KWD": 3.26, "JOD": 1.4104, "HKD": 0.1282}
 _fx_cache: dict[str, float] = {}
