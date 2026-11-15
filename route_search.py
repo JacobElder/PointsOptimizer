@@ -108,6 +108,9 @@ class PairResult:
     combined_cpp: float | None = None
     pair_cash_one_ways: float | None = None
     pair_round_trip_fare: float | None = None
+    # The (outbound, return) dates actually priced. They can differ from the two
+    # leaders' own dates: the pair is picked from each award's other dates too.
+    best_dates: tuple[str, str] | None = None
 
 
 def search_pair(origin: str, dest: str, cabins: list[str], out_start: date, out_end: date,
@@ -128,7 +131,7 @@ def search_pair(origin: str, dest: str, cabins: list[str], out_start: date, out_
             value = (o.cash + r.cash - o.taxes_usd - r.taxes_usd) / (o.c.points + r.c.points) * 100
             if best_value is None or value > best_value:
                 best_pair, best_value, best_dates = (o, r), value, pair_dates
-    result = PairResult(out, back, best_pair)
+    result = PairResult(out, back, best_pair, best_dates=best_dates)
     if best_pair:
         o, r = best_pair
         od, rd = best_dates

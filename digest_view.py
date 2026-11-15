@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime
+from datetime import date, datetime, timedelta, timezone
+from urllib.parse import quote
 
 import streamlit as st
 
+import award_history
+import award_scanner
 import deal_finder
 import funding
 import ledger
@@ -38,19 +41,59 @@ def render_digest(digest: dict | None = None) -> None:
                    "balances — check the Wallet page.")
         for d in held:
             deal_card(d)
+    # Top deals come before the watchlist: with ~24 entries, most of them empty on
+    # any given day, the watchlist used to push the top deals far down the page.
+    _render_top(digest, top, scan)
+    empty = []
     for group in digest.get("watchlist", []):
-        st.header(f"⭐ Watchlist: {group.get('label', 'Watchlist')}")
         if not group.get("deals"):
-            if not group.get("matched_awards"):
-                st.caption("No award seats found for these dates — seats.aero may not cover this "
-                           "route, or the dates may fall outside the scan window.")
-            else:
-                st.caption(f"Nothing clears this entry's bar yet ({group['matched_awards']:,} matching "
-                           f"awards, {group.get('priced', 0)} priced).")
-        for d in group.get("deals") or []:
+            empty.append(group)
+            continue
+        st.header(f"⭐ Watchlist: {group.get('label', 'Watchlist')}")
+        for d in group["deals"]:
             # Only the bar is watchlist-specific. watch_surplus_usd measures against
             # that bar, and the card's sentence compares with the program's baseline.
             deal_card(d, bar=d.get("watch_bar"))
+    if empty:
+        windows, min_days = _watch_windows()
+        with st.expander(f"⭐ {len(empty)} more watchlist entr{'ies' if len(empty) != 1 else 'y'} "
+                         "with nothing to show today"):
+            st.markdown("\n".join(
+                f"- **{places.md_safe(g.get('label', 'Watchlist'))}**: {_empty_watch_reason(g, windows, min_days)}"
+                for g in empty))
+
+
+def _today() -> date:
+    return datetime.now(timezone.utc).date()
+
+
+def _watch_windows() -> tuple[dict[str, tuple[str | None, str | None]], int]:
+    """Watchlist label -> (start, end) from scan_config.json, and its min_days_out.
+    The digest doesn't store an entry's dates."""
+    try:
+        cfg = award_scanner.load_config()
+    except (OSError, ValueError):
+        return {}, 30
+    windows = {(w.get("label") or ", ".join(w.get("dests") or [])): (w.get("start"), w.get("end"))
+               for w in cfg.get("watchlist", [])}
+    return windows, int(cfg.get("min_days_out", 30))
+
+
+def _empty_watch_reason(group: dict, windows: dict, min_days: int) -> str:
+    _, end = windows.get(group.get("label", ""), (None, None))
+    today = _today()
+    if end and end < today.isoformat():
+        return f"these dates have passed (ended {places.nice_date(end, weekday=False, year=True)})."
+    if end and end < (today + timedelta(days=min_days)).isoformat():
+        return (f"these dates are all under {min_days} days out, and the scan only looks "
+                f"{min_days}+ days ahead.")
+    if not group.get("matched_awards"):
+        return "no award seats found for these dates; seats.aero may not cover this route."
+    return (f"nothing clears this entry's bar yet ({group['matched_awards']:,} matching awards, "
+            f"{group.get('priced', 0)} priced).")
+
+
+def _render_top(digest: dict, top: list, scan: dict) -> None:
     economy_top = [d for d in top if not deal_finder.is_premium(d)]
     premium_top = [d for d in top if deal_finder.is_premium(d)]
     st.header(f"🏆 Top {len(top)} of {scan.get('candidates', 0):,} awards")
@@ -95,6 +138,38 @@ def render_digest(digest: dict | None = None) -> None:
 @st.cache_data(ttl=60, show_spinner=False)
 def _balances() -> tuple[dict, dict]:
     return ledger.load_balances(), ledger.load_program_balances()
+
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def _history_series() -> dict[str, list[int]]:
+    return award_history.series(award_history.load())
+
+
+# Cabin words for fares (the cabin the fare was priced in: first is valued
+# against business) and for the Google Flights search box.
+_FARE_CABIN = {"ECONOMY": "economy", "PREMIUM_ECONOMY": "premium economy", "BUSINESS": "business",
+               "FIRST": "first"}
+_GF_CABIN = {"ECONOMY": "economy", "PREMIUM_ECONOMY": "premium economy", "BUSINESS": "business class",
+             "FIRST": "first class"}
+
+
+def _dates_by_year(dates: list[str]) -> str:
+    """['2026-12-30', '2027-02-22', '2027-02-23', '2027-03-01'] -> '2026: Dec 30 · 2027: Feb 22, 23, Mar 1'."""
+    years: dict[str, list[str]] = {}
+    for x in dates:
+        years.setdefault(x[:4], []).append(x)
+    out = []
+    for year, xs in years.items():
+        parts, month = [], None
+        for x in xs:
+            nice = places.nice_date(x, weekday=False)
+            if nice[:3] == month:
+                parts.append(nice.split(" ", 1)[-1])
+            else:
+                parts.append(nice)
+                month = nice[:3]
+        out.append(f"{year}: {', '.join(parts)}")
+    return " · ".join(out)
 
 
 def _hm(iso: str) -> str:
@@ -150,37 +225,53 @@ def _deal_card(d: dict, rank: int | None, bar: float | None, surplus: float | No
         # Judge against the bar this card actually shows. Recomputing from valuation
         # here disagreed with the stored floor whenever the bars were retuned after
         # the digest was written.
+        typical, at_typical = d.get("typical_fare"), d.get("cpp_at_typical")
+        # Today's fare is above the route's usual one and the deal only clears its bar
+        # at today's fare: good if you must fly this date, not a deal on the route.
+        date_only = bool(typical and cash and at_typical is not None and typical < cash and at_typical < bar)
         if cpp is None:
             verdict = ""
         elif cpp >= bar:
-            verdict = "BOOK"
+            verdict = "DATE" if date_only else "BOOK"
         else:
             verdict = "BORDERLINE" if cpp >= bar * 0.8 else "SKIP"
-        mark = {"BOOK": "🟢 Book", "BORDERLINE": "🟡 Borderline", "SKIP": "🔴 Skip"}.get(verdict, "")
+        mark = {"BOOK": "🟢 Book", "DATE": "🟡 Good on this date only", "BORDERLINE": "🟡 Borderline",
+                "SKIP": "🔴 Skip"}.get(verdict, "")
         lead = f"{mark} · " if mark else ""
+        fare_cabin = d.get("cash_cabin") or deal_finder.price_cabin(d.get("cabin", ""))
+        fare_word = _FARE_CABIN.get(fare_cabin, "")
+        fare_word_sp = f"{fare_word} " if fare_word else ""
         bits = [f"**{cpp:.2f}¢ per point**" if cpp is not None else "no value yet",
                 (f"{points:,} points + taxes not reported" if d.get("taxes_unknown")
                  else f"{points:,} points + about ${taxes:,.0f} taxes (estimated)"
                  if d.get("taxes_estimated")
                  else f"{points:,} points + ${taxes:,.0f} taxes") if points else None,
-                f"vs a ${cash:,.0f} cash fare" if cash else None]
+                f"vs a ${cash:,.0f} {fare_word_sp}cash fare" if cash else None]
         st.markdown(safe(lead + " · ".join(b for b in bits if b)))
         baseline = d.get("baseline_cpp") or valuation.baseline_cpp(program, d.get("cabin", ""))
         if surplus is not None and cpp is not None:
             st.markdown(safe(f"**${surplus:,.0f} better** than spending these points the usual way "
                              f"(about {baseline:.2f}¢ each; we only flag {program} above {bar:.2f}¢)"))
-        typical, at_typical = d.get("typical_fare"), d.get("cpp_at_typical")
         if typical and cash and at_typical is not None and typical < cash:
             st.caption(safe(f"💲 At this route's usual ${typical:,.0f} fare it's {at_typical:.2f}¢/pt"
                             + (f", under the {bar:.2f}¢ bar: only worth it if you must fly "
                                "this date (not emailed)" if at_typical < bar else "")))
         if d.get("history_pct") is not None and d.get("history_days", 0) >= 10:
+            # About the points price, not the cash fare. Ties count half, so a price
+            # that never moved scores 0.5 and used to read "cheaper than 50%".
             pct, days = d["history_pct"], d["history_days"]
-            st.caption("📉 " + ("Cheapest this route has been in the last "
-                                f"{days} days" if pct >= 0.99 else
-                                f"Cheaper than {pct:.0%} of the last {days} days on this route"
-                                if pct >= 0.5 else
-                                f"Pricier than usual: {1 - pct:.0%} of the last {days} days were cheaper"))
+            seen = _history_series().get(award_history.key_for(
+                d.get("source", ""), d.get("origin", ""), d.get("dest", ""), d.get("cabin", ""),
+                d.get("date", ""))) or []
+            if seen and points and all(v == points for v in seen):
+                line = f"Same points price every day for the last {days} days on this route"
+            elif pct >= 0.99:
+                line = f"Fewest points this route has cost in the last {days} days"
+            elif pct >= 0.5:
+                line = f"Fewer points than on {pct:.0%} of the last {days} days on this route"
+            else:
+                line = f"More points than usual: {1 - pct:.0%} of the last {days} days cost fewer"
+            st.caption("📉 " + line)
         if d.get("rank_notes"):
             st.caption("⚖️ Ranked lower because " + safe("; ".join(d["rank_notes"])))
         own = d.get("same_carrier_cash")
@@ -191,12 +282,25 @@ def _deal_card(d: dict, rank: int | None, bar: float | None, surplus: float | No
             carrier = places.airline_names(code) if code else "the airline flying it"
             st.caption(safe(f"↘️ On {carrier} itself the fare is ${own:,.0f}, which would make this "
                             f"{(own - taxes) / points * 100:.2f}¢/pt."))
-        if d.get("round_trip_half") is not None and d.get("one_way_cash") and cash and cash < d["one_way_cash"]:
-            st.caption(safe(f"The one-way fare on this date is ${d['one_way_cash']:,.0f}."))
         # cash_basis already says whether a round trip was priced, was cheaper, or
-        # wasn't checked, so it isn't repeated here.
-        st.caption(safe(f"Cash fare: {d.get('cash_basis') or 'cheapest comparable fare'}"
-                        + (" (borrowed from a nearby date, not this one)" if d.get("cash_is_approx") else "")
+        # wasn't checked, so it isn't repeated here. "Borrowed from a nearby date"
+        # (cash_is_approx) is about the one-way quote, so it goes on the one-way figure.
+        basis = d.get("cash_basis") or "cheapest comparable fare"
+        borrowed = bool(d.get("cash_is_approx"))
+        if (d.get("round_trip_half") is not None and d.get("one_way_cash") and cash
+                and cash < d["one_way_cash"] and "one-way fare is" not in basis):
+            ow = f"${d['one_way_cash']:,.0f}"
+            st.caption(safe(f"The one-way {fare_word_sp}fare is {ow} (borrowed from a nearby date, not this one)."
+                            if borrowed else f"The one-way {fare_word_sp}fare on this date is {ow}."))
+            borrowed = False
+        if borrowed:
+            if "one-way fare is" in basis and basis.endswith(")"):
+                basis = basis[:-1] + ", borrowed from a nearby date)"
+            elif basis.endswith(")"):
+                basis += " · borrowed from a nearby date, not this one"
+            else:
+                basis += " (borrowed from a nearby date, not this one)"
+        st.caption(safe(f"Cash fare: {basis}"
                         + (" · first class compared with the business fare" if d.get("cabin") == "FIRST" else "")))
 
         left, right = st.columns([3, 2], gap="medium")
@@ -212,7 +316,7 @@ def _deal_card(d: dict, rank: int | None, bar: float | None, surplus: float | No
                               + ("Nonstop" if not stops else f"{stops} stop{'s' if stops > 1 else ''}{via}"))
                 st.write(safe(date_line))
                 st.caption(safe(" · ".join(trip.get("flights") or [])
-                                + (f" · {trip['carriers']}" if trip.get("carriers") else "")))
+                                + (f" · {places.carrier_names(trip['carriers'])}" if trip.get("carriers") else "")))
                 if trip.get("mixed_cabin"):
                     st.warning(safe("Mixed cabin: " + ", ".join(trip.get("lower_cabin_legs") or [])
                                     + ". Worth less than the value above."), icon="⚠️")
@@ -236,8 +340,9 @@ def _deal_card(d: dict, rank: int | None, bar: float | None, surplus: float | No
                                "before you transfer.")
             if d.get("other_dates"):
                 st.markdown("**📅 Also available**")
-                st.caption(", ".join(places.nice_date(x, weekday=False, year=x[:4] != d["date"][:4])
-                                     for x in d["other_dates"][:12])
+                shown = d["other_dates"][:12]
+                st.caption((_dates_by_year(shown) if any(x[:4] != d["date"][:4] for x in shown)
+                            else ", ".join(places.nice_date(x, weekday=False) for x in shown))
                            + (f" and {len(d['other_dates']) - 12} more" if len(d["other_dates"]) > 12 else "")
                            + (" — on this many dates it's standard pricing, not a flash sale."
                               if len(d["other_dates"]) > 30 else ""))
@@ -248,7 +353,8 @@ def _deal_card(d: dict, rank: int | None, bar: float | None, surplus: float | No
                                 f"${ret['taxes_usd']:,.0f} — {ret['round_trip_points']:,} points round trip "
                                 f"on {ret['program']}"))
                 if ret.get("note"):
-                    st.caption(safe(f"⚠️ {ret['note']}"))
+                    note = str(ret["note"])
+                    st.caption(safe(f"⚠️ {note[:1].upper()}{note[1:]}"))
             elif d.get("points") and (d.get("cabin") in ("BUSINESS", "FIRST") or d["points"] > 30000):
                 st.caption("↩️ One way only — no return award on these dates in this program."
                            if d.get("returns_checked")
@@ -269,9 +375,11 @@ def _deal_card(d: dict, rank: int | None, bar: float | None, surplus: float | No
         links = []
         if trip.get("booking_url"):
             links.append(f"[{safe(trip.get('booking_label') or 'Book')} →]({trip['booking_url']})")
-        from urllib.parse import quote
+        # Name the cabin, or Google opens an economy search for a business card.
+        gf_cabin = _GF_CABIN.get(fare_cabin)
         gf = ("https://www.google.com/travel/flights?q="
-              + quote(f"Flights from {d.get('origin', '')} to {d.get('dest', '')} on {d.get('date', '')} one way"))
+              + quote(f"Flights from {d.get('origin', '')} to {d.get('dest', '')} on {d.get('date', '')} one way"
+                      + (f" in {gf_cabin}" if gf_cabin else "")))
         links.append(f"[Check the cash fare on Google Flights →]({gf})")
         age = d.get("age_days")
         if age is None:

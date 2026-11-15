@@ -61,7 +61,8 @@ with c2:
     dest = st.selectbox("To", opts, index=None, placeholder="Type a city or airport code…", key="fs_dest",
                         accept_new_options=True)
 with c3:
-    cabins = st.multiselect("Cabins", CABINS, default=["ECONOMY", "BUSINESS"], format_func=_cabin, key="fs_cabins")
+    cabins = st.multiselect("Cabins", CABINS, default=["ECONOMY", "PREMIUM_ECONOMY", "BUSINESS"],
+                            format_func=_cabin, key="fs_cabins")
 
 today = date.today()
 if mode == "One date":
@@ -81,6 +82,8 @@ elif mode == "Outbound + return":
 else:
     st.caption("Searches every date from tomorrow to about 11 months out.")
 
+st.caption("Uses some of your 1,000 daily seats.aero calls: about one per cabin plus up to 40 "
+           "flight-detail checks, twice that for Outbound + return. Cash prices are free.")
 if st.button("Find the best deals", type="primary"):
     o_code, _ = airports.resolve_input(origin)
     d_code, _ = airports.resolve_input(dest)
@@ -134,10 +137,13 @@ if result:
     if kind == "pair":
         if r.best_pair:
             o, b = r.best_pair
+            # The dates that were priced, not the leaders' own: the pair can use an
+            # outbound or return from either award's other dates.
+            out_date, back_date = r.best_dates or (o.c.date, b.c.date)
             st.success(
                 f"**Best out-and-back: {r.combined_cpp:.2f}¢ per point** · out "
-                f"{places.nice_date(o.c.date)} on {o.c.program} ({o.c.points:,}) and back "
-                f"{places.nice_date(b.c.date)} or later on {b.c.program} ({b.c.points:,}): "
+                f"{places.nice_date(out_date)} on {o.c.program} ({o.c.points:,}) and back "
+                f"{places.nice_date(back_date)} on {b.c.program} ({b.c.points:,}): "
                 f"{o.c.points + b.c.points:,} points total"
             )
             if r.pair_round_trip_fare and r.pair_round_trip_fare < r.pair_cash_one_ways:
@@ -197,15 +203,19 @@ with st.expander("💵 Look up cash fares"):
         else:
             try:
                 with st.spinner("Searching Google Flights…"):
-                    st.session_state["cf_offers"] = flight_search.search_cash_price(oc, dc, f_date.isoformat(), f_cabin)
+                    st.session_state["cf_offers"] = (
+                        f_cabin, flight_search.search_cash_price(oc, dc, f_date.isoformat(), f_cabin))
             except (flight_search.NotConfigured, flight_search.SearchFailed) as e:
                 st.error(str(e))
-    for offer in st.session_state.get("cf_offers", [])[:8]:
+    # The cabin is kept with the offers: the selectbox can change after the search.
+    cf_cabin, cf_offers = st.session_state.get("cf_offers") or ("", [])
+    for offer in cf_offers[:8]:
         dep = datetime.strptime(offer.departure_time, "%Y-%m-%d %H:%M") if offer.departure_time else None
         arr = datetime.strptime(offer.arrival_time, "%Y-%m-%d %H:%M") if offer.arrival_time else None
         stops = "Nonstop" if offer.stops == 0 else f"{offer.stops} stop{'s' if offer.stops > 1 else ''}"
         via = f" via {', '.join(places.city(l.airport) for l in offer.layovers)}" if offer.layovers else ""
         hours, mins = divmod(offer.total_duration_minutes, 60)
-        st.write(f"**\\${offer.price_usd:,.0f}** · {places.airline_names(','.join(offer.carrier_codes)) or offer.airline} · "
+        fare = f"**\\${offer.price_usd:,.0f}** {_cabin(cf_cabin).lower()}"
+        st.write(f"{fare} · {places.airline_names(','.join(offer.carrier_codes)) or offer.airline} · "
                  f"{dep:%a %b %-d %H:%M} → {arr:%H:%M} · {hours}h {mins}m · {stops}{via}"
-                 if dep and arr else f"**\\${offer.price_usd:,.0f}** · {offer.airline} · {stops}{via}")
+                 if dep and arr else f"{fare} · {offer.airline} · {stops}{via}")

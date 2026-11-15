@@ -3,12 +3,28 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from datetime import datetime
+
 import streamlit as st
 
 import ledger
 from cards_data import CARDS, POOLS, cards_in_pool, pool_is_active
 
-st.title("Your Wallet")
+
+
+def _ratio(p) -> str:
+    """The ratio in force today; an announced change still ahead is named with its date.
+
+    p.ratio is the ratio *before* an announced change: printing it showed Chase -> Hyatt
+    as 1:1 after it went to 4:3 on 2026-10-01.
+    """
+    now = p.ratio_on()
+    if p.changes_on and p.ratio_after and now == p.ratio and p.ratio_after != p.ratio:
+        return f"{now}, {p.ratio_after} from {datetime.strptime(p.changes_on, '%Y-%m-%d'):%b %-d, %Y}"
+    return now
+
+
+st.title("💳 Wallet")
 st.caption(
     "Which of your cards feed which point currency, and where that currency can go. "
     "Transfer ratios and partner rosters change — verify on the issuer's site before booking."
@@ -140,12 +156,12 @@ for pool_key, pool in POOLS.items():
                 if airlines:
                     st.markdown("*Airlines*")
                 for p in airlines:
-                    st.write(f"- {p.name} ({p.ratio})")
+                    st.write(f"- {p.name} ({_ratio(p)})")
             with cols[1]:
                 if hotels:  # several pools have none: a bare heading looked broken
                     st.markdown("*Hotels*")
                 for p in hotels:
-                    st.write(f"- {p.name} ({p.ratio})")
+                    st.write(f"- {p.name} ({_ratio(p)})")
 
 st.divider()
 st.caption(

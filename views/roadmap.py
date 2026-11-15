@@ -3,6 +3,8 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from datetime import date
+
 import streamlit as st
 
 import award_scanner
@@ -73,6 +75,10 @@ for card in planned:
                                  - set(award_scanner.transferable_sources()))
             if new_sources and seats_aero.is_configured():
                 res_key = f"roadmap_preview_{card.pool_key}"
+                n_cabins = len(award_scanner.load_config().get("cabins") or []) or 4
+                st.caption(f"The preview uses seats.aero calls from your 1,000 a day: at least "
+                           f"{len(new_sources) * n_cabins} (one or more per program per cabin) plus up to "
+                           f"{deal_finder.INTERACTIVE_TRIP_LOOKUPS} flight-detail checks. Cash prices are free.")
                 if st.button(f"🔎 Show the deals {card.name} would unlock right now", key=f"btn_{res_key}"):
                     with st.status("Scanning programs only this card reaches…", expanded=True) as status:
                         try:
@@ -107,12 +113,13 @@ for card in planned:
                 "This card adds earning power and perks, not new transfer access."
             )
             if card.name == "Chase Sapphire Reserve":
+                hyatt_cut = "dropped" if date.today() >= date(2026, 10, 1) else "drops"
                 st.write(
                     "Portal floor: under Chase's Points Boost, the fixed 1.5¢ (CSR) / 1.25¢ (CSP) "
                     "rate only applies to points earned before Oct 26, 2025, and ends Oct 26, 2027. "
                     "New points redeem at 1.0¢ plus selective boosts, so a product change no longer "
                     "raises the floor much. The bigger CSR difference now: Hyatt stays 1:1 "
-                    "(Sapphire Preferred drops to 4:3 on Oct 1, 2026)."
+                    f"(Sapphire Preferred {hyatt_cut} to 4:3 on Oct 1, 2026)."
                 )
         else:
             st.info("No transfer implications — this card doesn't unlock a transferable pool.")
