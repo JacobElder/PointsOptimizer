@@ -1,7 +1,7 @@
 {
   "_help": "Active transfer bonuses. bonus_pct 20 means 1,000 card points -> 1,200 partner points. Partner must match cards_data.py exactly. Expired entries are ignored automatically. Check roame.travel/guides/points-transfer-bonuses or awardtravelfinder.com/transfer-bonuses; Bilt runs Rent Day bonuses on the 1st of each month. A partner not in that pool's list in cards_data.py can never match, so it is a data error, not a no-op.",
   "_checked_help": "Date the whole list was last checked against a source, even if nothing was added. An empty list checked recently is fine; the email only nags when this is over 21 days old.",
-  "checked": "2026-10-12",
+  "checked": "2026-11-09",
   "bonuses": [
     {
       "pool": "chase_ur",
@@ -35,6 +35,80 @@
       "ends": "2026-10-31",
       "verified": "2026-10-12",
       "note": "Tiered: 15% under 50k, 25% for 50k-99,999, 35% for 100k+ per transfer; the minimum is recorded."
+    },
+    {
+      "pool": "citi_ty",
+      "partner": "Cathay Pacific Asia Miles",
+      "bonus_pct": 10,
+      "starts": "2026-10-25",
+      "ends": "2026-11-14",
+      "verified": "2026-11-09"
+    },
+    {
+      "pool": "citi_ty",
+      "partner": "Turkish Airlines Miles&Smiles",
+      "bonus_pct": 40,
+      "starts": "2026-11-01",
+      "ends": "2026-11-30",
+      "verified": "2026-11-09",
+      "note": "Run by Turkish Airlines; capped at 50,000 bonus miles, posted after the campaign ends. One source says 40% applies to premium Citi cards (Strata Elite/Premier, Prestige) and other cards get less."
+    },
+    {
+      "pool": "cap1_miles",
+      "partner": "Virgin Red",
+      "bonus_pct": 30,
+      "starts": "2026-10-21",
+      "ends": "2026-11-20",
+      "verified": "2026-11-09",
+      "note": "Sources describe it as Virgin Atlantic Flying Club and Virgin Red."
+    },
+    {
+      "pool": "cap1_miles",
+      "partner": "Air France-KLM Flying Blue",
+      "bonus_pct": 20,
+      "starts": "2026-11-01",
+      "ends": "2026-11-30",
+      "verified": "2026-11-09"
+    },
+    {
+      "pool": "chase_ur",
+      "partner": "Aer Lingus AerClub",
+      "bonus_pct": 30,
+      "starts": "2026-11-01",
+      "ends": "2026-12-01",
+      "verified": "2026-11-09"
+    },
+    {
+      "pool": "chase_ur",
+      "partner": "British Airways Executive Club",
+      "bonus_pct": 30,
+      "starts": "2026-11-01",
+      "ends": "2026-12-01",
+      "verified": "2026-11-09"
+    },
+    {
+      "pool": "chase_ur",
+      "partner": "Iberia Plus",
+      "bonus_pct": 30,
+      "starts": "2026-11-01",
+      "ends": "2026-12-01",
+      "verified": "2026-11-09"
+    },
+    {
+      "pool": "chase_ur",
+      "partner": "IHG One Rewards",
+      "bonus_pct": 80,
+      "starts": "2026-11-01",
+      "ends": "2026-12-03",
+      "verified": "2026-11-09"
+    },
+    {
+      "pool": "chase_ur",
+      "partner": "Wyndham Rewards",
+      "bonus_pct": 30,
+      "starts": "2026-11-01",
+      "ends": "2026-12-03",
+      "verified": "2026-11-09"
     }
   ]
 }
