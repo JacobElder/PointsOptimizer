@@ -48,7 +48,7 @@ before and are still on today's list, re-checked today, and still pass every ema
 first. A card goes in only if it was last emailed, or last shown here, **7+ days** ago
 (`STILL_AVAILABLE_GAP_DAYS`), so each one shows at most once a week. The section only goes
 out with an email that has at least one new deal, so there's never a reminders-only email.
-It doesn't change `reported_routes`: the 14-day repeat rule works as before. The digest
+It doesn't change `reported_routes`: the repeat rule works as before (14 days then; 60 days since Nov 7, `ROUTE_MEMORY_DAYS`). The digest
 records `still_available_shown` and marks those cards `reminded`; `make audit` shows them
 as `AGAIN` and `make audit-live` re-prices them.
 
@@ -159,7 +159,7 @@ It touches only `tools/audit_digest.py`, one test in `test_deal_finder.py`, this
   a card with an old-fare-free audit still falls with under $100 of cushion.
 - *Minimum lead time for emailing.* 8 emailed cards left within 8 days (MAD, IST, CMN, PMO 3–4 days
   out); none fell, and some were among the best values (CMN 3.44¢). No data for it; it's a
-  question of whether the user can travel on short notice. Ask before adding one.
+  question of whether the user can travel on short notice. Ask before adding one. (Superseded 2026-10-21: 30 days.)
 
 ---
 
@@ -188,12 +188,12 @@ because a slow award leads it (the within-card discount is still 25%).
 is at most 6 hours old (`FRESH_QUOTE_MAX_AGE_DAYS`), i.e. from this run. An empty answer to that
 lookup keeps the card's existing fare and doesn't overwrite the saved quote.
 
-**Why.** The "fresh re-pricing" step reused any exact-date quote within the normal reuse age
-(2 days for trips ≤30 days out, else 7). Oct 7–18, 10–22 of ~30 published cards a day carried an
+**Why.** The "fresh re-pricing" step reused any exact-date quote within the normal reuse limits
+(these follow `REUSE_TIERS` in `cash_quotes.py`: 3 days for trips ≤45 days out, 7 for ≤120, 14 beyond). Oct 7–18, 10–22 of ~30 published cards a day carried an
 earlier day's fare. Oct 18 emailed JFK–PUJ JetBlue 5,000 at Oct 16's $229 (3.47¢); Google said
 $154 (1.97¢, bar 2.08) twenty minutes after the run. Costs ~10–20 extra lookups a run.
 
-**Revisit** if run time nears the 30-minute timeout, or throttled days leave many cards on an
+**Revisit** if run time nears the job timeout (30 minutes then, 40 since Nov 15), or throttled days leave many cards on an
 old fare (count "unavailable" in the `Fresh re-pricing` log line).
 
 ---

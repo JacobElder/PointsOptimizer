@@ -12,27 +12,29 @@ history before 2026-09-16.
       Left: delete `SERPAPI_KEY` from the Streamlit Cloud app's secrets; optionally close
       the serpapi.com account.
 
+- [ ] **cron-job.org backup layer has never fired on schedule** (set up 2026-10-06; only the
+      hand-clicked test ran). Fix it on cron-job.org (activation / enabled / schedule / token) or
+      delete the job; the GitHub schedule and the Claude routine cover the run meanwhile.
+- [ ] Minor, your call: the public digest's held-miles section reveals a lower bound on the miles
+      held in each airline program (it says a deal is payable from miles already held). Keep, or
+      drop that detail from the committed digest.
+
 ## Possible improvements
 
 - [ ] **Move workflows to Ubuntu 26 deliberately** (pinned to `ubuntu-24.04` on 2026-10-05 because
       `ubuntu-latest` switches from Oct 19). Change one workflow, run it by hand, compare the digest.
 
-- [ ] Once `award_history.json` has a few weeks of data, consider raising
-      `HISTORY_WEIGHT` (0.3) so route-relative cheapness counts for more than deal size.
-- [ ] Premium economy was just added to the scan but `fare_model` has no premium-economy
-      training data yet; its estimates there lean on economy x1.8 until quotes accumulate.
+- [ ] Consider raising `HISTORY_WEIGHT` (0.3) so route-relative cheapness counts for more than
+      deal size. Now actionable: `award_history.json` spans Sep 23 onward (~7 weeks).
 
 - [ ] **Re-check `program_values.json`** a few times a year (what each program's
       points are worth). Last verified 2026-09-23 from upgradedpoints.com.
 
-- [ ] **Keep `transfer_bonuses.json` current.** Last checked 2026-10-11 (Chase→Marriott 70% to Oct 15;
-      nothing for Bilt or Wells Fargo; Citi→JAL 30% skipped: JAL isn't a Citi partner in cards_data.py). Update its `checked` date whenever you look, even if
+- [ ] **Keep `transfer_bonuses.json` current.** Last checked 2026-11-09 (PR #5, merged Nov 15). Update its `checked` date whenever you look, even if
       nothing changed; the email nags once it's 21 days old. Now automated: a weekly Claude routine (Mondays) opens a
       pull request with the update — merge it to keep the list current.
 - [ ] Later: move the watchlist (`scan_config.json`) into the private balances Gist so
       travel plans aren't visible in the public repo.
-- [ ] Maybe later: tune the email after a week of real use (fewer/more watchlist deals,
-      bars).
 
 - [ ] Optional, later (user: "if I care to bother"): **add GIST_TOKEN** for one shared copy
       of balances. Without it the daily email's pay line doesn't know card balances and uses
