@@ -162,3 +162,29 @@ def test_emirates_booking_link_asks_for_the_award_cabin():
     other = "https://www.united.com/x?sc=7"
     assert award_trips._with_cabin(other, "business") == other  # only Emirates links change
     assert award_trips._with_cabin("https://www.emirates.com/x?searchRequest=@@", "business").endswith("@@")
+
+
+def test_a_trip_without_a_price_does_not_vouch_for_the_award():
+    # One trip with no MileageCost read as 0: cheapest_now=0 made price_matches True
+    # although the only priced trip had gone up to 110,000.
+    p = _payload([_segment("UA40", "EWR", "FCO")], cost=110000)
+    p["data"].append({**p["data"][0], "MileageCost": None})
+    trip = award_trips.fetch("id", "BUSINESS", 88000, session=_Session(p))
+    assert trip.current_points == 110000 and trip.price_matches is False
+
+
+def test_no_price_at_all_is_a_failed_lookup_not_a_match():
+    p = _payload([_segment("UA40", "EWR", "FCO")], cost=None)
+    with pytest.raises(award_trips.LookupFailed):
+        award_trips.fetch("id", "BUSINESS", 88000, session=_Session(p))
+
+
+def test_a_trip_without_segments_is_not_called_a_one_stop_or_nonstop():
+    # No segments gave stops=0 with nonstop=False. The shape is unknown, so the
+    # award is unverified rather than published with a made-up stop count.
+    with pytest.raises(award_trips.LookupFailed):
+        award_trips.fetch("id", "BUSINESS", 88000, session=_Session(_payload([])))
+    p = _payload([_segment("UA40", "EWR", "FCO")], cost=80000)
+    p["data"].append({**p["data"][0], "AvailabilitySegments": [], "MileageCost": 70000})
+    trip = award_trips.fetch("id", "BUSINESS", 88000, session=_Session(p))
+    assert trip.flights == ["UA40 EWR–FCO"] and trip.nonstop is True and trip.stops == 0
