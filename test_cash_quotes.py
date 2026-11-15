@@ -264,3 +264,24 @@ def test_failed_save_leaves_the_old_store_and_no_temp_file(tmp_path, monkeypatch
         cash_quotes.save([])
     assert [q["price_usd"] for q in cash_quotes.load()] == [700.0]
     assert [p for p in os.listdir(os.path.dirname(cash_quotes.QUOTES_PATH)) if p.startswith(".cash_quotes-")] == []
+
+
+def test_refresh_asks_google_not_the_process_cache(monkeypatch):
+    # get_quote(refresh=True) saved the in-process cached answer with fetched_at=now,
+    # so a "fresh" fare could be hours old.
+    from datetime import timedelta
+    day = (date.today() + timedelta(days=60)).isoformat()
+    calls = []
+
+    def fetch(origin, dest, d, cabin):
+        calls.append(d)
+        seg = flight_search.FlightSegment("United", "UA 1", origin, "", f"{d} 08:00", dest, "",
+                                          f"{d} 16:00", 480, "UA")
+        return [flight_search.FlightOffer(price_usd=400.0 + 100 * len(calls), cabin=cabin,
+                                          total_duration_minutes=480, segments=[seg], layovers=[])]
+
+    monkeypatch.setattr(flight_search, "fast_flights_available", lambda: True)
+    monkeypatch.setattr(flight_search, "_fetch_offers_fast_flights", fetch)
+    assert cash_quotes.get_quote("EWR", "CPT", day, "ECONOMY").price_usd == 500.0
+    assert cash_quotes.get_quote("EWR", "CPT", day, "ECONOMY", refresh=True).price_usd == 600.0
+    assert len(calls) == 2

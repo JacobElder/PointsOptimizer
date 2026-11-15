@@ -251,6 +251,8 @@ def get_quote(origin: str, dest: str, travel_date: str, cabin: str, *,
         return None
     check_window(travel_date)
 
+    if refresh:  # asking again means asking Google, not this process's cached answer
+        flight_search.forget(origin, dest, travel_date, cabin)
     offers = flight_search.search_cash_price(origin, dest, travel_date, cabin, max_results=100)
     nonstop = [o.price_usd for o in offers if o.stops == 0]
     quote = Quote(
