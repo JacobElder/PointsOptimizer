@@ -200,9 +200,14 @@ def test_throttled_run_records_google_coverage_and_says_so_in_the_email(tmp_path
     """Oct 14: Google left 130 of 234 one-way lookups and 315 of 571 round trips empty.
     The only trace was a ::warning in the Actions log; the digest kept just "571 checks"
     and the email read like a normal day with fewer deals."""
-    _fake_pipeline(tmp_path, monkeypatch, [_award("ZRH", "BUSINESS", "aeroplan", 40000, 60)])
+    # ZRH's round trips all come back empty; FRA's price, so FRA is emailed (a card on an
+    # estimated round trip isn't, from Nov 15) and the email carries the warning.
+    _fake_pipeline(tmp_path, monkeypatch, [_award("ZRH", "BUSINESS", "aeroplan", 40000, 60),
+                                           _award("FRA", "BUSINESS", "aeroplan", 40000, 61)])
     monkeypatch.setattr(deal_finder, "_load_digest", lambda: {})
-    monkeypatch.setattr(deal_finder.flight_search, "search_round_trip_offers", lambda *a, **k: [])
+    priced = deal_finder.flight_search.search_round_trip_offers
+    monkeypatch.setattr(deal_finder.flight_search, "search_round_trip_offers",
+                        lambda o, d, *a, **k: [] if d == "ZRH" else priced(o, d, *a, **k))
     warnings = []
     monkeypatch.setattr(deal_finder.deal_email, "is_configured", lambda: True)
     monkeypatch.setattr(deal_finder.deal_email, "send_digest_email",
@@ -211,7 +216,9 @@ def test_throttled_run_records_google_coverage_and_says_so_in_the_email(tmp_path
     out = deal_finder.run(max_lookups=10, top=5, send_email=True, log=lambda m: None)
 
     cov = out["google_coverage"]
-    assert cov["round_trips"] >= 1 and cov["round_trips_priced"] == 0
+    assert cov["round_trips"] >= 2 and cov["round_trips_priced"] / cov["round_trips"] < 0.7
+    zrh = next(d for d in out["top"] if d["dest"] == "ZRH")
+    assert zrh["rt_unavailable"] and not zrh["new"]  # listed, not emailed
     assert cov["one_way"] >= 1 and cov["one_way_empty"] == 0
     assert warnings and "Google Flights limited" in warnings[0]
 
@@ -288,3 +295,47 @@ def test_route_memory_runs_out_after_sixty_days(tmp_path, monkeypatch):
     zrh = next(d for d in out["top"] if d["dest"] == "ZRH")
     assert zrh["new"] is True
     assert any("ZRH" in v for k, v in sections.items() if not k.startswith("🔁"))
+
+
+def test_cards_in_the_sent_email_are_marked_emailed(tmp_path, monkeypatch):
+    """`new` says a card qualified, not that it went out (watchlist cards past
+    WATCH_EMAIL_MAX, a failed send) and misses Still available cards, so the audit
+    couldn't tell which cards the user actually received."""
+    out, _, reminders = _reminder_run(tmp_path, monkeypatch, emailed_days_ago=8)
+    by_dest = {d["dest"]: d for d in out["top"]}
+    assert reminders == ["ZRH"]
+    assert by_dest["FRA"]["new"] is True and by_dest["FRA"]["emailed"] is True
+    assert by_dest["ZRH"]["new"] is False and by_dest["ZRH"]["emailed"] is True  # Still available
+
+
+def test_nothing_is_marked_emailed_when_the_send_fails(tmp_path, monkeypatch):
+    _fake_pipeline(tmp_path, monkeypatch, [_award("FRA", "BUSINESS", "aeroplan", 50000, 61)])
+    monkeypatch.setattr(deal_finder, "_load_digest", lambda: {})
+    monkeypatch.setattr(deal_finder.deal_email, "is_configured", lambda: True)
+
+    def _fail(*a, **k):
+        raise OSError("smtp down")
+
+    monkeypatch.setattr(deal_finder.deal_email, "send_digest_email", _fail)
+    out = deal_finder.run(max_lookups=10, top=5, send_email=True, log=lambda m: None)
+    fra = next(d for d in out["top"] if d["dest"] == "FRA")
+    assert out["email_failed"] and fra["new"] is True and fra["emailed"] is False
+
+
+def test_every_flight_lookup_is_logged_by_the_phase_that_made_it(tmp_path, monkeypatch):
+    """Nov 8-14 logged 99-129 flight lookups a day, but the per-selection lines didn't
+    add up to that total: the held-miles selection and the alternatives check made
+    lookups without saying so."""
+    import re
+    zrh = _award("ZRH", "BUSINESS", "aeroplan", 60000, 60)
+    lis = _award("LIS", "ECONOMY", "flyingblue", 20000, 90)
+    _fake_pipeline(tmp_path, monkeypatch, [zrh, lis])
+    monkeypatch.setattr(deal_finder.ledger, "load_program_balances", lambda: {zrh.program: 100000})
+    msgs = []
+    out = deal_finder.run(max_lookups=10, top=1, send_email=False, log=msgs.append)
+    total = out["verification"]["trip_lookups"]
+    assert total == 2  # LIS for the top list, ZRH for the held-miles section
+    phases = sum(int(m) for line in msgs
+                 for m in re.findall(r"(\d+) seats\.aero lookup\(s\)", line))
+    assert phases == total, [line for line in msgs if "lookup" in line]
+    assert any(f"flight details: {total} checked" in line for line in msgs)

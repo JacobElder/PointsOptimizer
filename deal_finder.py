@@ -1,25 +1,33 @@
 """
 Deal finder: separates the wheat from the chaff in seats.aero award space.
 
-Pipeline (one run, ~8 minutes, ~200-300 seats.aero calls of 1,000/day):
+Pipeline (one run, ~20 minutes, ~300-400 seats.aero calls of 1,000/day: ~240 for
+the scan, the rest for flight details and the return-leg scan):
   1. SCAN      award_scanner: every fresh award on scan_config.json's routes (plus
                watchlist destinations), in programs your active pools can transfer to.
   2. ESTIMATE  fare_model: estimated cash fare + uncertainty for every candidate,
                giving est. CPP and P(clears the bar). Watchlist matches use their
                own bar and get pricing priority.
   3. PRICE     cash_quotes (free Google Flights): real one-way fares for the most
-               promising candidates. One quote also covers dates within +/-7 days.
+               promising candidates. A saved quote also covers nearby dates: within
+               2 / 7 / 14 days, up to 3 / 7 / 14 days old, for trips up to 45 / 120 /
+               more days out.
   4. MATCH     cash_quotes.comparable_fare: nonstop award -> cheapest fare with at
                most 1 stop; otherwise cheapest fare. First class vs business fare.
   5. ROUND TRIP  for deals that make the report, also price a 7-night round trip;
                the award is valued against the LOWER of the one-way fare and half
                the round trip (one-way fares are often far above half a round trip).
-  6. RANK      by dollars saved above the bar: (cash - taxes) - points * bar / 100.
-               One entry per destination + cabin, other dates/origins/programs
-               listed under it, 5 slots reserved for economy.
-  7. REPORT    deal_digest.json (Deal Radar) + email of trips not emailed in the
-               last ROUTE_MEMORY_DAYS (or materially better since): watchlist hits
-               first, then the top list.
+  6. RANK      one card per destination + cabin, led by the option worth most in the
+               points you'd actually spend (choice_value); other dates, origins and
+               programs are listed under it. Cards rank by rank_value: dollars above
+               what the points are usually worth, on today's fare capped at 1.25x the
+               route's usual fare, discounted for flaws (mixed cabin, slow, stale,
+               unverified...). Economy/premium economy and business/first are chosen
+               separately, at most MAX_PER_PROGRAM (6) cards per program.
+  7. REPORT    deal_digest.json (the site's Top Deals page) + email of trips not
+               emailed in the last ROUTE_MEMORY_DAYS (or materially better since):
+               held miles, then watchlist hits, then the top list, then a few
+               "Still available" repeats.
 
 Usage:
     python deal_finder.py                 # scan, price, save digest, email new deals
@@ -58,7 +66,7 @@ MIN_P_GREAT_TO_PRICE = 0.2
 MIN_P_WATCH_TO_PRICE = 0.05
 WATCH_PRIORITY_BOOST = 5.0
 DEFAULT_MAX_LOOKUPS = 150
-DEFAULT_MAX_WATCH_LOOKUPS = 80  # separate budget so a long watchlist can't starve the general scan
+DEFAULT_MAX_WATCH_LOOKUPS = 80  # separate per-run lookup limit so a long watchlist can't starve the general scan
 DEFAULT_TOP = 20
 REPORT_COOLDOWN_DAYS = 14
 # How long a route/program/cabin emailed once is remembered: within it, the trip is
@@ -123,20 +131,20 @@ SLOW_MIN_EXTRA_MIN = 300  # a short hop may add this much for a connection befor
 SLOW_MAX_EXTRA_MIN = 360  # ...and no itinerary may add more than this, however long the flight
 UNKNOWN_TAXES_PENALTY = 0.85  # taxes reported as $0 and nothing to estimate from
 ESTIMATED_TAXES_PENALTY = 0.95  # taxes estimated from similar awards, not this one's
-MAX_TRIP_LOOKUPS = 260  # seats.aero calls for live re-verification, on top of the ~210-call scan
+MAX_TRIP_LOOKUPS = 260  # seats.aero calls for live re-verification, on top of the ~240-call scan
 INTERACTIVE_TRIP_LOOKUPS = 40  # a button press shares the same 1,000/day as the scheduled run
 ROUND_TRIP_CHECK_EXTRA = 15  # also round-trip-check this many runners-up, since leaders can drop out
 WATCH_DEALS_PER_ENTRY = 2
 HOLDOUT_LOOKUPS = 5  # deliberate duplicates near an existing quote, to measure reuse error
-EXPLORE_SHARE = 0.25  # of the live budget, spent on route+cabin cells we haven't priced lately
+EXPLORE_SHARE = 0.25  # of the per-run Google lookup limit, spent on route+cabin cells we haven't priced lately
 EXPLORE_STALE_DAYS = 10
 # How much a route's own price history may move a deal up or down the list.
 HISTORY_WEIGHT = 0.3
 FRESH_PRICE_SHORTLIST = True  # re-price reported deals on their own date before publishing
 ESTIMATE_DRIFT_WARN_PCT = 45  # fare model is ~28% median error on unseen routes; well past that is a problem
 MAX_PER_PROGRAM = 6  # one program's routine pricing shouldn't fill the whole list
-WATCH_EMAIL_MAX = 10
-HELD_MILES_DEALS = 5  # "book now with miles you already have" section size  # most valuable new watchlist hits per email; the rest are on Deal Radar
+WATCH_EMAIL_MAX = 10  # most valuable new watchlist hits per email; the rest are on Top Deals
+HELD_MILES_DEALS = 5  # "book now with miles you already have" section size
 
 
 def price_cabin(cabin: str) -> str:
@@ -219,6 +227,8 @@ class Scored:
     return_option: dict | None = None  # a return award found in the same scan
     dropped: bool = False  # re-verification says it's gone, repriced, or sold out
     fare_reconciled: bool = False  # revalued at a cheaper fare found on a nearby date
+    own_one_way: float | None = None  # this date's own comparable fare, before any pooling
+    pooled_nonstop: bool = False  # which fare pool the pooled fare came from (<=1 stop or any)
     returns_checked: bool = False  # the way home was actually scanned for this deal
 
     @property
@@ -534,6 +544,9 @@ class Scored:
             "cpp_at_typical": (round(self.cpp_at_typical, 3)
                                if self.cpp_at_typical is not None else None),
             "rank_cash": round(self.rank_cash) if self.rank_cash is not None else None,
+            # This date's own fare came from Google in this run (not a saved or
+            # borrowed one): what "re-checked today" in the email needs.
+            "fare_this_run": _fetched_this_run(self),
             "fare_spike": round(self.fare_spike, 2) if self.fare_spike else None,
             "held_miles": self.held_miles, "bookable_now": self.bookable_now,
             "top_up_needed": max(c.points - self.held_miles, 0) if self.held_miles else None,
@@ -623,8 +636,11 @@ def _one_way_basis(s: Scored) -> str:
     return f"{base} — no round trip checked, so this may flatter the deal"
 
 
-def _apply_quote(s: Scored, q: cash_quotes.Quote) -> None:
-    """Value the award against a comparable one-way fare.
+def _apply_quote(s: Scored, q: cash_quotes.Quote, drop_pool: bool = False) -> bool:
+    """Value the award against a comparable one-way fare. False if the quote has none.
+
+    drop_pool: this date's fare replaces a fare pooled from nearby dates even when the
+    pooled one is lower (fresh re-pricing; see reconcile_published).
 
     Until flight details confirm a true nonstop, compare against the cheapest
     fare at any number of stops -- the conservative choice, since a connecting
@@ -635,14 +651,30 @@ def _apply_quote(s: Scored, q: cash_quotes.Quote) -> None:
     carriers = _trip_carrier_codes(s) or s.c.airlines
     comp = cash_quotes.comparable_fare(q, s.nonstop, carriers)
     if comp is None:
-        return
+        return False
     s.quote = q
-    s.fare_reconciled = False  # this date's own fare replaces any pooled one
     s.cash_approx, s.cash_basis, s.same_carrier_cash = q.approx, comp.basis, comp.same_carrier_price
     s.same_carrier_code = comp.same_carrier_code
     s.quote_basis = comp.basis
-    s.one_way_cash = comp.price
+    s.own_one_way = comp.price
+    # A cheaper fare pooled from a nearby date survives re-matching this date's fare
+    # (the flight check redoes it once stops are known), as long as it came from the
+    # same fare pool: until Nov 15 the check reset EWR-IST from a pooled $2,006 to its
+    # own $3,536, so the dearer date led the card again. A confirmed nonstop is valued
+    # on <=1-stop fares and must not keep an any-stops fare pooled before the check.
+    keep_pool = (not drop_pool and s.fare_reconciled and s.one_way_cash is not None
+                 and s.pooled_nonstop == _fare_pool(s) and s.one_way_cash < comp.price)
+    if not keep_pool:
+        s.fare_reconciled = False  # this date's own fare replaces any pooled one
+        s.one_way_cash = comp.price
     _finalize_cash(s)
+    return True
+
+
+def _fare_pool(s: Scored) -> bool:
+    """Which fares an award is compared with: True = at most 1 stop (a confirmed
+    nonstop), False = any stops (connecting, or not checked yet)."""
+    return s.nonstop is True
 
 
 def _trip_carrier_codes(s: Scored) -> str:
@@ -696,8 +728,8 @@ def _warn_on_health(price: dict, scan: dict, budget: int, log) -> None:
         log(f"::warning::{price['no_fare']} of {live} cash lookups returned no fare: "
             "Google may be blocking or serving empty pages.")
     if budget and live < 0.5 * budget and price.get("skipped_low_p", 0) > 1000:
-        log(f"::warning::Only {live} of a {budget} lookup budget was spent; this digest leans on "
-            "reused fares.")
+        log(f"::warning::Only {live} of the per-run limit of {budget} Google lookups were made; "
+            "this digest leans on reused fares.")
     if scan.get("rows") and scan.get("stale", 0) / scan["rows"] > 0.25:
         log(f"::warning::{scan['stale']:,} of {scan['rows']:,} seats.aero rows were past the "
             "freshness limit: its cache may be lagging.")
@@ -1025,6 +1057,12 @@ def apply_round_trip(s: Scored, rt_cache: dict, today: date_cls | None = None) -
     stays = _rt_stays(s, today)
     if not stays:
         return _mark_rt_unavailable(s)
+    # A shorter stay the end-of-run retry already priced is a real round trip: use it
+    # rather than re-reading the empty 7-night answer (Oct 29: EWR-PVG published as
+    # "no round trip" next to a 4-night half it had found).
+    for n in stays:
+        if rt_cache.get(_rt_key(s, n)):
+            return _use_round_trip(s, rt_cache[_rt_key(s, n)], n)
     stay = stays[0]
     key = _rt_key(s, stay)
     if key not in rt_cache:
@@ -1054,6 +1092,7 @@ def _fetch_round_trip(s: Scored, stay: int):
 
 def _mark_rt_unavailable(s: Scored) -> bool:
     s.rt_unavailable = True
+    s.round_trip_half = None  # a half from another stay or an earlier check isn't this one
     _finalize_cash(s)  # values it at the estimate rather than the one-way fare
     return False
 
@@ -1256,7 +1295,12 @@ def group_leaders(scored: list[Scored], bar_fn=None) -> list[Scored]:
     # groups are then ranked by surplus as before.
     # Ties (typically two dates both at the fare cap) go to the one whose fare is
     # less inflated: the card should show the date that's good at a normal price.
-    for s in sorted(confirmed, key=lambda s: (-s.choice_value, s.fare_spike or 0)):
+    # Past a card's check cap, an option nobody checked can't lead it over one that
+    # was checked (`_past_check_cap` sorts first). The 0.6 discount in choice_value
+    # alone was soft: a checked mixed-cabin (x0.4) or airport-change (x0.5) option
+    # still lost to it, so each round checked one more date (Nov 13-14: EWR-CAI 8
+    # times, all 12 rounds).
+    for s in sorted(confirmed, key=lambda s: (_past_check_cap(s), -s.choice_value, s.fare_spike or 0)):
         g = best.get(s.group_key)
         combo = (s.c.source, s.c.origin)
         if g is None:
@@ -1280,6 +1324,13 @@ def group_leaders(scored: list[Scored], bar_fn=None) -> list[Scored]:
     return leaders
 
 
+def _past_check_cap(s: Scored) -> bool:
+    """Never checked, on a card that has already used its MAX_EXPLORE_PER_CARD checks.
+    Within a card, every checked option that clears its bar comes before these."""
+    return (s.trip is None and not s.trip_checked
+            and CARD_CHECKS.get(s.group_key, 0) >= MAX_EXPLORE_PER_CARD)
+
+
 def _alt_line(s: Scored, leader: Scored) -> str:
     """One alternatives entry. Names the date: the alternative is the best award in
     its program, which is often not on the leader's day, so "70,000 fewer points"
@@ -1296,7 +1347,8 @@ def _alt_line(s: Scored, leader: Scored) -> str:
 
 def promote_better_alternatives(deals: list[Scored], scored: list[Scored], rt_cache: dict | None,
                                 trip_cache: dict | None, sources_reporting_seats: set[str],
-                                round_trip: bool, bar_fn=None, log=None) -> dict[int, Scored]:
+                                round_trip: bool, bar_fn=None, log=None, fresh: bool = False,
+                                stats: dict | None = None) -> dict[int, Scored]:
     """Re-check each published deal against its alternatives once fares have settled.
 
     The program is chosen inside the selection loop, but fresh re-pricing and fare
@@ -1305,9 +1357,16 @@ def promote_better_alternatives(deals: list[Scored], scored: list[Scored], rt_ca
     worth more by then in the points you'd actually spend. An alternative that now
     looks better gets the same checks the leader had (round trip, live seats.aero)
     before it replaces the leader. Returns {id(old leader): new leader}.
+
+    fresh=True also re-prices the alternative on its exact date and pools it with this
+    run's nearby fares, as the leader was: this runs after fresh re-pricing, so until
+    Nov 15 a swapped-in card published on whatever fare it had, often an earlier
+    day's. `stats` collects the lookups spent here.
     """
     bar_fn = bar_fn or (lambda s: s.floor)
     swaps: dict[int, Scored] = {}
+    calls_before = _trip_calls(trip_cache) if trip_cache is not None else 0
+    repriced = {"repriced": 0, "changed": 0, "failed": 0, "retried": 0}
     for d in deals:
         if d.choice_value is None:
             continue
@@ -1316,6 +1375,14 @@ def promote_better_alternatives(deals: list[Scored], scored: list[Scored], rt_ca
                         key=lambda a: -a.choice_value)[:2]:
             if round_trip and rt_cache is not None:
                 apply_round_trip(a, rt_cache)
+            if fresh and a.cash is not None:
+                r = reprice_fresh([a], log=lambda *_: None)
+                for k in repriced:
+                    repriced[k] += r.get(k, 0)
+                reconcile_published([a], scored, log=lambda *_: None)
+                if (a.cpp is None or a.cpp < bar_fn(a)
+                        or a.choice_value is None or a.choice_value <= d.choice_value):
+                    continue  # checking its flights can only lower it further
             if trip_cache is not None and a.trip is None and not a.trip_checked:
                 attach_trips([a], trip_cache, log=log)
             if trip_cache is not None and not still_bookable(a, sources_reporting_seats):
@@ -1336,6 +1403,14 @@ def promote_better_alternatives(deals: list[Scored], scored: list[Scored], rt_ca
                 log(f"Switched {d.c.dest} {d.c.cabin} from {d.c.origin} via {d.c.program} to "
                     f"{a.c.origin} via {a.c.program}: worth more in the points you'd actually spend")
             break
+    lookups = (_trip_calls(trip_cache) - calls_before) if trip_cache is not None else 0
+    if stats is not None:
+        stats["trip_lookups"] = stats.get("trip_lookups", 0) + lookups
+        for k, v in repriced.items():
+            stats[k] = stats.get(k, 0) + v
+    if log and (lookups or repriced["repriced"] or repriced["failed"]):
+        log(f"Alternatives: {len(swaps)} switched, {lookups} seats.aero lookup(s), "
+            f"{repriced['repriced']} re-priced fresh ({repriced['failed']} unavailable)")
     return swaps
 
 
@@ -1412,8 +1487,11 @@ def reprice_fresh(deals: list[Scored], log=print) -> dict:
         if q is None or q.price_usd is None:
             return False
         before = s.cash
+        # This run's fare for the exact date replaces a fare pooled before selection,
+        # which may be an earlier day's; reconcile_published re-pools fresh fares.
+        if not _apply_quote(s, q, drop_pool=True):  # keeps the round-trip floor
+            return False  # no comparable fare in the answer: not re-checked
         stats["repriced"] += 1
-        _apply_quote(s, q)  # keeps the round-trip floor via _finalize_cash
         if before and abs(s.cash - before) / before > 0.05:
             stats["changed"] += 1
         return True
@@ -1467,8 +1545,13 @@ def worth_emailing(d: dict) -> bool:
     at the usual fare, including 3 of the 5 that later fell below it (the other 2 can't
     be caught this way). Margin applies to today's fare only; the usual fare just has to
     clear the bar. No usual fare known (fewer than 3 real fares): today's fare decides.
+
+    Nov 15 (user's call): a card valued on an estimated round trip (`rt_unavailable`,
+    81% of the one-way fare) or with no tax figure at all (`taxes_unknown`) isn't
+    emailed either; both stay on the site, labeled. Nov 11 JFK-CMN and Nov 12 EWR-DEL
+    went out that way.
     """
-    if d.get("slow"):
+    if d.get("slow") or d.get("rt_unavailable") or d.get("taxes_unknown"):
         return False
     bar = d.get("watch_bar", d["great_floor"])
     at_typical = d.get("cpp_at_typical")
@@ -1491,10 +1574,16 @@ def pick_still_available(pairs: list[tuple[str, dict]], routes: dict[str, dict],
     One email is easy to miss, and nothing in the inbox says a deal is still bookable.
     Each is shown at most once a week. The original email date in `routes` is left
     alone, so the repeat rule (ROUTE_MEMORY_DAYS) works as before.
+
+    Only a card whose fare was fetched in this run qualifies: the section says
+    "re-checked today", and 4 of 6 shown Nov 11-14 were on a fare borrowed from a
+    nearby date days earlier (EWR-TLV Nov 14 on a Nov 8 fare). The week is counted in
+    UTC dates: runs start 12-16 UTC, so 168 hours often meant 8 days.
     """
     best: dict[str, tuple[float, dict]] = {}
+    today = now.astimezone(timezone.utc).date() if now.tzinfo else now.date()
     for _, d in pairs:
-        if d.get("new"):
+        if d.get("new") or not d.get("fare_this_run"):
             continue
         rk = route_report_key(d)
         prev = routes.get(rk)
@@ -1504,11 +1593,16 @@ def pick_still_available(pairs: list[tuple[str, dict]], routes: dict[str, dict],
         if ratio < STILL_AVAILABLE_MULTIPLE:
             continue
         last = max(prev["at"], shown.get(rk, ""))
-        if now - datetime.fromisoformat(last) < timedelta(days=STILL_AVAILABLE_GAP_DAYS):
+        if (today - _utc_date(last)).days < STILL_AVAILABLE_GAP_DAYS:
             continue
         if rk not in best or ratio > best[rk][0]:
             best[rk] = (ratio, d)
     return [d for _, d in sorted(best.values(), key=lambda t: -t[0])][:STILL_AVAILABLE_MAX]
+
+
+def _utc_date(iso: str) -> date_cls:
+    t = datetime.fromisoformat(iso.replace("Z", "+00:00"))
+    return t.astimezone(timezone.utc).date() if t.tzinfo else t.date()
 
 
 def route_report_key(d: dict) -> str:
@@ -1538,9 +1632,29 @@ def seed_reported_routes(reported: dict[str, str]) -> dict[str, dict]:
     return out
 
 
+def repeat_cpp(d: dict) -> float:
+    """The value a repeat is judged on: CPP at the lower of today's fare and the route's
+    usual fare (`cpp_at_typical`), or today's when the usual fare isn't known.
+
+    User's call, Nov 15: a higher fare on another date isn't a better award. JFK-EZE
+    Alaska business 60k went out at 3.52c Nov 6 and again at 4.25c Nov 9 on a pricier
+    date, 3.19c at the usual fare. Replay Nov 8-14: 9 re-sends by today's fare, 7 at
+    the usual fare (JFK-PLS Nov 8 and JFK-EZE Nov 9 held back).
+    """
+    at = d.get("cpp_at_typical")
+    return d["cpp"] if at is None else min(d["cpp"], at)
+
+
+def route_memory_entry(d: dict, at: str) -> dict:
+    """What reported_routes remembers about an emailed trip."""
+    return {"at": at, "cpp": d["cpp"], "points": d["points"], "cpp_at_usual": repeat_cpp(d)}
+
+
 def materially_better(d: dict, prev: dict) -> bool:
-    """Worth emailing again: clearly more value per point, or clearly fewer points."""
-    return (d["cpp"] >= prev.get("cpp", 0) * REPEAT_BETTER_CPP
+    """Worth emailing again: clearly more value per point at the usual fare, or clearly
+    fewer points. Entries saved before Nov 15 have no `cpp_at_usual`; their today's-fare
+    CPP stands in."""
+    return (repeat_cpp(d) >= prev.get("cpp_at_usual", prev.get("cpp", 0)) * REPEAT_BETTER_CPP
             or d["points"] <= prev.get("points", 0) * REPEAT_FEWER_POINTS)
 
 
@@ -1582,7 +1696,7 @@ def dedupe_sections(held: list[Scored], watch: list[dict], ranked: list[Scored])
     return [s for s in ranked if keep(s)]
 
 
-def reconcile_fares(deals: list[Scored], log=print) -> int:
+def reconcile_fares(deals: list[Scored], log=print, reference: list[Scored] | None = None) -> int:
     """Value cards on the same route and cabin, on nearby dates, against the same fare.
 
     EWR-IST business published twice one day apart at $2,006 and $3,536: whichever
@@ -1592,14 +1706,19 @@ def reconcile_fares(deals: list[Scored], log=print) -> int:
     the last place where fare noise, rather than the award, picks the winner.
 
     Only nearby dates are pooled: a February fare says nothing about an October one.
+    `reference` awards add their own fares to the pool but are not revalued.
     """
     groups: dict[tuple, list[Scored]] = {}
-    for s in deals:
+    revalue = {id(s) for s in deals}
+    members_in = {id(s): s for s in deals}
+    members_in.update({id(s): s for s in reference or [] if id(s) not in members_in})
+    for s in members_in.values():
         if s.one_way_cash is not None and s.cash is not None:
-            # Nonstop and connecting awards are compared against different fare
-            # pools (<=1 stop vs any stops), so pooling them would hand a nonstop
-            # award a connecting fare under a label that says "at most 1 stop".
-            groups.setdefault((s.c.origin, s.c.dest, price_cabin(s.c.cabin), s.nonstop), []).append(s)
+            # Confirmed nonstops are compared against <=1-stop fares and everything
+            # else against any-stops fares, so pooling across the two would hand an
+            # award a fare from the other pool under the wrong label. Unchecked and
+            # connecting awards share the any-stops pool.
+            groups.setdefault((s.c.origin, s.c.dest, price_cabin(s.c.cabin), _fare_pool(s)), []).append(s)
     changed = 0
     for members in groups.values():
         if len(members) < 2:
@@ -1608,7 +1727,7 @@ def reconcile_fares(deals: list[Scored], log=print) -> int:
         cluster: list[Scored] = []
         for s in members + [None]:
             if cluster and (s is None or _days_between(cluster[0].c.date, s.c.date) > RECONCILE_WINDOW_DAYS):
-                changed += _apply_cheapest_fare(cluster)
+                changed += _apply_cheapest_fare(cluster, revalue)
                 cluster = []
             if s is not None:
                 cluster.append(s)
@@ -1618,14 +1737,46 @@ def reconcile_fares(deals: list[Scored], log=print) -> int:
     return changed
 
 
+def _fresh_cutoff() -> str:
+    return (datetime.now(timezone.utc)
+            - timedelta(days=FRESH_QUOTE_MAX_AGE_DAYS)).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _fetched_this_run(s: Scored, cutoff: str | None = None) -> bool:
+    """The award's own exact-date fare was fetched within FRESH_QUOTE_MAX_AGE_DAYS
+    (quote timestamps share one fixed format, so they compare as strings)."""
+    q = s.quote
+    return bool(q is not None and not q.approx and q.price_usd is not None
+                and (q.fetched_at or "") >= (cutoff or _fresh_cutoff()))
+
+
+def reconcile_published(cards: list[Scored], scored: list[Scored], log=print) -> int:
+    """Pool the cards about to be published, after fresh re-pricing, with this run's
+    fares for nearby dates on the same route and cabin.
+
+    Before Nov 15 this pooled the shortlist only, so a card whose cheaper neighbor
+    wasn't shortlisted kept its own (higher) date's fare. Fares from earlier days are
+    left out: fresh re-pricing exists to keep those off published cards.
+    """
+    ids, cutoff = {id(s) for s in cards}, _fresh_cutoff()
+    return reconcile_fares(cards, log=log, reference=[
+        s for s in scored if id(s) not in ids and _fetched_this_run(s, cutoff)])
+
+
 def _days_between(a: str, b: str) -> int:
     return abs((datetime.strptime(b, "%Y-%m-%d") - datetime.strptime(a, "%Y-%m-%d")).days)
 
 
-def _apply_cheapest_fare(cluster: list[Scored]) -> int:
+def _own_fare(s: Scored) -> float:
+    """The date's own fare: pooling from an already-pooled figure would carry a fare
+    across clusters (and, after re-pricing, from an earlier day's quote)."""
+    return s.own_one_way if s.own_one_way is not None else s.one_way_cash
+
+
+def _apply_cheapest_fare(cluster: list[Scored], revalue: set[int] | None = None) -> int:
     if len(cluster) < 2:
         return 0
-    fares = sorted(s.one_way_cash for s in cluster)
+    fares = sorted(_own_fare(s) for s in cluster)
     median = fares[len(fares) // 2]
     # One bad scrape shouldn't drag a whole route down: a fare far below the
     # cluster's median is treated as suspect rather than as the price to beat.
@@ -1633,10 +1784,13 @@ def _apply_cheapest_fare(cluster: list[Scored]) -> int:
     low_ow = min(credible) if credible else fares[0]
     changed = 0
     for s in cluster:
+        if revalue is not None and id(s) not in revalue:
+            continue  # a reference fare only
         before = s.cash
         if s.one_way_cash <= low_ow:
             continue  # already at or under the cluster's floor: never raise a fare
         s.fare_reconciled = True
+        s.pooled_nonstop = _fare_pool(s)
         # Only the one-way fare is pooled. A round-trip half belongs to its own
         # departure date and stay length (7/4/2 nights depending on how close the
         # return falls to the booking wall), so borrowing one would print a figure
@@ -1843,13 +1997,14 @@ def shortlist(scored: list[Scored], top: int, min_economy: int = 5, rt_cache: di
 
 def held_miles_report(scored: list[Scored], rt_cache: dict, round_trip: bool = True,
                       trip_cache: dict | None = None,
-                      sources_reporting_seats: set[str] | None = None) -> list[Scored]:
+                      sources_reporting_seats: set[str] | None = None, log=None) -> list[Scored]:
     """Best deals bookable outright with miles already sitting in a program."""
     mine = [s for s in scored if s.bookable_now]
     if SELECT_THEN_VERIFY:
         return verify_selection(
             mine, lambda ls: sorted(ls, key=lambda s: -s.rank_value)[:HELD_MILES_DEALS],
-            rt_cache, trip_cache, sources_reporting_seats or set(), round_trip)
+            rt_cache, trip_cache, sources_reporting_seats or set(), round_trip,
+            log=(lambda m: log(f"[held miles] {m}")) if log else None)
     else:
         leaders = verify_leaders(mine, group_leaders(mine)[: HELD_MILES_DEALS + 4], rt_cache, trip_cache,
                                  sources_reporting_seats or set(), round_trip)
@@ -1937,7 +2092,7 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
     held_sources = award_scanner.sources_for_programs(program_balances)
     left = award_scanner.remaining_calls()
     if left is not None and left < 250:
-        log(f"::warning::Only {left} seats.aero calls left today (a full scan needs ~210). "
+        log(f"::warning::Only {left} seats.aero calls left today (a full scan needs ~240). "
             "The scan will cover what it can and stop.")
     cands, scan_stats = award_scanner.scan(config, include_planned=include_planned, extra_sources=held_sources)
     if not cands:
@@ -2054,7 +2209,7 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
     ranked = shortlist(scored, top, rt_cache=rt_cache, round_trip=round_trip, trip_cache=trip_cache,
                        sources_reporting_seats=sources_reporting_seats, log=log)
     held = held_miles_report(scored, rt_cache, round_trip=round_trip, trip_cache=trip_cache,
-                             sources_reporting_seats=sources_reporting_seats)
+                             sources_reporting_seats=sources_reporting_seats, log=log)
     watch = watch_report(scored, watchlist, rt_cache, round_trip=round_trip, trip_cache=trip_cache,
                          sources_reporting_seats=sources_reporting_seats, log=log)
 
@@ -2067,8 +2222,9 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
         shortlisted = {id(s): s for s in ranked + held}
         shortlisted.update({id(s): s for g in watch for s, _ in g["deals"]})
         reprice_stats = reprice_fresh(list(shortlisted.values()), log=log)
-        # Again after fresh re-pricing, which moves fares on the shortlist only.
-        pre_reconciled += reconcile_fares(list(shortlisted.values()), log=log)
+        # Again after fresh re-pricing, which moves fares on the shortlist only, and
+        # now keyed on the stop counts the flight checks found.
+        pre_reconciled += reconcile_published(list(shortlisted.values()), scored, log=log)
         # Re-pricing and reconciliation can push a deal below its bar: rebuild the
         # lists rather than publishing a deal that no longer qualifies.
         ranked = pick_top([s for s in ranked if s.cpp is not None and s.cpp >= s.floor], top)
@@ -2086,13 +2242,18 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
     # After re-pricing: that is what moves the leader's fare and can make the program
     # chosen during selection the wrong one. Held-miles deals stay put -- the point of
     # that section is that no transfer is needed.
+    # Swapped-in cards get the same fresh fare and pooling the shortlist just had.
+    alt_stats: dict = {}
     swaps = promote_better_alternatives(ranked, scored, rt_cache, trip_cache, sources_reporting_seats,
-                                        round_trip, log=log)
+                                        round_trip, log=log, fresh=FRESH_PRICE_SHORTLIST,
+                                        stats=alt_stats)
     ranked = sorted((swaps.get(id(s), s) for s in ranked), key=lambda s: -s.rank_value)
     for g in watch:
         g_swaps = promote_better_alternatives([s for s, _ in g["deals"]], scored, rt_cache, trip_cache,
                                               sources_reporting_seats, round_trip,
-                                              bar_fn=g["bar_fn"], log=log)
+                                              bar_fn=g["bar_fn"],
+                                              log=lambda m, g=g: log(f"[{g['label']}] {m}"),
+                                              fresh=FRESH_PRICE_SHORTLIST, stats=alt_stats)
         g["deals"] = [(g_swaps[id(s)], None) if id(s) in g_swaps else (s, d) for s, d in g["deals"]]
 
     ranked = dedupe_sections(held, watch, ranked)
@@ -2123,7 +2284,7 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
         d["new"] = is_new(key, d)
         held_pairs.append((key, d))
     log(f"Round-trip checks: {len(rt_cache)} ({sum(1 for v in rt_cache.values() if v)} priced); "
-        f"flight details: {len(trip_cache)} checked, "
+        f"flight details: {_trip_calls(trip_cache)} checked, "
         f"{sum(1 for v in trip_cache.values() if v is None)} gone/repriced, "
         f"{sum(1 for v in trip_cache.values() if isinstance(v, award_trips.TripInfo) and v.mixed_cabin)}"
         " mixed cabin")
@@ -2157,13 +2318,21 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
                                            shown_before, started)
     emailed = 0
     out_email_failed: list[str] = []
+    # Which cards the user actually received. `new` only says a card qualified: a
+    # watchlist card past WATCH_EMAIL_MAX or a failed send never arrives, and Still
+    # available cards aren't new. Set to True below once the send succeeds.
+    for _, d in top_pairs + held_pairs + watch_pairs:
+        d["emailed"] = False
     if send_email and fresh and not deal_email.is_configured():
         log("::warning::Gmail isn't configured (GMAIL_ADDRESS / GMAIL_APP_PASSWORD): no digest email sent.")
     if send_email and fresh and deal_email.is_configured():
         held_new = [d for k, d in fresh if k.startswith("held:")]
         watch_new = [d for k, d in fresh if k.startswith("watch:")]
         top_new = [d for k, d in fresh if not k.startswith(("held:", "watch:"))]
-        n_unique = len({k.split(":", 1)[-1] for k, _ in fresh})  # same award can appear in 2 sections
+        # dedupe_sections already left one card per program/route/cabin; this is a
+        # safety net for the count in the subject line.
+        n_unique = len({k.split(":", 1)[-1].split("|", 1)[-1] if k.startswith("watch:")
+                        else k.split(":", 1)[-1] for k, _ in fresh})
         # Biggest by RANKED value, not raw surplus: the subject line shouldn't headline
         # a deal that only looks big because today's fare is spiking.
         lead = max((d for _, d in fresh), key=lambda d: d.get("ranked_value_usd") or 0)
@@ -2186,7 +2355,7 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
                   "economy price — worth it if you'd fly up front, not cash you'd have spent.",
                   [d for d in top_new if is_premium(d)]),
                  ("🔁 Still available from earlier emails",
-                  "Not new: sent at least a week ago, still bookable, and re-checked today at "
+                  "Not new: sent at least a week ago, still bookable, and re-priced today at "
                   f"{STILL_AVAILABLE_MULTIPLE:g}x its bar or better. Each is shown here at most "
                   "once a week.", still_available)],
                 subject=(f"✈️ {n_unique} new award deal{'s' if n_unique != 1 else ''}: "
@@ -2203,11 +2372,11 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
             )
             emailed = n_unique
             for k, d in fresh:
+                d["emailed"] = True
                 reported.setdefault(k, started.isoformat())
-                reported_routes[route_report_key(d)] = {
-                    "at": started.isoformat(), "cpp": d["cpp"], "points": d["points"]}
+                reported_routes[route_report_key(d)] = route_memory_entry(d, started.isoformat())
             for d in still_available:
-                d["reminded"] = True
+                d["reminded"] = d["emailed"] = True
                 shown_before[route_report_key(d)] = started.isoformat()
         except Exception as e:
             log(f"::error::Deal Finder could not send the digest email: {type(e).__name__}: {e}")
@@ -2219,7 +2388,8 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
         "scan": scan_stats,
         "model": model.summary(),
         "pricing": price_stats,
-        "repricing": reprice_stats,
+        "repricing": ({**reprice_stats, "alternatives": alt_stats} if any(alt_stats.values())
+                      else reprice_stats),
         "estimate_drift": drift,
         "reuse_error": reuse,
         "round_trip_checks": len(rt_cache),
@@ -2284,7 +2454,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--max-watch-lookups", type=int, default=DEFAULT_MAX_WATCH_LOOKUPS)
     ap.add_argument("--no-email", action="store_true")
     ap.add_argument("--resend", action="store_true",
-                    help="email every current deal, ignoring the 14-day already-reported cooldown (for testing)")
+                    help="email every current deal, ignoring the 60-day route memory and the 14-day "
+                         "per-award cooldown (for testing); the history is kept")
     ap.add_argument("--no-round-trip", action="store_true", help="skip the round-trip fare check")
     ap.add_argument("--include-planned", action="store_true",
                     help="also scan programs reachable only from cards you plan to get")
