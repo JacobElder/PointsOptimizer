@@ -6,13 +6,9 @@ name: Google probe
 #
 # Oct 16 01:12 UTC: 77-83% of the previous morning's empty lookups priced, paced or
 # not, while every daily run since Oct 10 (13:25-16:07 UTC) lost 17-55%. The schedule
-# tests time of day: compare the Summary lines by start time. Remove it once decided.
+# tested time of day (01:40/07:40/13:40/19:40 UTC).
+# Probe schedule stopped Nov 15 2026: inconclusive on time of day; run by hand if needed.
 on:
-  schedule:
-    - cron: "40 1 * * *"
-    - cron: "40 7 * * *"
-    - cron: "40 13 * * *"
-    - cron: "40 19 * * *"
   workflow_dispatch:
     inputs:
       n:

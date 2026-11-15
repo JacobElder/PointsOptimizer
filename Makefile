@@ -5,7 +5,7 @@ PY := .venv/bin/python
 .PHONY: setup app find find-resend find-quiet test check audit audit-live
 
 setup:            ## create .venv with app + pipeline deps
-	python3 -m venv .venv && $(PY) -m pip install -q -r requirements.txt pytest
+	python3 -m venv .venv && $(PY) -m pip install -q -r requirements-dev.txt
 
 app:              ## run the Streamlit app
 	$(PY) -m streamlit run app.py
