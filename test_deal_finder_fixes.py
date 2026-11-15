@@ -273,3 +273,34 @@ def test_a_card_says_whether_its_fare_was_fetched_in_this_run():
     s = _ist(3536, "2027-03-01", "a", fetched_at=_now_ts(0.1))
     assert s.to_dict()["fare_this_run"] is True
     assert _ist(3536, "2027-03-01", "a", fetched_at=_now_ts(30)).to_dict()["fare_this_run"] is False
+
+
+# ── 9. no round trip means no round-trip half ────────────────────────────────
+class _RT:
+    def __init__(self, price, stops=1):
+        self.price_usd, self.stops = price, stops
+
+
+def _pvg():
+    """Oct 29: EWR-PVG business (Apr 26) published with rt_unavailable=True and a 4-night
+    round_trip_half of $3,875 on a $3,833 one-way fare."""
+    return _scored("PVG", "united", 3833, "2027-04-26", "pvg", points=88000)
+
+
+def test_a_round_trip_priced_on_a_shorter_stay_is_not_thrown_away():
+    """The end-of-run retry priced the 4-night return; a later apply_round_trip looked
+    only at the (empty) 7-night one and marked the deal as having no round trip."""
+    from datetime import date
+    s = _pvg()
+    cache = {deal_finder._rt_key(s, 7): [], deal_finder._rt_key(s, 4): [_RT(7750.0)]}
+    assert deal_finder.apply_round_trip(s, cache, today=date(2026, 10, 29))
+    assert s.round_trip_half == 3875 and s.rt_stay_nights == 4 and not s.rt_unavailable
+    assert s.cash == 3833
+
+
+def test_marking_no_round_trip_clears_a_stale_half():
+    s = _pvg()
+    s.round_trip_half, s.rt_stay_nights = 3875.0, 4
+    deal_finder._mark_rt_unavailable(s)
+    assert s.rt_unavailable and s.round_trip_half is None
+    assert s.cash == pytest.approx(3833 * 0.81)

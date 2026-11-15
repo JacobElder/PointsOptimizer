@@ -1045,6 +1045,12 @@ def apply_round_trip(s: Scored, rt_cache: dict, today: date_cls | None = None) -
     stays = _rt_stays(s, today)
     if not stays:
         return _mark_rt_unavailable(s)
+    # A shorter stay the end-of-run retry already priced is a real round trip: use it
+    # rather than re-reading the empty 7-night answer (Oct 29: EWR-PVG published as
+    # "no round trip" next to a 4-night half it had found).
+    for n in stays:
+        if rt_cache.get(_rt_key(s, n)):
+            return _use_round_trip(s, rt_cache[_rt_key(s, n)], n)
     stay = stays[0]
     key = _rt_key(s, stay)
     if key not in rt_cache:
@@ -1074,6 +1080,7 @@ def _fetch_round_trip(s: Scored, stay: int):
 
 def _mark_rt_unavailable(s: Scored) -> bool:
     s.rt_unavailable = True
+    s.round_trip_half = None  # a half from another stay or an earlier check isn't this one
     _finalize_cash(s)  # values it at the estimate rather than the one-way fare
     return False
 
