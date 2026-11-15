@@ -51,20 +51,46 @@ def load_quotes(rev: str) -> list[dict]:
 OLD_FARE_HOURS = 6
 
 
+# Added Nov 15 2026: Nov 14's "Still available" EWR-TLV (Mar 4) was priced on Mar 8's fare,
+# fetched Nov 8; the Mar 4 lookup had come back empty that day, so the exact-date check saw
+# nothing and the offline audit was clean. Same 14 days as cash_quotes' widest reuse window.
+BORROW_WINDOW_DAYS = 14
+
+
 def old_fare(x: dict, quotes: list[dict], generated_at: str) -> str | None:
-    """Day the card's exact-date one-way fare was fetched, if earlier than this run.
-    None when the fare is from this run or there is no saved fare for that date."""
+    """When the card's one-way fare was fetched, if earlier than this run (6 h).
+
+    Exact-date card: the date of that quote. If the only quote for the date is an empty
+    answer from this run, the card kept an older saved fare that the empty answer overwrote. Borrowed
+    fare (`cash_is_approx`): the nearby-date quote it came from, matched by price.
+    None when the fare is from this run or the quote it came from can't be found."""
     from deal_finder import price_cabin
     from datetime import datetime
     fmt = "%Y-%m-%dT%H:%M:%SZ"
     run = datetime.strptime(generated_at, fmt)
     cab = price_cabin(x["cabin"])
-    for q in quotes:
-        if (q["origin"], q["dest"], q["cabin"], q["date"]) == (x["origin"], x["dest"], cab, x["date"]) \
-                and q.get("price_usd") is not None:
-            fetched = datetime.strptime(q["fetched_at"], fmt)
-            if (run - fetched).total_seconds() > OLD_FARE_HOURS * 3600:
-                return q["fetched_at"][:10]
+
+    def is_old(q: dict) -> bool:
+        return (run - datetime.strptime(q["fetched_at"], fmt)).total_seconds() > OLD_FARE_HOURS * 3600
+
+    same = [q for q in quotes if (q["origin"], q["dest"], q["cabin"]) == (x["origin"], x["dest"], cab)]
+    if x.get("cash_is_approx"):
+        day = date.fromisoformat(x["date"])
+        fare = x.get("one_way_cash") or x["cash_price"]
+        near = [q for q in same if q.get("price_usd") is not None and q["date"] != x["date"]
+                and abs((date.fromisoformat(q["date"]) - day).days) <= BORROW_WINDOW_DAYS]
+        if not near:
+            return None
+        src = min(near, key=lambda q: (round(abs(q["price_usd"] - fare)),
+                                       abs((date.fromisoformat(q["date"]) - day).days)))
+        return f"{src['fetched_at'][:10]}, borrowed from {src['date']}" if is_old(src) else None
+    exact = [q for q in same if q["date"] == x["date"]]
+    for q in exact:
+        if q.get("price_usd") is not None:
+            return q["fetched_at"][:10] if is_old(q) else None
+    # An empty answer from this run replaced the saved fare the card still uses.
+    if x.get("one_way_cash") is not None and any(not is_old(q) for q in exact):
+        return "earlier, exact date now empty"
     return None
 
 
@@ -90,13 +116,28 @@ def google_line(d: dict) -> str:
     return f"google: {', '.join(parts)}{'  THROTTLED' if df.throttle_note(cov) else ''}"
 
 
-def emailed(x: dict) -> bool:
-    """In the email: new, or shown again under "Still available" (from Oct 24)."""
+def emailed(x: dict, d: dict | None = None) -> bool:
+    """In the email. From Nov 15 the run marks cards that went out (`emailed`, only when
+    the send succeeded); older digests: new, or shown again under "Still available"
+    (from Oct 24), unless the digest says nothing was sent (failed or no email)."""
+    if d is not None:
+        if any("emailed" in c for _, c in cards(d)):
+            return bool(x.get("emailed"))
+        if d.get("emailed_new") == 0:
+            return False
     return bool(x.get("new") or x.get("reminded"))
 
 
+# Email rules, with the first run each applies to (rules aren't applied to older digests).
+MARGIN_FROM = "2026-10-14"           # EMAIL_MARGIN, Oct 13 evening
+STILL_AVAILABLE_FROM = "2026-10-24"  # "Still available" section, Oct 23 evening
+TAXES_UNKNOWN_FROM = "2026-11-15"    # cards without reported taxes stay off the email
+
+
 def offline(d: dict, quotes: list[dict] | None = None) -> int:
+    import deal_finder as df
     problems = 0
+    run_day = d.get("generated_at") or ""
     old = 0
     under_typ: list[str] = []
     v, scan = d.get("verification", {}), d.get("scan", {})
@@ -121,13 +162,22 @@ def offline(d: dict, quotes: list[dict] | None = None) -> int:
             flags.append("BELOW BAR")
         if x.get("unverified"):
             flags.append("UNVERIFIED")
+        sent = emailed(x, d)
         if x.get("rt_unavailable"):
-            flags.append("RT ESTIMATED")
-        if emailed(x) and x.get("slow") and d.get("generated_at", "") >= "2026-10-19":
+            flags.append("RT ESTIMATED EMAILED" if sent else "RT ESTIMATED")
+        if sent and x.get("taxes_unknown") and run_day >= TAXES_UNKNOWN_FROM:
+            flags.append("TAXES UNKNOWN EMAILED")
+        # cpp is stored rounded to 2 places; allow that much before calling it under
+        if sent and run_day >= MARGIN_FROM and x["cpp"] + 0.005 < bar_of(x) * df.EMAIL_MARGIN:
+            flags.append(f"EMAILED UNDER {df.EMAIL_MARGIN:.2f}x BAR")
+        if (x.get("reminded") and sent and run_day >= STILL_AVAILABLE_FROM
+                and x["cpp"] + 0.005 < bar_of(x) * df.STILL_AVAILABLE_MULTIPLE):
+            flags.append(f"AGAIN UNDER {df.STILL_AVAILABLE_MULTIPLE:g}x BAR")
+        if sent and x.get("slow") and run_day >= "2026-10-19":
             flags.append("SLOW EMAILED")  # long trips aren't emailed from Oct 19 (worth_emailing)
         at_typ = x.get("cpp_at_typical")
         if at_typ is not None and at_typ < bar_of(x):
-            if emailed(x):  # broke the rule: a problem, not a card the rule held back
+            if sent:  # broke the rule: a problem, not a card the rule held back
                 flags.append("EMAILED UNDER BAR AT USUAL FARE")  # worth_emailing, from Oct 20
             else:
                 under_typ.append(f"{x['origin']}-{x['dest']} {at_typ:.2f}c")
@@ -136,9 +186,9 @@ def offline(d: dict, quotes: list[dict] | None = None) -> int:
             old += 1
             # Only an emailed card counts as a problem: a site card on an old fare happens
             # when the fresh lookup came back empty (the saved fare is kept on purpose).
-            flags.append(f"OLD FARE ({fetched})" if emailed(x) else f"old fare ({fetched})")
+            flags.append(f"OLD FARE ({fetched})" if sent else f"old fare ({fetched})")
         problems += any(f for f in flags if not f.startswith("old fare"))
-        if emailed(x) or flags:
+        if sent or flags:
             t = x.get("trip") or {}
             print(f"{sec:5} {'NEW  ' if x.get('new') else 'AGAIN' if x.get('reminded') else '     '}{x['origin']}-{x['dest']} {x['cabin'][:4]} "
                   f"{x['program'][:18]:18} {x['date']} {x['points']:>7,}+${x['taxes_usd']:.0f} "
@@ -151,9 +201,12 @@ def offline(d: dict, quotes: list[dict] | None = None) -> int:
         # emailed cards that still fall below the bar (docs/decisions.md, Oct 19).
         print(f"usual fare: {len(under_typ)} card(s) under the bar at the route's usual fare, "
               f"not emailed{': ' + ', '.join(under_typ) if under_typ else ''}")
-    again = [x for _, x in cards(d) if x.get("reminded")]
+    again = [x for _, x in cards(d) if x.get("reminded") and emailed(x, d)]
     if again:
         print(f"still available: {len(again)} earlier deal(s) shown again (AGAIN), not counted as repeats")
+        if len(again) > df.STILL_AVAILABLE_MAX and run_day >= STILL_AVAILABLE_FROM:
+            print(f"TOO MANY STILL AVAILABLE: {len(again)} (max {df.STILL_AVAILABLE_MAX})")
+            problems += 1
     print(f"{problems} card(s) with problems")
     return problems
 
@@ -164,7 +217,7 @@ def live(d: dict) -> None:
     cutoff = (date.today() + timedelta(days=1)).isoformat()
     print("\nLive re-price of emailed cards (Google Flights; one-way and half a round trip):")
     for sec, x in cards(d):
-        if not emailed(x) or x["date"] <= cutoff:
+        if not emailed(x, d) or x["date"] <= cutoff:
             continue
         cab, dep = price_cabin(x["cabin"]), date.fromisoformat(x["date"])
         nonstop = (x.get("trip") or {}).get("nonstop")
@@ -208,12 +261,22 @@ def repeats(n: int = 10) -> None:
     revs = subprocess.run(["git", "log", f"-{n + REPEAT_WINDOW_DAYS}", "--format=%h %ad", "--date=short",
                            "--", "deal_digest.json"], capture_output=True, text=True, cwd=ROOT).stdout.split("\n")
     seen: dict[str, tuple[str, dict]] = {}
+    runs: set[str] = set()
     lines: list[str] = []
     for rev, day in [r.split() for r in revs if r][::-1]:
         d = load(rev)
+        # One run, once: a hand commit of a digest (Nov 7's history refill d1dc0f9 has
+        # b548a07's generated_at) is not a second email. The day is the run's UTC date;
+        # the commit date is Eastern after 8 PM.
+        gen = d.get("generated_at")
+        if gen:
+            if gen in runs:
+                continue
+            runs.add(gen)
+            day = gen[:10]
         if not d.get("emailed_new"):
             continue
-        new = [x for _, x in cards(d) if x.get("new")]
+        new = [x for _, x in cards(d) if x.get("new") and emailed(x, d)]
         rep, better = [], 0
         for x in new:
             k = df.route_report_key(x)
