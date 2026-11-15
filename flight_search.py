@@ -19,13 +19,22 @@ from datetime import datetime, timezone
 # search, several awards sharing a route/date) reuse the first answer instead of
 # asking Google again. Keyed on the normalized (origin, destination,
 # departure_date, cabin); max_results only slices the cached full list.
-_CACHE: dict[tuple[str, str, str, str], list["FlightOffer"]] = {}
+# Entries expire after CACHE_TTL_S: the Streamlit process lives for days, and
+# cash_quotes saves whatever comes back with fetched_at=now.
+CACHE_TTL_S = 3600
+_CACHE: dict[tuple[str, str, str, str], tuple[float, list["FlightOffer"]]] = {}
 
 
 def clear_cache() -> None:
     """Empty the in-process price cache. Safe to call repeatedly. Exposed so
     tests stay deterministic and callers can force a fresh lookup if needed."""
     _CACHE.clear()
+
+
+def forget(origin: str, destination: str, departure_date: str, cabin: str) -> None:
+    """Drop one lookup from the in-process cache so the next call asks Google."""
+    _CACHE.pop((origin.strip().upper(), destination.strip().upper(), departure_date,
+                cabin.strip().upper()), None)
 
 
 class NotConfigured(Exception):
@@ -115,12 +124,14 @@ def search_cash_price(
     departure_date: str,
     cabin: str = "ECONOMY",
     max_results: int = 5,
+    fresh: bool = False,
 ) -> list[FlightOffer]:
     """
     Query live one-way cash prices for a route/date/cabin via Google Flights, cheapest first.
 
     Raises NotConfigured if fast-flights is unusable, or SearchFailed if the
-    lookup fails. Successful, non-empty lookups are memoized (see _CACHE).
+    lookup fails. Successful, non-empty lookups are memoized for CACHE_TTL_S
+    (see _CACHE); fresh=True asks Google regardless.
     """
     # Normalize so the cache key matches regardless of caller casing/whitespace.
     origin = origin.strip().upper()
@@ -128,10 +139,10 @@ def search_cash_price(
     cabin = cabin.strip().upper()
     key = (origin, destination, departure_date, cabin)
 
-    cached = _CACHE.get(key)
-    if cached is not None:
+    cached = None if fresh else _CACHE.get(key)
+    if cached is not None and time.monotonic() - cached[0] <= CACHE_TTL_S:
         # Cached list is the full fetched result; slice to this call's max_results.
-        return cached[:max_results]
+        return cached[1][:max_results]
 
     if not fast_flights_available():
         raise NotConfigured("Cash prices need the fast-flights package (pip install -r requirements.txt).")
@@ -148,7 +159,7 @@ def search_cash_price(
     # a later retry can pick up newly-available inventory instead of being pinned
     # to "no flights" for the life of the process.
     if offers:
-        _CACHE[key] = offers
+        _CACHE[key] = (time.monotonic(), offers)
     return offers[:max_results]
 
 

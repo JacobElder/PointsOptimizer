@@ -174,7 +174,12 @@ def _reuse_limits(travel_day: date, today: date) -> tuple[int, int]:
 
 
 def _max_age_days(travel_day: date, today: date) -> int:
-    return 2 if (travel_day - today).days <= 30 else 7
+    """How old an exact-date quote may be: the same lead-time tier as a nearby one.
+
+    It was 2 days (<=30 out) or 7, so a trip 200 days out refused a 10-day-old quote
+    for its own date while borrowing a 10-day-old one from the day after.
+    """
+    return _reuse_limits(travel_day, today)[1]
 
 
 def _age_days(q: dict) -> float:
@@ -246,6 +251,8 @@ def get_quote(origin: str, dest: str, travel_date: str, cabin: str, *,
         return None
     check_window(travel_date)
 
+    if refresh:  # asking again means asking Google, not this process's cached answer
+        flight_search.forget(origin, dest, travel_date, cabin)
     offers = flight_search.search_cash_price(origin, dest, travel_date, cabin, max_results=100)
     nonstop = [o.price_usd for o in offers if o.stops == 0]
     quote = Quote(

@@ -257,3 +257,42 @@ def test_sources_for_programs_and_pools_map_names_to_slugs():
     assert award_scanner.sources_for_programs(["United MileagePlus", "Southwest Rapid Rewards",
                                                "JetBlue TrueBlue"]) == ["united", "jetblue"]
     assert "aeroplan" in award_scanner.sources_for_pool("chase_ur")
+
+
+class _NotJson(_Resp):
+    def json(self):
+        raise ValueError("Expecting value: line 1 column 1 (char 0)")  # an HTML error page with a 200
+
+
+def test_a_non_json_answer_fails_that_slice_not_the_run(monkeypatch):
+    s = _Session({"aeroplan": [_NotJson()], "united": [_Resp(rows=[_row(source="united")])]})
+    cands, stats = _scan(s, ["aeroplan", "united"], monkeypatch)
+    assert stats["failed"] == ["aeroplan/ECONOMY"] and not stats["aborted"]
+    assert [c.source for c in cands] == ["united"]
+
+
+def test_non_json_answers_count_toward_the_abort(monkeypatch):
+    sources = [f"p{i}" for i in range(8)]
+    s = _Session({p: [_NotJson()] for p in sources})
+    cands, stats = _scan(s, sources, monkeypatch)
+    assert stats["aborted"] and len(stats["failed"]) == 4 and "p7" not in s.calls
+
+
+def test_malformed_rows_are_skipped(monkeypatch):
+    rows = [_row(points=30000, date_s="2027-01-10"),
+            _row(points=31000, date_s="2027-01-11", updated="2026-11-14T10:00:00"),  # no timezone: kept
+            _row(points=32000, date_s="2027-01-12", taxes="n/a"),
+            {**_row(points=33000, date_s="2027-01-13"), "YRemainingSeatsRaw": "lots"},
+            {**_row(points=34000, date_s="2027-01-14"), "Route": None},
+            "not a row",
+            {**_row(points=35000, date_s="2027-01-15"), "UpdatedAt": None}]  # unknown age: kept
+    s = _Pages([(rows, False, None)])
+    monkeypatch.setattr(award_scanner, "datetime", _FixedNow)
+    cands, stats = _scan(s, ["aeroplan"], monkeypatch)
+    assert sorted(c.date for c in cands) == ["2027-01-10", "2027-01-11", "2027-01-15"]
+
+
+class _FixedNow(datetime):
+    @classmethod
+    def now(cls, tz=None):
+        return datetime(2026, 11, 15, 12, 0, tzinfo=timezone.utc)

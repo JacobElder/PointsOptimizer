@@ -1168,6 +1168,9 @@ def test_stale_program_choice_is_switched_after_repricing(monkeypatch):
     and Alaska -- 45,000 Bilt instead of ~110,000 Chase -- was worth more by publication."""
     import funding
     monkeypatch.setattr(funding, "active_bonus", lambda *a, **k: None)
+    # United ties 1:1 between Chase and Bilt; the tie goes to the pool you hold points in.
+    monkeypatch.setattr(funding, "_funded_cache", {})
+    monkeypatch.setattr(funding.ledger, "load_balances", lambda: {"chase_ur": 110000})
     funding._cheapest_transfer.cache_clear()
     united = _real(_scored("EDI", "BUSINESS", "united", "JFK", 115000, 3100, date="2026-10-05"),
                    "United MileagePlus")

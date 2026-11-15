@@ -279,3 +279,27 @@ def test_backoff_stats_count_pauses_and_seconds(monkeypatch):
     assert flight_search.backoff_stats() == {"pauses": 2, "waited_s": 9.0}
     flight_search.reset_backoff(enabled=False)
     assert flight_search.backoff_stats() == {"pauses": 0, "waited_s": 0.0} and flight_search.lookup_log() == []
+
+
+def test_cached_answers_expire_after_an_hour(monkeypatch):
+    # The Streamlit app's process lives for days; a fare cached on Monday was still
+    # served on Friday.
+    counter = _Counter()
+    _patch(monkeypatch, counter)
+    clock = [1000.0]
+    monkeypatch.setattr(flight_search.time, "monotonic", lambda: clock[0])
+    flight_search.search_cash_price("SFO", "JFK", "2026-09-01", "ECONOMY")
+    clock[0] += 3500
+    flight_search.search_cash_price("SFO", "JFK", "2026-09-01", "ECONOMY")
+    assert counter.calls == 1
+    clock[0] += 200  # 3,700 s after the lookup
+    flight_search.search_cash_price("SFO", "JFK", "2026-09-01", "ECONOMY")
+    assert counter.calls == 2
+
+
+def test_fresh_lookup_bypasses_the_cache(monkeypatch):
+    counter = _Counter()
+    _patch(monkeypatch, counter)
+    flight_search.search_cash_price("SFO", "JFK", "2026-09-01", "ECONOMY")
+    flight_search.search_cash_price("SFO", "JFK", "2026-09-01", "ECONOMY", fresh=True)
+    assert counter.calls == 2

@@ -86,6 +86,13 @@ def _with_cabin(url: str | None, cabin: str) -> str | None:
         return url
 
 
+def _cost(trip: dict) -> int:
+    try:
+        return int(trip.get("MileageCost") or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
 def fetch(availability_id: str, cabin: str, points: int, session: requests.Session | None = None) -> TripInfo | None:
     """Best (shortest) itinerary for this award's cabin at its price. None if unavailable."""
     if not availability_id:
@@ -104,10 +111,17 @@ def fetch(availability_id: str, cabin: str, points: int, session: requests.Sessi
     trips = [t for t in payload.get("data", []) if t.get("Cabin") == want]
     if not trips:
         return None  # award no longer offered in this cabin
-    cheapest_now = min(int(t.get("MileageCost") or 0) for t in trips)
+    # A trip with no price or no flights says nothing about this award: a missing
+    # MileageCost read as 0 made cheapest_now 0 and price_matches True however far
+    # the priced trips had gone up, and no segments meant stops=0 with nonstop=False.
+    usable = [t for t in trips if _cost(t) > 0 and t.get("AvailabilitySegments")]
+    if not usable:
+        raise LookupFailed("seats.aero trips had no price or no flights")
+    trips = usable
+    cheapest_now = min(_cost(t) for t in trips)
     # Allow the price to have improved, but never report a stale cheaper price.
-    at_price = [t for t in trips if int(t.get("MileageCost") or 0) <= int(points)] or trips
-    at_price.sort(key=lambda t: (int(t.get("MileageCost") or 0), int(t.get("TotalDuration") or 0)))
+    at_price = [t for t in trips if _cost(t) <= int(points)] or trips
+    at_price.sort(key=lambda t: (_cost(t), int(t.get("TotalDuration") or 0)))
     t = at_price[0]
     segs = t.get("AvailabilitySegments") or []
     names = payload.get("carriers") or {}

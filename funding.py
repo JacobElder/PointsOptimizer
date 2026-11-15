@@ -172,9 +172,34 @@ def pool_point_cents(pool_key: str, cabin: str) -> float:
     return statistics.median(valuation.baseline_cpp(n, cabin) for n in names)
 
 
+_FUNDED_TTL_S = 300
+_funded_cache: dict = {}  # {"at": monotonic seconds, "pools": frozenset}
+
+
+def _stored_funded_pools() -> frozenset:
+    """Card pools with a stored balance, re-read at most every _FUNDED_TTL_S.
+
+    opportunity_cost_usd runs for every candidate award, and with the Gist on
+    load_balances() is a network call.
+    """
+    import time
+    now = time.monotonic()
+    if not _funded_cache or now - _funded_cache["at"] > _FUNDED_TTL_S:
+        balances = ledger.load_balances()
+        _funded_cache.update(at=now, pools=frozenset(k for k, v in balances.items() if v and v > 0))
+    return _funded_cache["pools"]
+
+
 @lru_cache(maxsize=4096)
-def _cheapest_transfer(program: str, top_up: int, on: date) -> tuple[str, float] | None:
-    best = None
+def _cheapest_transfer(program: str, top_up: int, on: date, cabin: str = "",
+                       funded: frozenset = frozenset()) -> tuple[str, float] | None:
+    """The pool needing the fewest points (in 1,000-point transfer blocks).
+
+    Ties go to a pool you hold points in (`funded`), then to the pool whose points
+    are normally worth least. Ties had gone to POOLS order, so a LifeMiles award
+    was costed from Wells Fargo (0 points, 2.08c business) instead of Bilt (1.82c).
+    """
+    best, best_key = None, None
     for pool in POOLS.values():
         if not (pool.transferable and pool_is_active(pool.key)):
             continue
@@ -184,25 +209,29 @@ def _cheapest_transfer(program: str, top_up: int, on: date) -> tuple[str, float]
             bonus = active_bonus(pool.key, program, on)
             needed = top_up / (transfer_ratio_multiplier(pt.ratio_on(on))
                                * (1 + (bonus["bonus_pct"] / 100 if bonus else 0)))
-            if best is None or needed < best[1]:
-                best = (pool.key, needed)
+            key = (_round_up(needed), pool.key not in funded, pool_point_cents(pool.key, cabin))
+            if best_key is None or key < best_key:
+                best, best_key = (pool.key, needed), key
     return best
 
 
 def opportunity_cost_usd(program: str, cabin: str, points: int, held_miles: int = 0,
-                         on: date | None = None) -> float:
+                         on: date | None = None, balances: dict[str, int] | None = None) -> float:
     """Dollar value of what you'd actually give up to book this award.
 
     Miles already in the program are valued at that program's baseline. The rest
     comes from the card pool needing the fewest points (transfer bonuses applied),
     valued at what that card's points are normally worth -- one yardstick for every
     program the card reaches. Programs no card reaches fall back to their own baseline.
+    `balances` (card pool -> points; default: the stored balances) breaks ties.
     """
     held = min(int(held_miles), int(points))
     top_up = int(points) - held
     cost = held * valuation.baseline_cpp(program, cabin) / 100
     if top_up:
-        best = _cheapest_transfer(program, top_up, on or date.today())
+        funded = (_stored_funded_pools() if balances is None
+                  else frozenset(k for k, v in balances.items() if v and v > 0))
+        best = _cheapest_transfer(program, top_up, on or date.today(), cabin, funded)
         if best:
             cost += _round_up(best[1]) * pool_point_cents(best[0], cabin) / 100
         else:

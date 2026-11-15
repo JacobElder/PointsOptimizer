@@ -84,3 +84,42 @@ def test_bonus_list_health_nags_only_when_the_list_goes_unchecked(tmp_path, monk
     assert "last checked 28 days ago" in note and "nothing running for your cards" in note
     path.write_text(json.dumps({"bonuses": []}))
     assert "never been checked" in funding.bonus_list_health(date(2026, 10, 30))
+
+
+def _no_bonuses(tmp_path, monkeypatch):
+    f = tmp_path / "bonuses.json"
+    f.write_text('{"bonuses": []}')
+    monkeypatch.setattr(funding, "BONUSES_PATH", str(f))
+    funding._cheapest_transfer.cache_clear()
+    monkeypatch.setattr(funding, "_funded_cache", {})
+
+
+def test_a_tie_on_points_goes_to_the_pool_you_hold(tmp_path, monkeypatch):
+    # LifeMiles is 1:1 from Wells Fargo (2.08c business yardstick) and Bilt (1.82c).
+    # POOLS order picked Wells Fargo even with 0 points there.
+    _no_bonuses(tmp_path, monkeypatch)
+    from datetime import date
+    on = date(2026, 11, 15)
+    cost = funding.opportunity_cost_usd("Avianca LifeMiles", "BUSINESS", 60000, on=on,
+                                        balances={"bilt": 103000, "wf_rewards": 0})
+    assert round(cost, 2) == 1092.0
+    cost = funding.opportunity_cost_usd("Avianca LifeMiles", "BUSINESS", 60000, on=on,
+                                        balances={"wf_rewards": 70000})
+    assert round(cost, 2) == 1248.0
+
+
+def test_a_tie_with_no_balances_goes_to_the_cheaper_points(tmp_path, monkeypatch):
+    _no_bonuses(tmp_path, monkeypatch)
+    from datetime import date
+    cost = funding.opportunity_cost_usd("Avianca LifeMiles", "BUSINESS", 60000,
+                                        on=date(2026, 11, 15), balances={})
+    assert round(cost, 2) == 1092.0
+
+
+def test_opportunity_cost_reads_stored_balances_by_default(tmp_path, monkeypatch):
+    _no_bonuses(tmp_path, monkeypatch)
+    import ledger
+    from datetime import date
+    monkeypatch.setattr(ledger, "load_balances", lambda: {"wf_rewards": 70000})
+    cost = funding.opportunity_cost_usd("Avianca LifeMiles", "BUSINESS", 60000, on=date(2026, 11, 15))
+    assert round(cost, 2) == 1248.0
