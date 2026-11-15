@@ -6,6 +6,53 @@ revisit it. Code comments point here; change the entry when you change the decis
 
 ---
 
+## 2026-11-15 — Audit-driven fixes: repeats at the usual fare, email exclusions, hard check cap
+
+From a 7-agent audit of the code, the digest history and the site. Code changes, so the
+clean-day count restarts.
+
+**Repeats are judged at the usual fare (user's call).** A trip emailed in the last 60 days
+counts as materially better only on the lower of today's CPP and the CPP at the route's usual
+fare (`cpp_at_usual` is stored in `reported_routes`; older entries fall back to `cpp`). The same
+points on a pricier date is not a better award: JFK–EZE Alaska business was emailed Nov 6, 9
+and 14, and Nov 9's 4.25¢ was 3.19¢ at the usual fare. Replay Nov 8–14: re-sends 9 → 7
+(JFK–PLS Nov 8, JFK–EZE Nov 9 held back); the other re-sends were better at the usual fare too.
+
+**Cards on an estimated round trip or with unknown taxes are not emailed (user's call).**
+`worth_emailing` rejects `rt_unavailable` and `taxes_unknown`; they stay on the site, labeled.
+Oct 14–Nov 14: 2 of 98 emailed cards (JFK–CMN Qatar Nov 11, EWR–DEL United Nov 12), both held.
+
+**"Still available" needs a fare fetched this run** (`fare_this_run`: its own date, not
+borrowed), and the 7-day gap counts UTC dates. Nov 11–14, 4 of the 7 shown were on fares
+borrowed from nearby dates fetched days earlier (EWR–TLV Nov 14 on a Nov 8 fare), while the
+subtitle said "re-checked today"; the 168-hour gap often became 8 days.
+
+**The per-card check cap is hard.** Past `MAX_EXPLORE_PER_CARD` checks, an unchecked option
+can't lead a card over a checked one. The 0.6 `UNVERIFIED_PENALTY` alone lost to checked
+options discounted for mixed cabin (×0.4) or an airport change (×0.5), so each round checked
+one more date: EWR–CAI 8 times, 12 rounds with the warning on Nov 13–14. Test: 13 lookups /
+12 rounds → 2 / 3. (The note's proposed fix, "mark siblings of a connecting route", was
+already in the code.)
+
+**Pricing fixes.** A flight check no longer resets a pooled nearby-date fare to the date's own
+higher fare (pools: confirmed nonstop vs. any stops); published cards are pooled again with this
+run's fares only (`reconcile_published`). A program swapped in after re-pricing is re-priced
+fresh first (it published on old fares). Card pools that tie on points go to a pool with a
+stored balance, then the cheaper card points: with no card balances in CI, ten business
+programs move from Chase 2.03¢ / WF 2.08¢ to Bilt 1.82¢, which changes some program choices.
+An exact-date saved fare may be as old as a nearby date's (`REUSE_TIERS` 3/7/14 days), never
+stricter. Award history keeps each route's last price as a baseline when old days are pruned
+(5,098 never-changed routes would have vanished ~Mar 22, 2027).
+
+**Audit.** `make audit` follows borrowed fares (the Nov 14 digest reads 14 of 28 cards on an
+earlier day's fare, not 10), uses the per-card `emailed` key, checks the 1.10× / 1.5× / max-3
+email rules, and `--repeats` counts each run once by `generated_at`.
+
+**Revisit** the usual-fare repeat rule if it holds back a re-send that was genuinely cheaper in
+points terms (it can't: ≤90% points still counts).
+
+---
+
 ## 2026-11-07 — Remember emailed trips for 60 days, not 14
 
 **Decision.** A route/program/cabin that was emailed is remembered for **60 days**

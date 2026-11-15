@@ -146,6 +146,10 @@ def _edi(monkeypatch):
     import funding
     from test_deal_finder import _trip
     monkeypatch.setattr(funding, "active_bonus", lambda *a, **k: None)
+    # Chase-only balances: pooled ties now go to a pool with points (Nov 15), and this
+    # scenario is "45k Alaska vs 115k United paid from Chase".
+    monkeypatch.setattr(funding, "_funded_cache", {})
+    monkeypatch.setattr(funding.ledger, "load_balances", lambda: {"chase_ur": 110000})
     funding._cheapest_transfer.cache_clear()
 
     def real(s, program):
