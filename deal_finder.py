@@ -1599,9 +1599,29 @@ def seed_reported_routes(reported: dict[str, str]) -> dict[str, dict]:
     return out
 
 
+def repeat_cpp(d: dict) -> float:
+    """The value a repeat is judged on: CPP at the lower of today's fare and the route's
+    usual fare (`cpp_at_typical`), or today's when the usual fare isn't known.
+
+    User's call, Nov 15: a higher fare on another date isn't a better award. JFK-EZE
+    Alaska business 60k went out at 3.52c Nov 6 and again at 4.25c Nov 9 on a pricier
+    date, 3.19c at the usual fare. Replay Nov 8-14: 9 re-sends by today's fare, 7 at
+    the usual fare (JFK-PLS Nov 8 and JFK-EZE Nov 9 held back).
+    """
+    at = d.get("cpp_at_typical")
+    return d["cpp"] if at is None else min(d["cpp"], at)
+
+
+def route_memory_entry(d: dict, at: str) -> dict:
+    """What reported_routes remembers about an emailed trip."""
+    return {"at": at, "cpp": d["cpp"], "points": d["points"], "cpp_at_usual": repeat_cpp(d)}
+
+
 def materially_better(d: dict, prev: dict) -> bool:
-    """Worth emailing again: clearly more value per point, or clearly fewer points."""
-    return (d["cpp"] >= prev.get("cpp", 0) * REPEAT_BETTER_CPP
+    """Worth emailing again: clearly more value per point at the usual fare, or clearly
+    fewer points. Entries saved before Nov 15 have no `cpp_at_usual`; their today's-fare
+    CPP stands in."""
+    return (repeat_cpp(d) >= prev.get("cpp_at_usual", prev.get("cpp", 0)) * REPEAT_BETTER_CPP
             or d["points"] <= prev.get("points", 0) * REPEAT_FEWER_POINTS)
 
 
@@ -2312,8 +2332,7 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
             emailed = n_unique
             for k, d in fresh:
                 reported.setdefault(k, started.isoformat())
-                reported_routes[route_report_key(d)] = {
-                    "at": started.isoformat(), "cpp": d["cpp"], "points": d["points"]}
+                reported_routes[route_report_key(d)] = route_memory_entry(d, started.isoformat())
             for d in still_available:
                 d["reminded"] = True
                 shown_before[route_report_key(d)] = started.isoformat()

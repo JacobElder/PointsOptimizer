@@ -212,3 +212,28 @@ def test_a_card_on_an_estimated_round_trip_is_not_emailed():
 
 def test_a_card_with_unknown_taxes_is_not_emailed():
     assert not deal_finder.worth_emailing(_card(taxes_unknown=True))
+
+
+# ── 6. repeats are judged at the usual fare ──────────────────────────────────
+def test_same_points_at_a_higher_fare_is_not_a_better_deal():
+    """JFK-EZE Alaska business 60,000: emailed Nov 6 at 3.52c, again Nov 9 at 4.25c on a
+    pricier date. At the route's usual fare the Nov 9 card was 3.19c: no better."""
+    prev = {"at": "2026-11-06T13:00:00+00:00", "cpp": 3.517, "points": 60000}
+    eze = _card(source="alaska", origin="JFK", dest="EZE", points=60000, cpp=4.254,
+                cpp_at_typical=3.185, great_floor=2.71)
+    assert not deal_finder.materially_better(eze, prev)
+    # Better at the usual fare too: still a new deal.
+    assert deal_finder.materially_better({**eze, "cpp_at_typical": 4.10}, prev)
+    # No usual fare known: today's fare decides, as before.
+    assert deal_finder.materially_better({**eze, "cpp_at_typical": None}, prev)
+    assert deal_finder.materially_better({**eze, "points": 50000}, prev)  # fewer points
+
+
+def test_route_memory_keeps_the_value_at_the_usual_fare():
+    eze = _card(source="alaska", origin="JFK", dest="EZE", points=60000, cpp=4.254,
+                cpp_at_typical=3.185)
+    entry = deal_finder.route_memory_entry(eze, "2026-11-09T13:00:00+00:00")
+    assert entry == {"at": "2026-11-09T13:00:00+00:00", "cpp": 4.254, "points": 60000,
+                     "cpp_at_usual": 3.185}
+    # The next card is judged against 3.185, not 4.254.
+    assert deal_finder.materially_better({**eze, "cpp": 3.70, "cpp_at_typical": 3.70}, entry)
