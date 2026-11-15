@@ -1523,8 +1523,13 @@ def worth_emailing(d: dict) -> bool:
     at the usual fare, including 3 of the 5 that later fell below it (the other 2 can't
     be caught this way). Margin applies to today's fare only; the usual fare just has to
     clear the bar. No usual fare known (fewer than 3 real fares): today's fare decides.
+
+    Nov 15 (user's call): a card valued on an estimated round trip (`rt_unavailable`,
+    81% of the one-way fare) or with no tax figure at all (`taxes_unknown`) isn't
+    emailed either; both stay on the site, labeled. Nov 11 JFK-CMN and Nov 12 EWR-DEL
+    went out that way.
     """
-    if d.get("slow"):
+    if d.get("slow") or d.get("rt_unavailable") or d.get("taxes_unknown"):
         return False
     bar = d.get("watch_bar", d["great_floor"])
     at_typical = d.get("cpp_at_typical")

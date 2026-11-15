@@ -192,3 +192,23 @@ def test_a_swapped_in_alternative_publishes_on_todays_fare(monkeypatch):
                                                     False, fresh=True)
     assert swaps == {id(united): alaska}
     assert alaska.cash == 1500 and deal_finder._fetched_this_run(alaska)
+
+
+# ── 5. estimated round trips and unknown taxes stay on the site ──────────────
+def _card(**over):
+    d = {"source": "united", "origin": "EWR", "dest": "DEL", "cabin": "BUSINESS", "date": "2027-01-10",
+         "points": 88000, "cpp": 3.32, "great_floor": 2.10, "slow": False, "cpp_at_typical": None,
+         "rt_unavailable": False, "taxes_unknown": False}
+    d.update(over)
+    return d
+
+
+def test_a_card_on_an_estimated_round_trip_is_not_emailed():
+    """Nov 12: EWR-DEL United 88k was emailed valued at 81% of the one-way fare because
+    no round trip could be priced (user's call, Nov 15: those stay on the site)."""
+    assert deal_finder.worth_emailing(_card())
+    assert not deal_finder.worth_emailing(_card(rt_unavailable=True))
+
+
+def test_a_card_with_unknown_taxes_is_not_emailed():
+    assert not deal_finder.worth_emailing(_card(taxes_unknown=True))
