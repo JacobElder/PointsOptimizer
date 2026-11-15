@@ -174,7 +174,12 @@ def _reuse_limits(travel_day: date, today: date) -> tuple[int, int]:
 
 
 def _max_age_days(travel_day: date, today: date) -> int:
-    return 2 if (travel_day - today).days <= 30 else 7
+    """How old an exact-date quote may be: the same lead-time tier as a nearby one.
+
+    It was 2 days (<=30 out) or 7, so a trip 200 days out refused a 10-day-old quote
+    for its own date while borrowing a 10-day-old one from the day after.
+    """
+    return _reuse_limits(travel_day, today)[1]
 
 
 def _age_days(q: dict) -> float:

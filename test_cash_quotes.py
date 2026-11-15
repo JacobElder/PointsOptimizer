@@ -179,15 +179,32 @@ def test_reuse_falls_back_to_the_approx_limits_past_every_tier(monkeypatch):
     assert cash_quotes._reuse_limits(date(2027, 3, 1), date(2026, 10, 23)) == (7, 14)
 
 
-def test_exact_date_quote_age_limit_is_2_days_close_in_and_7_further_out(monkeypatch):
+def test_exact_date_quote_age_limit_is_3_days_close_in_and_7_further_out(monkeypatch):
     monkeypatch.setattr(cash_quotes, "_now", lambda: datetime(2026, 10, 23, 12, 0, tzinfo=timezone.utc))
-    near = [_stored("2026-11-20", 500.0, "2026-10-21T11:00:00Z")]  # 28 days out, 2.04 days old
+    near = [_stored("2026-11-20", 500.0, "2026-10-20T11:00:00Z")]  # 28 days out, 3.04 days old
     assert cash_quotes.find_cached(near, "EWR", "CPT", "2026-11-20", "ECONOMY", allow_approx=False) is None
-    far = [_stored("2027-01-20", 500.0, "2026-10-17T11:00:00Z")]  # 6.04 days old
+    far = [_stored("2027-01-20", 500.0, "2026-10-17T11:00:00Z")]  # 89 days out, 6.04 days old
     assert cash_quotes.find_cached(far, "EWR", "CPT", "2027-01-20", "ECONOMY", allow_approx=False).price_usd == 500.0
+    stale = [_stored("2027-01-20", 500.0, "2026-10-16T11:00:00Z")]  # 7.04 days old
+    assert cash_quotes.find_cached(stale, "EWR", "CPT", "2027-01-20", "ECONOMY", allow_approx=False) is None
     # max_age_days tightens it further (the fresh re-pricing before publishing).
     assert cash_quotes.find_cached(far, "EWR", "CPT", "2027-01-20", "ECONOMY", allow_approx=False,
                                    max_age_days=0.25) is None
+
+
+def test_exact_date_quote_is_never_stricter_than_a_nearby_one(monkeypatch):
+    # A trip 200 days out borrowed a 10-day-old quote from the next day, but refused
+    # the same-age quote for its own date (exact-date max age was 7 days, nearby 14).
+    monkeypatch.setattr(cash_quotes, "_now", lambda: datetime(2026, 10, 23, 12, 0, tzinfo=timezone.utc))
+    exact = [_stored("2027-05-11", 900.0, "2026-10-13T12:00:00Z")]  # 200 days out, 10 days old
+    q = cash_quotes.find_cached(exact, "EWR", "CPT", "2027-05-11", "ECONOMY", allow_approx=False)
+    assert q is not None and q.price_usd == 900.0 and not q.approx
+    both = exact + [_stored("2027-05-12", 700.0, "2026-10-13T12:00:00Z")]
+    q = cash_quotes.find_cached(both, "EWR", "CPT", "2027-05-11", "ECONOMY")
+    assert q.price_usd == 900.0 and not q.approx  # its own date wins over the neighbor
+    # Past 14 days old, neither is used.
+    old = [_stored("2027-05-11", 900.0, "2026-10-08T11:00:00Z")]
+    assert cash_quotes.find_cached(old, "EWR", "CPT", "2027-05-11", "ECONOMY", allow_approx=False) is None
 
 
 def test_malformed_dates_in_the_store_are_ignored(monkeypatch):
