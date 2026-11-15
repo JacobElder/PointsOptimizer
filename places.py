@@ -91,6 +91,49 @@ def airline_names(codes: str) -> str:
     return ", ".join(out)
 
 
+_NAME_FIXES: dict[str, str] | None = None
+_SUFFIXES = (" airlines", " airways")
+
+
+def _name_fixes() -> dict[str, str]:
+    """Lower-cased carrier name -> the short name airline_names uses."""
+    global _NAME_FIXES
+    if _NAME_FIXES is None:
+        _load()
+        fixes = {}
+        for code, short in _AIRLINE_OVERRIDES.items():
+            fixes[short.lower()] = short
+            if _airlines.get(code):
+                fixes[_airlines[code].lower()] = short  # "All Nippon Airways" -> "ANA"
+        _NAME_FIXES = fixes
+    return _NAME_FIXES
+
+
+def carrier_names(names: str) -> str:
+    """Tidy seats.aero's carrier names: 'avianca airlines, jetBlue, THREE' ->
+    'Avianca, JetBlue, Three'. Two-letter codes are looked up like airline_names."""
+    fixes = _name_fixes()
+    out = []
+    for raw in (names or "").split(","):
+        name = raw.strip()
+        if not name:
+            continue
+        low = name.lower()
+        if len(name) == 2 and name.isalnum() and name.isupper():
+            tidy = airline_names(name)
+        elif low in fixes:
+            tidy = fixes[low]
+        elif low.endswith(_SUFFIXES) and low.rsplit(" ", 1)[0] in fixes:
+            tidy = fixes[low.rsplit(" ", 1)[0]]
+        elif (name.isupper() and len(name) >= 5) or name.islower():  # short caps may be acronyms
+            tidy = name.title()
+        else:
+            tidy = name
+        if tidy not in out:
+            out.append(tidy)
+    return ", ".join(out)
+
+
 def md_safe(text: str) -> str:
     """Escape "$" so Streamlit markdown doesn't render text between two $ as LaTeX math."""
     return str(text).replace("$", "\\$")

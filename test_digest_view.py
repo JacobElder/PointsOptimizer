@@ -33,6 +33,11 @@ class FakeSt:
     def container(self, **k):
         yield
 
+    @contextlib.contextmanager
+    def expander(self, label, **k):
+        self.calls.append(("expander", str(label)))
+        yield
+
     def columns(self, spec, **k):
         return [contextlib.nullcontext() for _ in spec]
 
@@ -49,6 +54,8 @@ def st(monkeypatch):
     fake = FakeSt()
     monkeypatch.setattr(digest_view, "st", fake)
     monkeypatch.setattr(digest_view, "_balances", lambda: ({}, {}))
+    monkeypatch.setattr(digest_view, "_history_series", lambda: {})
+    monkeypatch.setattr(digest_view, "_watch_windows", lambda: ({}, 30))
     return fake
 
 
@@ -85,7 +92,7 @@ def test_headline_escapes_dollars_and_names_the_verdict(st):
     digest_view.deal_card(_card(), rank=2)
     md = st.texts("markdown")
     assert "#### 2. Newark (EWR) → Tel Aviv, Israel (TLV)" in md
-    assert ("🟢 Book · **3.86¢ per point** · 62,400 points + \\$80 taxes · vs a \\$2,488 cash fare") in md
+    assert ("🟢 Book · **3.86¢ per point** · 62,400 points + \\$80 taxes · vs a \\$2,488 business cash fare") in md
     assert ("**\\$1,098 better** than spending these points the usual way "
             "(about 2.10¢ each; we only flag Air Canada Aeroplan above 2.62¢)") in md
     # No unescaped "$" anywhere the markdown renderer sees it.
@@ -152,9 +159,9 @@ def test_price_history_and_rank_notes(st):
     d.update(history_pct=0.25)
     digest_view.deal_card(d)
     cap = st.texts("caption")
-    assert "📉 Cheapest this route has been in the last 28 days" in cap
-    assert "📉 Cheaper than 91% of the last 28 days on this route" in cap
-    assert "📉 Pricier than usual: 75% of the last 28 days were cheaper" in cap
+    assert "📉 Fewest points this route has cost in the last 28 days" in cap
+    assert "📉 Fewer points than on 91% of the last 28 days on this route" in cap
+    assert "📉 More points than usual: 75% of the last 28 days cost fewer" in cap
     assert "⚖️ Ranked lower because fare \\$ spike; slow" in cap
 
 
@@ -164,7 +171,8 @@ def test_same_carrier_and_one_way_fare_lines(st):
     digest_view.deal_card(d)
     cap = st.texts("caption")
     assert "↘️ On Air Canada itself the fare is \\$2,000, which would make this 3.08¢/pt." in cap
-    assert "The one-way fare on this date is \\$2,646." in cap
+    # The basis already quotes the one-way fare, so no separate one-way line repeats it.
+    assert not any(t.startswith("The one-way") for t in cap)
     assert "Cash fare: half of a 7-night round trip (the one-way fare is \\$2,646)" in cap
 
 
@@ -177,7 +185,7 @@ def test_same_carrier_line_names_the_airline_the_fare_is_on(st):
 
 def test_cash_basis_notes(st):
     d = _card()
-    d.update(cash_is_approx=True, cabin="FIRST", cash_basis=None)
+    d.update(cash_is_approx=True, cabin="FIRST", cash_basis=None, round_trip_half=None, cash_price=2646.0)
     digest_view.deal_card(d)
     assert ("Cash fare: cheapest comparable fare (borrowed from a nearby date, not this one)"
             " · first class compared with the business fare") in st.texts("caption")
@@ -187,7 +195,7 @@ def test_flight_line_from_trip_details(st):
     digest_view.deal_card(_card())
     assert "Thu, Jan 21, 2027 · 10:35 PM → 7:45 PM (+1 day) · 14h 10m · 1 stop via Warsaw" in st.texts("write")
     cap = st.texts("caption")
-    assert "LO16 EWR–WAW · H3155 WAW–TLV · THREE, LOT Polish" in cap
+    assert "LO16 EWR–WAW · H3155 WAW–TLV · Three, LOT Polish" in cap
     assert "1 seat left when we checked" in cap
 
 
@@ -250,7 +258,7 @@ def test_other_dates_in_another_year_show_the_year(st):
     d = _card()
     d["other_dates"] = ["2026-11-23", "2027-01-18"]
     digest_view.deal_card(d)
-    assert "Nov 23, 2026, Jan 18" in st.texts("caption")
+    assert "2026: Nov 23 · 2027: Jan 18" in st.texts("caption")
 
 
 def test_return_option_and_note(st):
@@ -261,7 +269,7 @@ def test_return_option_and_note(st):
     digest_view.deal_card(d)
     cap = st.texts("caption")
     assert ("Sun, Feb 7, 2027 for 62,400 points + \\$131 — 124,800 points round trip on Air Canada Aeroplan") in cap
-    assert "⚠️ returns to JFK, not EWR" in cap
+    assert "⚠️ Returns to JFK, not EWR" in cap
 
 
 def test_one_way_return_notes(st):
@@ -309,7 +317,7 @@ def test_links_and_award_age(st):
     d.update(age_days=None)
     digest_view.deal_card(d)
     last = st.texts("caption")[-1]
-    assert "award seen" not in last and last.endswith("%20one%20way)")
+    assert "award seen" not in last and last.endswith("%20one%20way%20in%20business%20class)")
 
 
 def test_watchlist_uses_baseline_surplus_and_watch_bar(st):
@@ -365,12 +373,11 @@ def test_render_digest_sections(st):
               "estimate_drift": {"median_pct": 60, "p90_pct": 120, "n": 40}}
     digest_view.render_digest(digest)
     h = st.texts("header")
-    assert h == ["✅ Book now with miles you already hold", "⭐ Watchlist: Kenya", "⭐ Watchlist: Japan",
-                 "🏆 Top 2 of 1,234 awards"]
+    assert h == ["✅ Book now with miles you already hold", "🏆 Top 2 of 1,234 awards"]
+    assert st.texts("expander") == ["⭐ 2 more watchlist entries with nothing to show today"]
+    assert "**Kenya**: no award seats found for these dates; seats.aero may not cover this route." in st.all
+    assert "**Japan**: nothing clears this entry's bar yet (1,200 matching awards, 7 priced)." in st.all
     cap = st.texts("caption")
-    assert ("No award seats found for these dates — seats.aero may not cover this route, or the dates "
-            "may fall outside the scan window.") in cap
-    assert "Nothing clears this entry's bar yet (1,200 matching awards, 7 priced)." in cap
     assert any(t.startswith("⚠️ Fare estimates (used to choose what to price) were 60% off") and
                t.endswith("That's high: the deals picked for pricing may be poorly chosen.") for t in cap)
     assert st.texts("subheader") == ["Economy and premium economy", "🥂 Business and first"]
@@ -403,3 +410,124 @@ def test_held_miles_need_no_transfer(st, monkeypatch):
     digest_view.deal_card(_card())
     assert "No transfer needed." in st.texts("caption")
     assert "Transfers are irreversible" not in st.all
+
+
+# ── UI audit, Nov 15 2026 ────────────────────────────────────────────────────
+
+def test_headline_and_one_way_line_name_the_cabin(st):
+    d = _card()
+    d["cash_basis"] = "half of a 7-night round trip"  # basis without the one-way fare in it
+    digest_view.deal_card(d)
+    assert any("vs a \\$2,488 business cash fare" in t for t in st.texts("markdown"))
+    assert "The one-way business fare on this date is \\$2,646." in st.texts("caption")
+    st.calls.clear()
+    d.update(cabin="PREMIUM_ECONOMY", cash_cabin="PREMIUM_ECONOMY")
+    digest_view.deal_card(d)
+    assert any("vs a \\$2,488 premium economy cash fare" in t for t in st.texts("markdown"))
+    st.calls.clear()
+    d.update(cabin="FIRST", cash_cabin="BUSINESS")  # first is valued against the business fare
+    digest_view.deal_card(d)
+    assert any("vs a \\$2,488 business cash fare" in t for t in st.texts("markdown"))
+
+
+def test_google_flights_link_asks_for_the_cabin(st):
+    from urllib.parse import unquote
+    d = _card()
+    digest_view.deal_card(d)
+    assert "one way in business class)" in unquote(st.texts("caption")[-1])
+    st.calls.clear()
+    d.update(cabin="PREMIUM_ECONOMY", cash_cabin="PREMIUM_ECONOMY")
+    digest_view.deal_card(d)
+    assert "one way in premium economy)" in unquote(st.texts("caption")[-1])
+
+
+def test_history_line_says_points_and_spots_a_flat_series(st, monkeypatch):
+    d = _card()
+    d.update(source="aeroplan", history_pct=0.5, history_days=51)
+    key = "aeroplan|EWR|TLV|BUSINESS|2027-01"
+    monkeypatch.setattr(digest_view, "_history_series", lambda: {key: [62400] * 51})
+    digest_view.deal_card(d)
+    cap = st.texts("caption")
+    assert "📉 Same points price every day for the last 51 days on this route" in cap
+    assert not any("Cheaper than 50%" in t for t in cap)
+    st.calls.clear()
+    monkeypatch.setattr(digest_view, "_history_series", lambda: {key: [62400] * 25 + [70000] * 26})
+    d.update(history_pct=0.75)
+    digest_view.deal_card(d)
+    assert "📉 Fewer points than on 75% of the last 51 days on this route" in st.texts("caption")
+
+
+def test_borrowed_fare_note_sits_on_the_one_way_figure(st):
+    d = _card()  # basis already quotes the one-way fare
+    d["cash_is_approx"] = True
+    digest_view.deal_card(d)
+    cap = st.texts("caption")
+    assert ("Cash fare: half of a 7-night round trip (the one-way fare is \\$2,646, "
+            "borrowed from a nearby date)") in cap
+    assert not any(t.startswith("The one-way") for t in cap)  # not printed twice
+    assert not any("))" in t for t in cap)
+    st.calls.clear()
+    d["cash_basis"] = "half of a 7-night round trip"
+    digest_view.deal_card(d)
+    cap = st.texts("caption")
+    assert "The one-way business fare is \\$2,646 (borrowed from a nearby date, not this one)." in cap
+    assert "Cash fare: half of a 7-night round trip" in cap
+
+
+def test_date_specific_verdict_when_usual_fare_is_under_the_bar(st):
+    d = _card()
+    d.update(cash_price=3200.0, typical_fare=2400, cpp_at_typical=2.42)  # bar 2.62
+    digest_view.deal_card(d)
+    md = st.texts("markdown")
+    assert any(t.startswith("🟡 Good on this date only · **3.86¢ per point**") for t in md)
+    assert not any(t.startswith("🟢 Book") for t in md)
+
+
+def test_other_dates_across_years_are_grouped_by_year(st):
+    d = _card()
+    d["other_dates"] = ["2026-12-30", "2027-02-22", "2027-02-23", "2027-02-25", "2027-03-01"]
+    digest_view.deal_card(d)
+    assert "2026: Dec 30 · 2027: Feb 22, 23, 25, Mar 1" in st.texts("caption")
+
+
+def test_return_note_is_capitalized(st):
+    d = _card()
+    d["return_option"] = {"date": "2027-02-07", "points": 62400, "taxes_usd": 130.54,
+                          "program": "Air Canada Aeroplan", "round_trip_points": 124800,
+                          "note": "the return costs 2x the outbound's points"}
+    digest_view.deal_card(d)
+    assert "⚠️ The return costs 2x the outbound's points" in st.texts("caption")
+
+
+def test_raw_carrier_names_are_tidied(st):
+    d = _card()
+    d["trip"]["carriers"] = "Air Canada, avianca airlines, jetBlue, THREE"
+    digest_view.deal_card(d)
+    assert any(t.endswith(" · Air Canada, Avianca, JetBlue, Three") for t in st.texts("caption"))
+
+
+def test_home_page_puts_top_deals_first_and_folds_empty_watchlist_entries(st, monkeypatch):
+    from datetime import date
+    hit = _card()
+    hit["dest"] = "LIM"
+    monkeypatch.setattr(digest_view, "_watch_windows", lambda: (
+        {"Kenya 2026": ("2026-09-19", "2026-10-31"), "Soon": ("2026-11-20", "2026-12-01"),
+         "Japan": ("2027-03-20", "2027-04-10")}, 30))
+    monkeypatch.setattr(digest_view, "_today", lambda: date(2026, 11, 15))
+    digest = {"top": [_card()], "scan": {"candidates": 10},
+              "watchlist": [{"label": "Kenya 2026", "deals": [], "matched_awards": 0},
+                            {"label": "Soon", "deals": [], "matched_awards": 0},
+                            {"label": "Peru", "deals": [hit]},
+                            {"label": "Japan", "deals": [], "matched_awards": 1200, "priced": 7},
+                            {"label": "Oaxaca", "deals": [], "matched_awards": 0}]}
+    digest_view.render_digest(digest)
+    assert st.texts("header") == ["🏆 Top 1 of 10 awards", "⭐ Watchlist: Peru"]
+    assert st.texts("expander") == ["⭐ 4 more watchlist entries with nothing to show today"]
+    md = st.all
+    assert "**Kenya 2026**: these dates have passed (ended Oct 31, 2026)." in md
+    assert "**Soon**: these dates are all under 30 days out, and the scan only looks 30+ days ahead." in md
+    assert "**Japan**: nothing clears this entry's bar yet (1,200 matching awards, 7 priced)." in md
+    assert "**Oaxaca**: no award seats found for these dates; seats.aero may not cover this route." in md
+    calls = [t for _, t in st.calls]
+    assert calls.index("🏆 Top 1 of 10 awards") < calls.index("⭐ Watchlist: Peru") < calls.index(
+        "⭐ 4 more watchlist entries with nothing to show today")
