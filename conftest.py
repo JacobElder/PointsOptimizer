@@ -26,7 +26,7 @@ def _isolate_cash_providers(monkeypatch, tmp_path):
     monkeypatch.setattr(ledger, "GIST_DISABLED", True)  # never touch the real balances Gist
     # ...nor the real local files. A Gist test that saved {"chase_ur": 1} without
     # redirecting BALANCES_PATH overwrote the user's balances.json on every test run
-    # from Sep 26 to Oct 5 (137,000 Chase / 103,000 Bilt became 1 Chase point).
+    # from Sep 26 to Oct 5 (the real balances were overwritten with a 1-point test value).
     monkeypatch.setattr(ledger, "BALANCES_PATH", str(tmp_path / "balances.json"))
     monkeypatch.setattr(ledger, "PROGRAM_BALANCES_PATH", str(tmp_path / "program_balances.json"))
     # Match CI, which has no secrets: ignore the local .streamlit/secrets.toml seats.aero key

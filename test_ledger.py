@@ -307,10 +307,10 @@ def test_seeded_gist_that_cannot_be_found_again_returns_the_seed(monkeypatch):
 def test_gist_values_are_coerced_and_zero_programs_dropped(monkeypatch):
     fake = _FakeGitHub()
     fake.gists["g1"] = {ledger.GIST_FILENAME: json.dumps(
-        {"cards": {"chase_ur": "139915", "bilt": "lots", "wf": 0.0},
+        {"cards": {"chase_ur": "50000", "bilt": "lots", "wf": 0.0},
          "programs": {"JetBlue TrueBlue": 22516.7, "Delta SkyMiles": 0, "X": None}})}
     _gist_on(monkeypatch, fake)
-    assert ledger.load_balances() == {"chase_ur": 139915, "wf": 0}
+    assert ledger.load_balances() == {"chase_ur": 50000, "wf": 0}
     assert ledger.load_program_balances() == {"JetBlue TrueBlue": 22516}
 
 
