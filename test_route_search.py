@@ -32,6 +32,9 @@ def test_pair_picks_outbound_and_return_dates_together(monkeypatch):
                                  date(2027, 1, 1), date(2027, 1, 15))
     assert r.best_pair is not None
     assert r.combined_cpp > 1  # cents per point, not dollars per point
+    # The page must show the dates that were priced, not the leaders' own dates:
+    # the leader leaves Jan 10, after the Jan 5 return.
+    assert r.best_dates == ("2027-01-02", "2027-01-05")
 
 
 def test_pair_is_none_when_no_return_follows_an_outbound(monkeypatch):
