@@ -2,7 +2,7 @@ name: Deal Finder
 
 # Daily: scan seats.aero on scan_config.json's routes, price the most promising
 # awards with free Google Flights fares, email NEW standouts, and commit the
-# digest (shown on the Deal Radar page) plus the saved cash quotes.
+# digest (shown on the Top Deals page) plus the saved cash quotes.
 #
 # Needs repo secrets: SEATS_AERO_API_KEY, GMAIL_ADDRESS, GMAIL_APP_PASSWORD
 # (PROGRAM_BALANCES optional: miles already held in airline programs, kept out of
@@ -13,7 +13,8 @@ name: Deal Finder
 # there are three layers, and every layer after the first exits at once if today's
 # digest already exists:
 #   1. the two cron slots below;
-#   2. cron-job.org calling workflow_dispatch with backup=true (14:00 UTC);
+#   2. cron-job.org calling workflow_dispatch with backup=true (10:00 America/New_York;
+#      inactive -- it has never fired on schedule, see CLAUDE.md);
 #   3. a Claude routine (16:00 UTC) that pushes a line to .github/run-request, which
 #      needs no token because the routine can already push to this repo.
 # A plain manual "Run workflow" (backup unticked) always runs.
@@ -37,6 +38,12 @@ on:
     # The job always checks out and commits to main regardless.
     paths: [".github/run-request"]
 
+# One run at a time. Caveat: GitHub keeps at most ONE pending run per group. A run
+# that queues while another is pending replaces it, and the replaced run is cancelled
+# without running. So a manual "Run workflow" that is waiting behind a running job
+# can be silently dropped if a schedule/push/backup run queues after it (and vice
+# versa). If a manual run shows "cancelled" with no steps, start it again once the
+# group is idle.
 concurrency:
   group: deal-radar
   cancel-in-progress: false
@@ -49,7 +56,8 @@ jobs:
     # Pinned: ubuntu-latest moves to Ubuntu 26 from Oct 19, 2026 (actions/runner-images#14748).
     # Move deliberately, with a test run, not on GitHub's schedule.
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    # Runs take 18-22 min; the end-of-run retries (one-way, fresh re-pricing) add a few.
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v5
         with:
@@ -112,10 +120,13 @@ jobs:
           # Never commit a file that doesn't parse: a truncated write, or a clean
           # line-level rebase merge of two runs' output, would be pushed to the
           # public repo and read by the site.
-          for f in deal_digest.json cash_quotes.json award_history.json program_taxes.json; do
-            python -c "import json,sys; json.load(open(sys.argv[1]))" "$f" || {
-              echo "::error::$f is not valid JSON; refusing to commit it."; exit 1; }
-          done
+          validate() {
+            for f in deal_digest.json cash_quotes.json award_history.json program_taxes.json; do
+              python -c "import json,sys; json.load(open(sys.argv[1]))" "$f" || {
+                echo "::error::$f is not valid JSON; refusing to push it."; return 1; }
+            done
+          }
+          validate || exit 1
           git add deal_digest.json cash_quotes.json award_history.json program_taxes.json
           git diff --cached --quiet && exit 0
           git commit -m "Deal Finder: daily digest [skip ci]"
@@ -131,7 +142,11 @@ jobs:
           cp program_taxes.json /tmp/taxes.json
           for i in 1 2 3 4; do
             git push origin HEAD:main && exit 0
-            if ! git pull --rebase origin main; then
+            if git pull --rebase origin main; then
+              # A clean line-level rebase can still merge two runs' JSON into
+              # something that doesn't parse; check again before the next push.
+              validate || exit 1
+            else
               git rebase --abort || true
               git fetch origin main
               git reset --hard origin/main
