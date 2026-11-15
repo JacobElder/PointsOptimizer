@@ -78,10 +78,31 @@ def record(cands, path: str = "") -> dict:
     for day in sorted(d for d in hist if d < today):
         previous.update(hist[day])
     hist[today] = {k: v for k, v in cheapest.items() if previous.get(k) != v}
-    cutoff = (datetime.now(timezone.utc).date() - timedelta(days=KEEP_DAYS)).isoformat()
-    hist = {d: v for d, v in hist.items() if d >= cutoff}
+    hist = _prune(hist, datetime.now(timezone.utc).date())
     _write_atomic(path, hist)
     return hist
+
+
+def _prune(hist: dict, today) -> dict:
+    """Drop days older than KEEP_DAYS, folding them into a baseline on the cutoff day.
+
+    Only changes are stored, so a price that never moved lives only in its first
+    day's entry; deleting that day erased the route (5,098 of the 10,669 keys first
+    seen 2026-09-23 would have vanished ~2027-03-22). The baseline keeps each key's
+    last value before the cutoff, minus travel months already past.
+    """
+    cutoff = (today - timedelta(days=KEEP_DAYS)).isoformat()
+    old = sorted(d for d in hist if d < cutoff)
+    if not old:
+        return hist
+    baseline: dict[str, int] = {}
+    for day in old:
+        baseline.update(hist[day])
+    month = today.isoformat()[:7]
+    baseline = {k: v for k, v in baseline.items() if k.rsplit("|", 1)[-1] >= month}
+    kept = {d: v for d, v in hist.items() if d >= cutoff}
+    kept[cutoff] = {**baseline, **kept.get(cutoff, {})}
+    return dict(sorted(kept.items()))
 
 
 def _write_atomic(path: str, data: dict) -> None:
