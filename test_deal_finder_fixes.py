@@ -66,3 +66,75 @@ def test_a_card_past_its_check_cap_is_not_explored_further(monkeypatch, flaw):
     assert not any("didn't settle" in m for m in msgs), msgs
     assert {s.c.dest for s in published} == {"CAI", "ZRH", "FRA", "LIS", "ATH"}
     assert all(s.trip is not None for s in published)
+
+
+# ── 2. a flight check doesn't undo fare reconciliation ───────────────────────
+def _now_ts(hours_ago=0.0):
+    from datetime import timedelta
+    return (datetime.now(timezone.utc) - timedelta(hours=hours_ago)).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _ist(cash, date, aid, offers=None, fetched_at=""):
+    s = _scored("IST", "turkish", cash, date, aid, points=65000)
+    q = cash_quotes.Quote("EWR", "IST", "BUSINESS", date, cash, None, "t", fetched_at, offers=offers)
+    deal_finder._apply_quote(s, q)
+    return s
+
+
+def test_a_flight_check_keeps_the_cheaper_nearby_fare(monkeypatch):
+    """EWR-IST business a day apart at $3,536 and $2,006 (the reconcile_fares example).
+    Reconciled before selection to $2,006, then the flight check re-applied the date's
+    own quote and reset it to $3,536, so the dearer date led the card again."""
+    dear = _ist(3536, "2027-03-01", "a")
+    cheap = _ist(2006, "2027-03-02", "b")
+    deal_finder.reconcile_fares([dear, cheap], log=lambda *a: None)
+    assert dear.cash == 2006
+    monkeypatch.setattr(deal_finder.award_trips, "fetch", lambda aid, cabin, points: _trip_info(points))
+    deal_finder.attach_trips([dear], {})
+    assert dear.trip is not None and not dear.trip.nonstop
+    assert dear.cash == 2006 and dear.fare_reconciled
+
+
+def test_a_confirmed_nonstop_drops_a_pooled_any_stops_fare(monkeypatch):
+    """Before checks every award is compared with the cheapest fare at any stops, so
+    that is what was pooled. A confirmed nonstop is compared with <=1-stop fares: it
+    mustn't keep a connecting-grade fare from another date."""
+    dear = _ist(3536, "2027-03-01", "a", offers=[[3536, 0, "TK"], [3000, 2, "XX"]])
+    cheap = _ist(2006, "2027-03-02", "b", offers=[[2006, 2, "XX"], [2600, 1, "TK"]])
+    deal_finder.reconcile_fares([dear, cheap], log=lambda *a: None)
+    assert dear.cash == 2006
+    monkeypatch.setattr(deal_finder.award_trips, "fetch",
+                        lambda aid, cabin, points: _trip_info(points, flights=["TK12 EWR–IST"],
+                                                              connections=[], stops=0, nonstop=True))
+    deal_finder.attach_trips([dear], {})
+    assert dear.nonstop is True
+    assert dear.cash == 3536 and not dear.fare_reconciled
+    # ...and reconciling again doesn't pool it with the unchecked date's any-stops fare.
+    deal_finder.reconcile_fares([dear, cheap], log=lambda *a: None)
+    assert dear.cash == 3536
+
+
+def test_published_cards_pool_only_with_fares_fetched_this_run():
+    """After fresh re-pricing the shortlist is pooled again, with this run's fares for
+    nearby dates too (not only other shortlisted cards), but never with a saved fare
+    from an earlier day."""
+    card = _ist(3536, "2027-03-01", "a", fetched_at=_now_ts(0.1))
+    fresh_neighbor = _ist(2006, "2027-03-02", "b", fetched_at=_now_ts(0.5))
+    old_neighbor = _ist(1800, "2027-03-03", "c", fetched_at=_now_ts(72))
+    n = deal_finder.reconcile_published([card], [card, fresh_neighbor, old_neighbor],
+                                        log=lambda *a: None)
+    assert n == 1
+    assert card.cash == 2006 and card.fare_reconciled
+    assert old_neighbor.cash == 1800 and fresh_neighbor.cash == 2006  # only cards are revalued
+
+
+def test_fresh_re_pricing_replaces_a_pooled_fare(monkeypatch):
+    """The fresh exact-date fare replaces whatever was pooled before selection (which
+    may come from an earlier day); reconcile_published then pools fresh fares only."""
+    card = _ist(3536, "2027-03-01", "a")
+    deal_finder.reconcile_fares([card, _ist(1800, "2027-03-03", "c")], log=lambda *a: None)
+    assert card.cash == 1800
+    monkeypatch.setattr(cash_quotes, "get_quote", lambda *a, **k: cash_quotes.Quote(
+        "EWR", "IST", "BUSINESS", "2027-03-01", 3400.0, None, "t", _now_ts()))
+    deal_finder.reprice_fresh([card], log=lambda *a: None)
+    assert card.cash == 3400 and not card.fare_reconciled

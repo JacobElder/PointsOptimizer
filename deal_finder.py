@@ -219,6 +219,8 @@ class Scored:
     return_option: dict | None = None  # a return award found in the same scan
     dropped: bool = False  # re-verification says it's gone, repriced, or sold out
     fare_reconciled: bool = False  # revalued at a cheaper fare found on a nearby date
+    own_one_way: float | None = None  # this date's own comparable fare, before any pooling
+    pooled_nonstop: bool = False  # which fare pool the pooled fare came from (<=1 stop or any)
     returns_checked: bool = False  # the way home was actually scanned for this deal
 
     @property
@@ -637,12 +639,27 @@ def _apply_quote(s: Scored, q: cash_quotes.Quote) -> None:
     if comp is None:
         return
     s.quote = q
-    s.fare_reconciled = False  # this date's own fare replaces any pooled one
     s.cash_approx, s.cash_basis, s.same_carrier_cash = q.approx, comp.basis, comp.same_carrier_price
     s.same_carrier_code = comp.same_carrier_code
     s.quote_basis = comp.basis
-    s.one_way_cash = comp.price
+    s.own_one_way = comp.price
+    # A cheaper fare pooled from a nearby date survives re-matching this date's fare
+    # (the flight check redoes it once stops are known), as long as it came from the
+    # same fare pool: until Nov 15 the check reset EWR-IST from a pooled $2,006 to its
+    # own $3,536, so the dearer date led the card again. A confirmed nonstop is valued
+    # on <=1-stop fares and must not keep an any-stops fare pooled before the check.
+    keep_pool = (s.fare_reconciled and s.one_way_cash is not None
+                 and s.pooled_nonstop == _fare_pool(s) and s.one_way_cash < comp.price)
+    if not keep_pool:
+        s.fare_reconciled = False  # this date's own fare replaces any pooled one
+        s.one_way_cash = comp.price
     _finalize_cash(s)
+
+
+def _fare_pool(s: Scored) -> bool:
+    """Which fares an award is compared with: True = at most 1 stop (a confirmed
+    nonstop), False = any stops (connecting, or not checked yet)."""
+    return s.nonstop is True
 
 
 def _trip_carrier_codes(s: Scored) -> str:
@@ -1425,6 +1442,9 @@ def reprice_fresh(deals: list[Scored], log=print) -> dict:
             return False
         before = s.cash
         stats["repriced"] += 1
+        # This run's fare for the exact date replaces a fare pooled before selection,
+        # which may be an earlier day's; reconcile_published re-pools fresh fares.
+        s.fare_reconciled = False
         _apply_quote(s, q)  # keeps the round-trip floor via _finalize_cash
         if before and abs(s.cash - before) / before > 0.05:
             stats["changed"] += 1
@@ -1594,7 +1614,7 @@ def dedupe_sections(held: list[Scored], watch: list[dict], ranked: list[Scored])
     return [s for s in ranked if keep(s)]
 
 
-def reconcile_fares(deals: list[Scored], log=print) -> int:
+def reconcile_fares(deals: list[Scored], log=print, reference: list[Scored] | None = None) -> int:
     """Value cards on the same route and cabin, on nearby dates, against the same fare.
 
     EWR-IST business published twice one day apart at $2,006 and $3,536: whichever
@@ -1604,14 +1624,19 @@ def reconcile_fares(deals: list[Scored], log=print) -> int:
     the last place where fare noise, rather than the award, picks the winner.
 
     Only nearby dates are pooled: a February fare says nothing about an October one.
+    `reference` awards add their own fares to the pool but are not revalued.
     """
     groups: dict[tuple, list[Scored]] = {}
-    for s in deals:
+    revalue = {id(s) for s in deals}
+    members_in = {id(s): s for s in deals}
+    members_in.update({id(s): s for s in reference or [] if id(s) not in members_in})
+    for s in members_in.values():
         if s.one_way_cash is not None and s.cash is not None:
-            # Nonstop and connecting awards are compared against different fare
-            # pools (<=1 stop vs any stops), so pooling them would hand a nonstop
-            # award a connecting fare under a label that says "at most 1 stop".
-            groups.setdefault((s.c.origin, s.c.dest, price_cabin(s.c.cabin), s.nonstop), []).append(s)
+            # Confirmed nonstops are compared against <=1-stop fares and everything
+            # else against any-stops fares, so pooling across the two would hand an
+            # award a fare from the other pool under the wrong label. Unchecked and
+            # connecting awards share the any-stops pool.
+            groups.setdefault((s.c.origin, s.c.dest, price_cabin(s.c.cabin), _fare_pool(s)), []).append(s)
     changed = 0
     for members in groups.values():
         if len(members) < 2:
@@ -1620,7 +1645,7 @@ def reconcile_fares(deals: list[Scored], log=print) -> int:
         cluster: list[Scored] = []
         for s in members + [None]:
             if cluster and (s is None or _days_between(cluster[0].c.date, s.c.date) > RECONCILE_WINDOW_DAYS):
-                changed += _apply_cheapest_fare(cluster)
+                changed += _apply_cheapest_fare(cluster, revalue)
                 cluster = []
             if s is not None:
                 cluster.append(s)
@@ -1630,14 +1655,46 @@ def reconcile_fares(deals: list[Scored], log=print) -> int:
     return changed
 
 
+def _fresh_cutoff() -> str:
+    return (datetime.now(timezone.utc)
+            - timedelta(days=FRESH_QUOTE_MAX_AGE_DAYS)).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _fetched_this_run(s: Scored, cutoff: str | None = None) -> bool:
+    """The award's own exact-date fare was fetched within FRESH_QUOTE_MAX_AGE_DAYS
+    (quote timestamps share one fixed format, so they compare as strings)."""
+    q = s.quote
+    return bool(q is not None and not q.approx and q.price_usd is not None
+                and (q.fetched_at or "") >= (cutoff or _fresh_cutoff()))
+
+
+def reconcile_published(cards: list[Scored], scored: list[Scored], log=print) -> int:
+    """Pool the cards about to be published, after fresh re-pricing, with this run's
+    fares for nearby dates on the same route and cabin.
+
+    Before Nov 15 this pooled the shortlist only, so a card whose cheaper neighbor
+    wasn't shortlisted kept its own (higher) date's fare. Fares from earlier days are
+    left out: fresh re-pricing exists to keep those off published cards.
+    """
+    ids, cutoff = {id(s) for s in cards}, _fresh_cutoff()
+    return reconcile_fares(cards, log=log, reference=[
+        s for s in scored if id(s) not in ids and _fetched_this_run(s, cutoff)])
+
+
 def _days_between(a: str, b: str) -> int:
     return abs((datetime.strptime(b, "%Y-%m-%d") - datetime.strptime(a, "%Y-%m-%d")).days)
 
 
-def _apply_cheapest_fare(cluster: list[Scored]) -> int:
+def _own_fare(s: Scored) -> float:
+    """The date's own fare: pooling from an already-pooled figure would carry a fare
+    across clusters (and, after re-pricing, from an earlier day's quote)."""
+    return s.own_one_way if s.own_one_way is not None else s.one_way_cash
+
+
+def _apply_cheapest_fare(cluster: list[Scored], revalue: set[int] | None = None) -> int:
     if len(cluster) < 2:
         return 0
-    fares = sorted(s.one_way_cash for s in cluster)
+    fares = sorted(_own_fare(s) for s in cluster)
     median = fares[len(fares) // 2]
     # One bad scrape shouldn't drag a whole route down: a fare far below the
     # cluster's median is treated as suspect rather than as the price to beat.
@@ -1645,10 +1702,13 @@ def _apply_cheapest_fare(cluster: list[Scored]) -> int:
     low_ow = min(credible) if credible else fares[0]
     changed = 0
     for s in cluster:
+        if revalue is not None and id(s) not in revalue:
+            continue  # a reference fare only
         before = s.cash
         if s.one_way_cash <= low_ow:
             continue  # already at or under the cluster's floor: never raise a fare
         s.fare_reconciled = True
+        s.pooled_nonstop = _fare_pool(s)
         # Only the one-way fare is pooled. A round-trip half belongs to its own
         # departure date and stay length (7/4/2 nights depending on how close the
         # return falls to the booking wall), so borrowing one would print a figure
@@ -2079,8 +2139,9 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
         shortlisted = {id(s): s for s in ranked + held}
         shortlisted.update({id(s): s for g in watch for s, _ in g["deals"]})
         reprice_stats = reprice_fresh(list(shortlisted.values()), log=log)
-        # Again after fresh re-pricing, which moves fares on the shortlist only.
-        pre_reconciled += reconcile_fares(list(shortlisted.values()), log=log)
+        # Again after fresh re-pricing, which moves fares on the shortlist only, and
+        # now keyed on the stop counts the flight checks found.
+        pre_reconciled += reconcile_published(list(shortlisted.values()), scored, log=log)
         # Re-pricing and reconciliation can push a deal below its bar: rebuild the
         # lists rather than publishing a deal that no longer qualifies.
         ranked = pick_top([s for s in ranked if s.cpp is not None and s.cpp >= s.floor], top)
