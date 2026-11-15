@@ -389,6 +389,9 @@ def test_plain_text_carries_the_essential_facts():
         "  Award: 62,400 points + $80 taxes",
         "  Cash fare: $2,488 (half of a 7-night round trip)",
         "  Date: Thu, Jan 21, 2027",
+        "  Book via Air Canada Aeroplan: https://example.com/book?a=1&b=2",
+        "  Google Flights: https://www.google.com/travel/flights?q=Flights%20from%20EWR%20to%20TLV"
+        "%20on%202027-01-21%20one%20way",
     ]
 
 
@@ -488,3 +491,100 @@ def test_credentials_survive_a_broken_streamlit(monkeypatch):
 def test_safe_text_fallback_names_the_route():
     assert deal_email._safe_text({"origin": "JFK", "dest": "CPT"}) == "  JFK -> CPT: couldn't render this deal"
     assert "Couldn't render JFK &rarr; &lt;x&gt;" in deal_email._row_fallback({"origin": "JFK", "dest": "<x>"})
+
+
+# ── Nov 15 fixes ─────────────────────────────────────────────────────────────
+
+class _SMTP:
+    """Fake Gmail connection; `fail_on` names the step that raises."""
+    sent: list = []
+
+    def __init__(self, fail_on=None):
+        self.fail_on = fail_on
+
+    def __call__(self, *a):
+        return self
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):  # smtplib.SMTP.__exit__ sends QUIT
+        if self.fail_on == "quit":
+            import smtplib
+            raise smtplib.SMTPServerDisconnected("Connection unexpectedly closed")
+        return False
+
+    def starttls(self):
+        pass
+
+    def login(self, *a):
+        if self.fail_on == "login":
+            import smtplib
+            raise smtplib.SMTPAuthenticationError(535, b"bad credentials")
+
+    def send_message(self, msg):
+        if self.fail_on == "send":
+            import smtplib
+            raise smtplib.SMTPDataError(554, b"rejected")
+        self.sent.append(msg)
+
+
+def test_quit_failing_after_a_successful_send_is_not_a_failed_send(monkeypatch):
+    """A failure on QUIT after the message was accepted was reported as a failed send,
+    so the run didn't remember the deals and would email them again the next day."""
+    fake = _SMTP(fail_on="quit")
+    fake.sent = []
+    monkeypatch.setattr(deal_email, "_get_credentials", lambda: ("me@example.com", "pw"))
+    monkeypatch.setattr(deal_email.smtplib, "SMTP", fake)
+    deal_email.send_digest_email([("Top", "s", [_real_card()])], "subj", "intro")  # no exception
+    assert len(fake.sent) == 1
+
+
+@pytest.mark.parametrize("step", ["login", "send"])
+def test_login_or_send_failing_is_still_a_failure(monkeypatch, step):
+    import smtplib
+    monkeypatch.setattr(deal_email, "_get_credentials", lambda: ("me@example.com", "pw"))
+    monkeypatch.setattr(deal_email.smtplib, "SMTP", _SMTP(fail_on=step))
+    with pytest.raises(smtplib.SMTPException):
+        deal_email.send_digest_email([("Top", "s", [_real_card()])], "subj", "intro")
+
+
+def test_plain_text_says_up_to_when_taxes_are_unknown():
+    d = _real_card()
+    d["taxes_unknown"] = True
+    first = deal_email._digest_text(d).splitlines()[0]
+    assert first.endswith("|  up to 3.86 cents/pt") and "about" not in first
+
+
+def test_plain_text_carries_the_flags_and_links_the_html_has():
+    d = _real_card()
+    d.update(new=False, slow=True, unverified=True, rt_unavailable=True, cash_is_approx=True, age_shown=8)
+    d["trip"].update(mixed_cabin=True, lower_cabin_legs=["WAW–TLV economy"], airport_changes=["JFK→EWR"])
+    text = deal_email._digest_text(d)
+    flags = [ln for ln in text.splitlines() if ln.startswith("  Note:")]
+    assert flags == ["  Note: Sent before · Mixed cabin: WAW–TLV economy · Airport change: JFK→EWR · "
+                     "Long itinerary · Last confirmed 8 days ago · Flights and seats not confirmed · "
+                     "Fare estimated: no round-trip price found · Fare borrowed from a nearby date"]
+    assert "  Book via Air Canada Aeroplan: https://example.com/book?a=1&b=2" in text.splitlines()
+    assert ("  Google Flights: https://www.google.com/travel/flights?q=Flights%20from%20EWR%20to%20TLV"
+            "%20on%202027-01-21%20one%20way") in text.splitlines()
+
+
+def test_clean_plain_text_card_has_no_note_line():
+    assert "Note:" not in deal_email._digest_text(_real_card())
+
+
+def test_digest_links_to_the_site_when_its_address_is_set(monkeypatch):
+    monkeypatch.setenv("DEAL_SITE_URL", "https://deals.example.com/")
+    html, text = deal_email.build_digest([("Top", "s", [_real_card()])], "intro")
+    assert '<a href="https://deals.example.com/"' in html and "See all deals on the site" in html
+    assert "See all deals on the site: https://deals.example.com/" in text
+    monkeypatch.delenv("DEAL_SITE_URL")
+    html, text = deal_email.build_digest([("Top", "s", [_real_card()])], "intro")
+    assert "See all deals" not in html and "See all deals" not in text
+
+
+def test_footer_names_each_cabins_bar_and_the_email_margin():
+    html, _ = deal_email.build_digest([("Top", "s", [_real_card()])], "intro")
+    assert "60% in economy, 50% in premium economy, 25% in business and first" in html
+    assert "emailed only once it clears that bar by 10%" in html
