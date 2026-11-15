@@ -288,3 +288,22 @@ def test_route_memory_runs_out_after_sixty_days(tmp_path, monkeypatch):
     zrh = next(d for d in out["top"] if d["dest"] == "ZRH")
     assert zrh["new"] is True
     assert any("ZRH" in v for k, v in sections.items() if not k.startswith("🔁"))
+
+
+def test_every_flight_lookup_is_logged_by_the_phase_that_made_it(tmp_path, monkeypatch):
+    """Nov 8-14 logged 99-129 flight lookups a day, but the per-selection lines didn't
+    add up to that total: the held-miles selection and the alternatives check made
+    lookups without saying so."""
+    import re
+    zrh = _award("ZRH", "BUSINESS", "aeroplan", 60000, 60)
+    lis = _award("LIS", "ECONOMY", "flyingblue", 20000, 90)
+    _fake_pipeline(tmp_path, monkeypatch, [zrh, lis])
+    monkeypatch.setattr(deal_finder.ledger, "load_program_balances", lambda: {zrh.program: 100000})
+    msgs = []
+    out = deal_finder.run(max_lookups=10, top=1, send_email=False, log=msgs.append)
+    total = out["verification"]["trip_lookups"]
+    assert total == 2  # LIS for the top list, ZRH for the held-miles section
+    phases = sum(int(m) for line in msgs
+                 for m in re.findall(r"(\d+) seats\.aero lookup\(s\)", line))
+    assert phases == total, [line for line in msgs if "lookup" in line]
+    assert any(f"flight details: {total} checked" in line for line in msgs)

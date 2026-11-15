@@ -1325,7 +1325,8 @@ def _alt_line(s: Scored, leader: Scored) -> str:
 
 def promote_better_alternatives(deals: list[Scored], scored: list[Scored], rt_cache: dict | None,
                                 trip_cache: dict | None, sources_reporting_seats: set[str],
-                                round_trip: bool, bar_fn=None, log=None) -> dict[int, Scored]:
+                                round_trip: bool, bar_fn=None, log=None, fresh: bool = False,
+                                stats: dict | None = None) -> dict[int, Scored]:
     """Re-check each published deal against its alternatives once fares have settled.
 
     The program is chosen inside the selection loop, but fresh re-pricing and fare
@@ -1334,9 +1335,16 @@ def promote_better_alternatives(deals: list[Scored], scored: list[Scored], rt_ca
     worth more by then in the points you'd actually spend. An alternative that now
     looks better gets the same checks the leader had (round trip, live seats.aero)
     before it replaces the leader. Returns {id(old leader): new leader}.
+
+    fresh=True also re-prices the alternative on its exact date and pools it with this
+    run's nearby fares, as the leader was: this runs after fresh re-pricing, so until
+    Nov 15 a swapped-in card published on whatever fare it had, often an earlier
+    day's. `stats` collects the lookups spent here.
     """
     bar_fn = bar_fn or (lambda s: s.floor)
     swaps: dict[int, Scored] = {}
+    calls_before = _trip_calls(trip_cache) if trip_cache is not None else 0
+    repriced = {"repriced": 0, "changed": 0, "failed": 0, "retried": 0}
     for d in deals:
         if d.choice_value is None:
             continue
@@ -1345,6 +1353,14 @@ def promote_better_alternatives(deals: list[Scored], scored: list[Scored], rt_ca
                         key=lambda a: -a.choice_value)[:2]:
             if round_trip and rt_cache is not None:
                 apply_round_trip(a, rt_cache)
+            if fresh and a.cash is not None:
+                r = reprice_fresh([a], log=lambda *_: None)
+                for k in repriced:
+                    repriced[k] += r.get(k, 0)
+                reconcile_published([a], scored, log=lambda *_: None)
+                if (a.cpp is None or a.cpp < bar_fn(a)
+                        or a.choice_value is None or a.choice_value <= d.choice_value):
+                    continue  # checking its flights can only lower it further
             if trip_cache is not None and a.trip is None and not a.trip_checked:
                 attach_trips([a], trip_cache, log=log)
             if trip_cache is not None and not still_bookable(a, sources_reporting_seats):
@@ -1365,6 +1381,14 @@ def promote_better_alternatives(deals: list[Scored], scored: list[Scored], rt_ca
                 log(f"Switched {d.c.dest} {d.c.cabin} from {d.c.origin} via {d.c.program} to "
                     f"{a.c.origin} via {a.c.program}: worth more in the points you'd actually spend")
             break
+    lookups = (_trip_calls(trip_cache) - calls_before) if trip_cache is not None else 0
+    if stats is not None:
+        stats["trip_lookups"] = stats.get("trip_lookups", 0) + lookups
+        for k, v in repriced.items():
+            stats[k] = stats.get(k, 0) + v
+    if log and (lookups or repriced["repriced"] or repriced["failed"]):
+        log(f"Alternatives: {len(swaps)} switched, {lookups} seats.aero lookup(s), "
+            f"{repriced['repriced']} re-priced fresh ({repriced['failed']} unavailable)")
     return swaps
 
 
@@ -1915,13 +1939,14 @@ def shortlist(scored: list[Scored], top: int, min_economy: int = 5, rt_cache: di
 
 def held_miles_report(scored: list[Scored], rt_cache: dict, round_trip: bool = True,
                       trip_cache: dict | None = None,
-                      sources_reporting_seats: set[str] | None = None) -> list[Scored]:
+                      sources_reporting_seats: set[str] | None = None, log=None) -> list[Scored]:
     """Best deals bookable outright with miles already sitting in a program."""
     mine = [s for s in scored if s.bookable_now]
     if SELECT_THEN_VERIFY:
         return verify_selection(
             mine, lambda ls: sorted(ls, key=lambda s: -s.rank_value)[:HELD_MILES_DEALS],
-            rt_cache, trip_cache, sources_reporting_seats or set(), round_trip)
+            rt_cache, trip_cache, sources_reporting_seats or set(), round_trip,
+            log=(lambda m: log(f"[held miles] {m}")) if log else None)
     else:
         leaders = verify_leaders(mine, group_leaders(mine)[: HELD_MILES_DEALS + 4], rt_cache, trip_cache,
                                  sources_reporting_seats or set(), round_trip)
@@ -2126,7 +2151,7 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
     ranked = shortlist(scored, top, rt_cache=rt_cache, round_trip=round_trip, trip_cache=trip_cache,
                        sources_reporting_seats=sources_reporting_seats, log=log)
     held = held_miles_report(scored, rt_cache, round_trip=round_trip, trip_cache=trip_cache,
-                             sources_reporting_seats=sources_reporting_seats)
+                             sources_reporting_seats=sources_reporting_seats, log=log)
     watch = watch_report(scored, watchlist, rt_cache, round_trip=round_trip, trip_cache=trip_cache,
                          sources_reporting_seats=sources_reporting_seats, log=log)
 
@@ -2159,13 +2184,18 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
     # After re-pricing: that is what moves the leader's fare and can make the program
     # chosen during selection the wrong one. Held-miles deals stay put -- the point of
     # that section is that no transfer is needed.
+    # Swapped-in cards get the same fresh fare and pooling the shortlist just had.
+    alt_stats: dict = {}
     swaps = promote_better_alternatives(ranked, scored, rt_cache, trip_cache, sources_reporting_seats,
-                                        round_trip, log=log)
+                                        round_trip, log=log, fresh=FRESH_PRICE_SHORTLIST,
+                                        stats=alt_stats)
     ranked = sorted((swaps.get(id(s), s) for s in ranked), key=lambda s: -s.rank_value)
     for g in watch:
         g_swaps = promote_better_alternatives([s for s, _ in g["deals"]], scored, rt_cache, trip_cache,
                                               sources_reporting_seats, round_trip,
-                                              bar_fn=g["bar_fn"], log=log)
+                                              bar_fn=g["bar_fn"],
+                                              log=lambda m, g=g: log(f"[{g['label']}] {m}"),
+                                              fresh=FRESH_PRICE_SHORTLIST, stats=alt_stats)
         g["deals"] = [(g_swaps[id(s)], None) if id(s) in g_swaps else (s, d) for s, d in g["deals"]]
 
     ranked = dedupe_sections(held, watch, ranked)
@@ -2196,7 +2226,7 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
         d["new"] = is_new(key, d)
         held_pairs.append((key, d))
     log(f"Round-trip checks: {len(rt_cache)} ({sum(1 for v in rt_cache.values() if v)} priced); "
-        f"flight details: {len(trip_cache)} checked, "
+        f"flight details: {_trip_calls(trip_cache)} checked, "
         f"{sum(1 for v in trip_cache.values() if v is None)} gone/repriced, "
         f"{sum(1 for v in trip_cache.values() if isinstance(v, award_trips.TripInfo) and v.mixed_cabin)}"
         " mixed cabin")
@@ -2292,7 +2322,8 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
         "scan": scan_stats,
         "model": model.summary(),
         "pricing": price_stats,
-        "repricing": reprice_stats,
+        "repricing": ({**reprice_stats, "alternatives": alt_stats} if any(alt_stats.values())
+                      else reprice_stats),
         "estimate_drift": drift,
         "reuse_error": reuse,
         "round_trip_checks": len(rt_cache),

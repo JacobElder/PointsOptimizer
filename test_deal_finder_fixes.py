@@ -138,3 +138,57 @@ def test_fresh_re_pricing_replaces_a_pooled_fare(monkeypatch):
         "EWR", "IST", "BUSINESS", "2027-03-01", 3400.0, None, "t", _now_ts()))
     deal_finder.reprice_fresh([card], log=lambda *a: None)
     assert card.cash == 3400 and not card.fare_reconciled
+
+
+# ── 3. swapped-in alternatives are re-priced fresh ────────────────────────────
+def _edi(monkeypatch):
+    import dataclasses
+    import funding
+    from test_deal_finder import _trip
+    monkeypatch.setattr(funding, "active_bonus", lambda *a, **k: None)
+    funding._cheapest_transfer.cache_clear()
+
+    def real(s, program):
+        s.c = dataclasses.replace(s.c, program=program)
+        deal_finder._finalize_cash(s)
+        s.trip = _trip()
+        return s
+
+    united = real(_scored("EDI", "united", 3100, "2027-02-05", "u", points=115000, origin="JFK"),
+                  "United MileagePlus")
+    # Alaska's $1,426 is a saved quote from an earlier day.
+    alaska = real(_scored("EDI", "alaska", 1426, "2027-02-19", "a", points=45000, origin="JFK"),
+                  "Alaska Atmos Rewards")
+    (leader,) = deal_finder.group_leaders([united, alaska])
+    assert leader is united and leader.alt_awards == [alaska]
+    united.one_way_cash = 2887.0  # fresh re-pricing lowered United's fare after the choice
+    deal_finder._finalize_cash(united)
+    return united, alaska
+
+
+def test_a_swapped_in_alternative_is_repriced_before_it_replaces_the_leader(monkeypatch):
+    """promote_better_alternatives ran after fresh re-pricing, so a swapped-in card was
+    published on whatever fare it had, often an earlier day's."""
+    united, alaska = _edi(monkeypatch)
+    asked = []
+
+    def quote(origin, dest, date, cabin, **k):
+        asked.append((origin, dest, date))
+        return cash_quotes.Quote(origin, dest, cabin, date, 700.0, None, "t", _now_ts())
+
+    monkeypatch.setattr(cash_quotes, "get_quote", quote)
+    swaps = deal_finder.promote_better_alternatives([united], [united, alaska], None, None, set(),
+                                                    False, fresh=True)
+    assert asked == [("JFK", "EDI", "2027-02-19")]
+    # At today's $700 Alaska is under its bar: United stays.
+    assert alaska.cash == 700 and swaps == {}
+
+
+def test_a_swapped_in_alternative_publishes_on_todays_fare(monkeypatch):
+    united, alaska = _edi(monkeypatch)
+    monkeypatch.setattr(cash_quotes, "get_quote", lambda origin, dest, date, cabin, **k:
+                        cash_quotes.Quote(origin, dest, cabin, date, 1500.0, None, "t", _now_ts()))
+    swaps = deal_finder.promote_better_alternatives([united], [united, alaska], None, None, set(),
+                                                    False, fresh=True)
+    assert swaps == {id(united): alaska}
+    assert alaska.cash == 1500 and deal_finder._fetched_this_run(alaska)
