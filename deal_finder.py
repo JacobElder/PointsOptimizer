@@ -1256,7 +1256,12 @@ def group_leaders(scored: list[Scored], bar_fn=None) -> list[Scored]:
     # groups are then ranked by surplus as before.
     # Ties (typically two dates both at the fare cap) go to the one whose fare is
     # less inflated: the card should show the date that's good at a normal price.
-    for s in sorted(confirmed, key=lambda s: (-s.choice_value, s.fare_spike or 0)):
+    # Past a card's check cap, an option nobody checked can't lead it over one that
+    # was checked (`_past_check_cap` sorts first). The 0.6 discount in choice_value
+    # alone was soft: a checked mixed-cabin (x0.4) or airport-change (x0.5) option
+    # still lost to it, so each round checked one more date (Nov 13-14: EWR-CAI 8
+    # times, all 12 rounds).
+    for s in sorted(confirmed, key=lambda s: (_past_check_cap(s), -s.choice_value, s.fare_spike or 0)):
         g = best.get(s.group_key)
         combo = (s.c.source, s.c.origin)
         if g is None:
@@ -1278,6 +1283,13 @@ def group_leaders(scored: list[Scored], bar_fn=None) -> list[Scored]:
         s.other_dates.sort()
         s.alternatives, s.alt_awards = s.alternatives[:3], s.alt_awards[:3]
     return leaders
+
+
+def _past_check_cap(s: Scored) -> bool:
+    """Never checked, on a card that has already used its MAX_EXPLORE_PER_CARD checks.
+    Within a card, every checked option that clears its bar comes before these."""
+    return (s.trip is None and not s.trip_checked
+            and CARD_CHECKS.get(s.group_key, 0) >= MAX_EXPLORE_PER_CARD)
 
 
 def _alt_line(s: Scored, leader: Scored) -> str:
