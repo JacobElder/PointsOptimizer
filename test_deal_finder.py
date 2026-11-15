@@ -509,7 +509,7 @@ def test_health_warnings_fire_on_a_useless_run():
     deal_finder._warn_on_health({"live": 10, "watch_live": 0, "explore_live": 0, "no_fare": 6,
                                  "skipped_low_p": 5000}, {"rows": 1000, "stale": 400}, 100, msgs.append)
     joined = " ".join(msgs)
-    assert "returned no fare" in joined and "lookup budget" in joined and "freshness limit" in joined
+    assert "returned no fare" in joined and "per-run limit" in joined and "freshness limit" in joined
 
 
 def test_route_history_percentile_and_ranking(tmp_path, monkeypatch):

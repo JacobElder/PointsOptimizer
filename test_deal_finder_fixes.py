@@ -304,3 +304,15 @@ def test_marking_no_round_trip_clears_a_stale_half():
     deal_finder._mark_rt_unavailable(s)
     assert s.rt_unavailable and s.round_trip_half is None
     assert s.cash == pytest.approx(3833 * 0.81)
+
+
+# ── 10. a fresh quote that matched no comparable fare isn't "re-checked" ─────
+def test_a_fresh_quote_with_no_comparable_fare_is_not_counted_as_repriced(monkeypatch):
+    s = _ist(3536, "2027-03-01", "a")
+    monkeypatch.setattr(cash_quotes, "get_quote", lambda *a, **k: cash_quotes.Quote(
+        "EWR", "IST", "BUSINESS", "2027-03-01", 3000.0, None, "t", _now_ts()))
+    monkeypatch.setattr(cash_quotes, "comparable_fare", lambda *a, **k: None)
+    monkeypatch.setattr(deal_finder, "FRESH_RETRY_PAUSE_S", 0)
+    stats = deal_finder.reprice_fresh([s], log=lambda *a: None)
+    assert stats["repriced"] == 0 and stats["failed"] == 1
+    assert s.cash == 3536
