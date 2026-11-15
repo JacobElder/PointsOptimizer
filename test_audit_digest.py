@@ -32,7 +32,9 @@ def base_card(**kw) -> dict:
               "cash_price": 2488.5, "cpp": 3.86, "great_floor": 2.625, "baseline_cpp": 2.1,
               "surplus_usd": 1098.0, "watch_bar": None, "unverified": False, "rt_unavailable": False,
               "slow": False, "cpp_at_typical": 3.86, "new": False, "reminded": False,
+              "cash_is_approx": False, "taxes_unknown": False, "one_way_cash": 2488.5,
               "trip": {"flights": ["LO16 EWR–WAW", "H3155 WAW–TLV"], "nonstop": False}})
+    x.pop("emailed", None)  # digests from Nov 15 carry it; tests opt in explicitly
     x.update(kw)
     return x
 
@@ -158,7 +160,7 @@ def test_several_flags_on_one_card_count_once(capsys):
     x = base_card(unverified=True, rt_unavailable=True, cpp=3.95, new=True)
     assert audit.offline(digest([x, base_card(dest="LHR", unverified=True)])) == 2
     lines = card_lines(capsys.readouterr().out)
-    assert lines[0].endswith("CPP should be 3.86 UNVERIFIED RT ESTIMATED")
+    assert lines[0].endswith("CPP should be 3.86 UNVERIFIED RT ESTIMATED EMAILED")
 
 
 # ── offline(): old fares ──────────────────────────────────────────────────────
@@ -293,6 +295,9 @@ class FakeGit:
 
     def __init__(self, monkeypatch, history: list[tuple[str, str, dict]]):
         self.history = history
+        for _, day, d in history:  # a run's own timestamp, unless the test sets one
+            if d.get("generated_at") == RUN:
+                d["generated_at"] = f"{day}T13:00:00Z"
         log = "\n".join(f"{rev} {day}" for rev, day, _ in history) + "\n"
         monkeypatch.setattr(audit.subprocess, "run",
                             lambda *a, **k: types.SimpleNamespace(stdout=log, returncode=0))
@@ -361,6 +366,156 @@ def test_repeats_lists_at_most_six_keys(monkeypatch, capsys):
     last = capsys.readouterr().out.splitlines()[-1]
     assert last.startswith("2026-10-22 a2: 8 emailed, 8 repeat a trip emailed before: aeroplan|EWR|D0|BUSINESS")
     assert last.count("aeroplan|") == 6
+
+
+def test_repeats_skips_a_hand_commit_of_the_same_run(monkeypatch, capsys):
+    """Nov 7: d1dc0f9 refilled the history by hand with the same generated_at as b548a07;
+    --repeats read it as a second email the same day and called every card a 0-day repeat."""
+    run = digest([base_card(new=True)], generated_at="2026-11-07T13:20:00Z")
+    FakeGit(monkeypatch, [
+        ("d1dc0f9", "2026-11-07", copy.deepcopy(run)),
+        ("b548a07", "2026-11-07", run),
+    ])
+    audit.repeats()
+    assert capsys.readouterr().out.splitlines() == [
+        "2026-11-07 b548a07: 1 emailed, 0 repeat a trip emailed before"]
+
+
+def test_repeats_takes_the_day_from_generated_at_not_the_commit_date(monkeypatch, capsys):
+    """A commit made after 8 PM Eastern carries the Eastern date; the run's own UTC
+    timestamp is the day it belongs to."""
+    FakeGit(monkeypatch, [
+        ("g2", "2026-11-06", digest([base_card(new=True, points=40000)], generated_at="2026-11-07T01:53:00Z")),
+        ("g1", "2026-11-05", digest([base_card(dest="LHR", new=True)], generated_at="2026-11-05T13:00:00Z")),
+    ])
+    audit.repeats()
+    assert capsys.readouterr().out.splitlines() == [
+        "2026-11-05 g1: 1 emailed, 0 repeat a trip emailed before",
+        "2026-11-07 g2: 1 emailed, 0 repeat a trip emailed before"]
+
+
+def test_repeats_counts_only_cards_marked_emailed_when_the_digest_has_the_key(monkeypatch, capsys):
+    FakeGit(monkeypatch, [
+        ("h2", "2026-11-16", digest([base_card(new=True, emailed=True)])),
+        # new but not emailed (e.g. past the watchlist email limit): must not seed history
+        ("h1", "2026-11-15", digest([base_card(new=True), base_card(dest="LHR", new=True, emailed=True)])),
+    ])
+    audit.repeats()
+    assert capsys.readouterr().out.splitlines() == [
+        "2026-11-15 h1: 1 emailed, 0 repeat a trip emailed before",
+        "2026-11-16 h2: 1 emailed, 0 repeat a trip emailed before"]
+
+
+# ── borrowed and overwritten fares (Nov 14 EWR-TLV) ──────────────────────────
+
+NOV14 = "2026-11-14T15:04:22Z"
+
+
+def tlv_still_available(**kw) -> dict:
+    """Nov 14's EWR-TLV Aeroplan "Still available" card: Mar 4 priced on Mar 8's fare."""
+    return base_card(date="2027-03-04", cash_price=2647.0, one_way_cash=2647.0, cash_is_approx=True,
+                     points=62400, cpp=4.11, surplus_usd=1256.79, reminded=True, **kw)
+
+
+def tlv_quotes() -> list[dict]:
+    x = tlv_still_available()
+    return [quote(x, "2026-11-01T15:15:18Z", price=2646.0, date="2027-03-01"),
+            quote(x, "2026-11-14T15:21:24Z", price=None, date="2027-03-04"),
+            quote(x, "2026-11-08T15:17:29Z", price=2647.0, date="2027-03-08"),
+            quote(x, "2026-11-08T15:18:42Z", price=1782.0, date="2027-03-08", cabin="PREMIUM_ECONOMY")]
+
+
+def test_emailed_card_on_a_borrowed_fare_from_an_earlier_day_is_old(capsys):
+    d = digest([tlv_still_available()], generated_at=NOV14)
+    assert audit.offline(d, tlv_quotes()) == 1
+    out = capsys.readouterr().out
+    assert card_lines(out)[0].endswith("OLD FARE (2026-11-08, borrowed from 2027-03-08)")
+    assert "fares: 1 of 1 published card(s) on an earlier day's fare" in out
+
+
+def test_borrowed_fare_fetched_in_this_run_is_not_old():
+    x = tlv_still_available()
+    qs = [quote(x, "2026-11-14T15:10:00Z", price=2647.0, date="2027-03-08")]
+    assert audit.old_fare(x, qs, NOV14) is None
+
+
+def test_borrowed_fare_prefers_the_quote_whose_price_matches():
+    x = tlv_still_available()
+    assert audit.old_fare(x, tlv_quotes(), NOV14) == "2026-11-08, borrowed from 2027-03-08"
+    # no price match: the nearest priced date within two weeks
+    x2 = {**x, "one_way_cash": 2500.0}
+    assert audit.old_fare(x2, tlv_quotes(), NOV14) == "2026-11-01, borrowed from 2027-03-01"
+    assert audit.old_fare(x, [q for q in tlv_quotes() if q["date"] == "2027-03-04"], NOV14) is None
+
+
+def test_exact_date_card_whose_quote_came_back_empty_today_is_on_an_older_fare(capsys):
+    """The fresh re-ask came back empty, the run kept the saved fare and the empty answer
+    overwrote it in cash_quotes.json: the card's fare is older than the run."""
+    x = base_card(new=True)
+    assert audit.offline(digest([x]), [quote(x, "2026-10-23T13:40:00Z", price=None)]) == 1
+    assert card_lines(capsys.readouterr().out)[0].endswith("OLD FARE (earlier, exact date now empty)")
+    assert audit.old_fare({**x, "one_way_cash": None}, [quote(x, "2026-10-23T13:40:00Z", price=None)], RUN) is None
+
+
+# ── emailed(): the "emailed" key, and failed sends ────────────────────────────
+
+def test_emailed_reads_the_emailed_key_when_the_digest_has_it():
+    d = digest([base_card(new=True), base_card(dest="LHR", new=True, emailed=True)])
+    a, b = d["top"]
+    assert audit.emailed(a, d) is False and audit.emailed(b, d) is True
+
+
+def test_emailed_falls_back_to_new_on_old_digests_but_not_when_nothing_went_out():
+    x = base_card(new=True)
+    assert audit.emailed(x, digest([x])) is True
+    assert audit.emailed(x, digest([x], emailed_new=0, email_failed=["SMTP auth failed"])) is False
+    assert audit.emailed(x, digest([x], emailed_new=0, email_failed=[])) is False
+
+
+def test_failed_send_cards_are_not_audited_as_emailed(capsys):
+    d = digest([base_card(new=True, slow=True)], emailed_new=0, email_failed=["boom"])
+    assert audit.offline(d) == 0
+    assert "SLOW EMAILED" not in capsys.readouterr().out
+
+
+# ── email rules: margin, Still available, estimated round trips, taxes ───────
+
+def test_emailed_card_under_the_10_percent_margin_is_a_problem(capsys):
+    # bar 2.625: 1.10x is 2.8875
+    x = base_card(new=True, cpp=2.85, cash_price=1858.21, surplus_usd=468.0, cpp_at_typical=2.85)
+    assert audit.offline(digest([x])) == 1
+    assert card_lines(capsys.readouterr().out)[0].endswith("EMAILED UNDER 1.10x BAR")
+    ok = base_card(new=True, cpp=2.89, cash_price=1883.17, surplus_usd=492.96, cpp_at_typical=2.89)
+    assert audit.offline(digest([ok])) == 0
+    assert audit.offline(digest([x], generated_at="2026-10-13T15:58:00Z")) == 0  # before the margin rule
+    assert audit.offline(digest([x])) == 1 and audit.offline(digest([dict(x, new=False)])) == 0
+
+
+def test_still_available_card_under_1_5x_its_bar_is_a_problem(capsys):
+    # bar 2.625: 1.5x is 3.9375
+    x = base_card(reminded=True)  # 3.86c
+    assert audit.offline(digest([x], generated_at=NOV14)) == 1
+    assert card_lines(capsys.readouterr().out)[0].endswith("AGAIN UNDER 1.5x BAR")
+    assert audit.offline(digest([x], generated_at="2026-10-23T13:25:00Z")) == 0  # before the section
+
+
+def test_more_than_three_still_available_cards_is_a_problem(capsys):
+    four = [base_card(dest=c, reminded=True, cpp=4.0, cash_price=2575.81, surplus_usd=1185.6)
+            for c in ("LHR", "CDG", "FCO", "MAD")]
+    assert audit.offline(digest(four, generated_at=NOV14)) == 1
+    out = capsys.readouterr().out
+    assert "TOO MANY STILL AVAILABLE: 4 (max 3)" in out
+    assert audit.offline(digest(four[:3], generated_at=NOV14)) == 0
+
+
+def test_emailed_card_on_an_estimated_round_trip_or_unknown_taxes_is_flagged(capsys):
+    assert audit.offline(digest([base_card(new=True, rt_unavailable=True)])) == 1
+    assert card_lines(capsys.readouterr().out)[0].endswith("RT ESTIMATED EMAILED")
+    assert audit.offline(digest([base_card(new=True, taxes_unknown=True)], generated_at="2026-11-15T13:00:00Z")) == 1
+    assert card_lines(capsys.readouterr().out)[0].endswith("TAXES UNKNOWN EMAILED")
+    # site-only, or before the rule (Nov 15): not a problem
+    assert audit.offline(digest([base_card(taxes_unknown=True)], generated_at="2026-11-15T13:00:00Z")) == 0
+    assert audit.offline(digest([base_card(new=True, taxes_unknown=True)], generated_at=NOV14)) == 0
 
 
 # ── live() ────────────────────────────────────────────────────────────────────

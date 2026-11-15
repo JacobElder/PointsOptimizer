@@ -6,6 +6,8 @@ Configure via environment variables or Streamlit secrets:
     GMAIL_ADDRESS, GMAIL_APP_PASSWORD
 Generate an App Password at https://myaccount.google.com/apppasswords
 (requires 2-Step Verification enabled on the account).
+
+DEAL_SITE_URL (optional): the Streamlit site's address; when set, the email links to it.
 """
 
 from __future__ import annotations
@@ -13,6 +15,7 @@ from __future__ import annotations
 import html as html_lib
 import os
 import smtplib
+import sys
 from email.message import EmailMessage
 
 class NotConfigured(Exception):
@@ -246,6 +249,32 @@ def _digest_card(d: dict) -> str:
     </table>"""
 
 
+def _text_notes(d: dict) -> list[str]:
+    """The HTML card's warning chips, in the same order, for the plain-text part."""
+    trip = d.get("trip") or {}
+    notes = []
+    if d.get("new") is False:
+        notes.append("Sent before")
+    if trip.get("mixed_cabin"):
+        notes.append("Mixed cabin: " + ", ".join(trip.get("lower_cabin_legs") or []))
+    if trip.get("airport_changes"):
+        notes.append("Airport change: " + ", ".join(trip["airport_changes"]))
+    if d.get("slow"):
+        notes.append("Long itinerary")
+    shown = d.get("age_shown")
+    if shown is None and d.get("age_days") is not None:
+        shown = int(d["age_days"])
+    if shown is not None and shown > 5:
+        notes.append(f"Last confirmed {shown} days ago")
+    if d.get("unverified"):
+        notes.append("Flights and seats not confirmed")
+    if d.get("rt_unavailable"):
+        notes.append("Fare estimated: no round-trip price found")
+    if d.get("cash_is_approx"):
+        notes.append("Fare borrowed from a nearby date")
+    return notes
+
+
 def _digest_text(d: dict) -> str:
     import places
     trip = d.get("trip") or {}
@@ -257,9 +286,11 @@ def _digest_text(d: dict) -> str:
     taxes = ("taxes not reported" if d.get("taxes_unknown")
              else f"about ${d['taxes_usd']:,.0f} taxes (estimated)" if d.get("taxes_estimated")
              else f"${d['taxes_usd']:,.0f} taxes")
+    # Unreported taxes make the CPP a ceiling ("up to", as in the HTML); estimated ones a guess.
+    qualifier = "up to " if d.get("taxes_unknown") else "about " if d.get("taxes_estimated") else ""
     lines = [
         f"{places.airport_label(d['origin'])} -> {places.airport_label(d['dest'])}  |  "
-        + ("about " if d.get("taxes_unknown") or d.get("taxes_estimated") else "") + f"{d['cpp']:.2f} cents/pt",
+        + qualifier + f"{d['cpp']:.2f} cents/pt",
         f"  {d['program']} · {d['cabin'].replace('_', ' ').title()} · {stops}",
         f"  Award: {d['points']:,} points + {taxes}",
         f"  Cash fare: ${d['cash_price']:,.0f} ({d.get('cash_basis') or 'cash fare'})"
@@ -271,6 +302,12 @@ def _digest_text(d: dict) -> str:
     ]
     if d.get("bookable_now"):
         lines.append(f"  Bookable now with the {d['held_miles']:,} miles you already hold")
+    notes = _text_notes(d)
+    if notes:
+        lines.append("  Note: " + " · ".join(notes))
+    if trip.get("booking_url"):
+        lines.append(f"  {trip.get('booking_label') or 'Book'}: {trip['booking_url']}")
+    lines.append(f"  Google Flights: {_google_flights_url(d['origin'], d['dest'], d['date'])}")
     return "\n".join(lines)
 
 
@@ -310,18 +347,55 @@ def send_digest_email(sections: list[tuple[str, str, list[dict]]], subject: str,
     msg["To"] = address
     msg.set_content(text)
     msg.add_alternative(html_body, subtype="html")
-    with smtplib.SMTP("smtp.gmail.com", 587) as smtp:
-        smtp.starttls()
-        smtp.login(address, app_password)
-        smtp.send_message(msg)
+    # Only login/send count as failure. Once Gmail has accepted the message, an error on
+    # QUIT/close must not be reported as a failed send: the run would then not remember
+    # the deals and email them again the next day.
+    sent = False
+    try:
+        with smtplib.SMTP("smtp.gmail.com", 587) as smtp:
+            smtp.starttls()
+            smtp.login(address, app_password)
+            smtp.send_message(msg)
+            sent = True
+    except Exception as e:
+        if not sent:
+            raise
+        print(f"::warning::Digest email sent, but closing the Gmail connection failed: "
+              f"{type(e).__name__}: {e}", file=sys.stderr)
+
+
+def _site_url() -> str:
+    """The Streamlit site's address, or "" for no link. It isn't written anywhere in the
+    repo, so it comes from DEAL_SITE_URL (environment / workflow secret)."""
+    return (os.environ.get("DEAL_SITE_URL") or "").strip()
+
+
+def _bar_sentence() -> str:
+    """How far above a program's usual value each cabin's bar sits, from valuation's
+    GREAT_MULTIPLE, so the footer can't drift from the rule (it left out premium
+    economy's 50%)."""
+    from valuation import GREAT_MULTIPLE
+    names = {"ECONOMY": "economy", "PREMIUM_ECONOMY": "premium economy", "BUSINESS": "business",
+             "FIRST": "first"}
+    groups: dict[float, list[str]] = {}
+    for cabin, m in GREAT_MULTIPLE.items():
+        groups.setdefault(m, []).append(names.get(cabin, cabin.lower()))
+    return ", ".join(f"{(m - 1) * 100:.0f}% in {' and '.join(c)}" for m, c in groups.items())
 
 
 def build_digest(sections: list[tuple[str, str, list[dict]]], intro: str,
                  warning: str | None = None) -> tuple[str, str]:
     """(html, plain text) for the digest email. `warning` is a run-wide caveat shown first."""
+    from deal_finder import EMAIL_MARGIN
     sections = [s for s in sections if s[2]]
+    site = _site_url()
     body = ""
     text = ([f"WARNING: {warning}", ""] if warning else []) + [intro, ""]
+    if site:
+        text += [f"See all deals on the site: {site}", ""]
+    site_link = (f'<div style="font-size:14px; margin-top:8px;"><a href="{_esc(site)}" '
+                 f'style="color:#2563eb; text-decoration:none; font-weight:600;">'
+                 f'See all deals on the site &rarr;</a></div>' if site else "")
     banner = (f'<div style="background:#fef3c7; color:#92400e; border-radius:8px; padding:10px 12px; '
               f'font-size:14px; line-height:20px; margin-top:10px;">⚠️ {_esc(warning)}</div>'
               if warning else "")
@@ -339,12 +413,14 @@ def build_digest(sections: list[tuple[str, str, list[dict]]], intro: str,
         <div style="font-size:24px; font-weight:800; color:#111827;">✈️ Deal Finder</div>
         {banner}
         <div style="font-size:14px; color:#4b5563; line-height:21px; margin-top:6px;">{_esc(intro)}</div>
+        {site_link}
         {body}
         <div style="font-size:12px; color:#9ca3af; line-height:18px; margin-top:24px;">
           CPP = (cash fare − award taxes) ÷ points. Award space changes fast: confirm on the airline's
           site before transferring points (transfers can't be undone). A deal is a standout when it beats
-          what that program's points are normally worth by enough to be worth the transfer: 60% in
-          economy, 25% in business and first. Each card names the bar it had to clear.
+          what that program's points are normally worth by enough to be worth the transfer:
+          {_bar_sentence()}. Each card names the bar it had to clear;
+          a deal is emailed only once it clears that bar by {(EMAIL_MARGIN - 1) * 100:.0f}% (thinner ones stay on the site).
         </div>
       </div>
     </div>"""
