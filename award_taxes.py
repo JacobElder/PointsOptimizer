@@ -17,7 +17,7 @@ from __future__ import annotations
 import json
 import os
 import statistics
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
 _BASE = os.path.dirname(os.path.abspath(__file__))
 TAXES_PATH = os.path.join(_BASE, "program_taxes.json")
@@ -107,18 +107,34 @@ def _program_name(source: str) -> str:
         return source
 
 
-def estimate(source: str, cabin: str, data: dict | None = None) -> tuple[float | None, str]:
-    """(usd, how we got it). (None, reason) when there's nothing to go on."""
+def _is_stale(entry: dict, today: date) -> bool:
+    """Not re-learned in STALE_DAYS: the program stopped reporting taxes, or we stopped
+    seeing its awards, and surcharges move. No `updated` date reads as current."""
+    try:
+        return (today - date.fromisoformat(str(entry["updated"]))).days > STALE_DAYS
+    except (KeyError, ValueError):
+        return False
+
+
+def estimate(source: str, cabin: str, data: dict | None = None,
+             today: date | None = None) -> tuple[float | None, str]:
+    """(usd, how we got it). (None, reason) when there's nothing to go on.
+
+    A learned median older than STALE_DAYS gives way to the curated figure, and is
+    still used when there is none.
+    """
     data = data if data is not None else load()
+    today = today or datetime.now(timezone.utc).date()
     k = _key(source, cabin)
 
     name = _program_name(source)
     learned = (data.get("learned") or {}).get(k)
-    if learned and learned.get("usd"):
+    curated = (data.get("curated") or {}).get(k)
+    has_curated = bool(curated and curated.get("usd"))
+    if learned and learned.get("usd") and not (has_curated and _is_stale(learned, today)):
         return float(learned["usd"]), f"typical for {name} in this cabin, from {learned['n']} awards we've seen"
 
-    curated = (data.get("curated") or {}).get(k)
-    if curated and curated.get("usd"):
+    if has_curated:
         return float(curated["usd"]), curated.get("note") or "published figure for this program"
 
     # Deliberately no cross-cabin fallback. Carrier surcharges scale hard with

@@ -100,3 +100,14 @@ def test_failed_save_keeps_the_old_table_and_cleans_up(monkeypatch):
 def test_tests_never_write_the_repo_tax_table():
     real_dir = os.path.dirname(os.path.abspath(award_taxes.__file__))
     assert os.path.dirname(award_taxes.TAXES_PATH) != real_dir
+
+
+def test_a_learned_median_older_than_120_days_gives_way_to_the_curated_figure():
+    from datetime import date
+    data = {"learned": {"turkish|BUSINESS": {"usd": 150.0, "n": 9, "updated": "2026-06-01"}},
+            "curated": {"turkish|BUSINESS": {"usd": 219.0, "note": "published"}}}
+    assert award_taxes.estimate("turkish", "BUSINESS", data, today=date(2026, 9, 28))[0] == 150.0  # 119 days
+    assert award_taxes.estimate("turkish", "BUSINESS", data, today=date(2026, 9, 30)) == (219.0, "published")
+    # With nothing curated, an old median still beats no estimate at all.
+    del data["curated"]
+    assert award_taxes.estimate("turkish", "BUSINESS", data, today=date(2026, 9, 30))[0] == 150.0
