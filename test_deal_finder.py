@@ -1535,7 +1535,8 @@ def test_audit_flags_a_card_priced_on_an_earlier_days_fare():
 
 def _card(dest, cpp, bar=2.0, **kw):
     return {"source": "aeroplan", "origin": "JFK", "dest": dest, "cabin": "BUSINESS",
-            "cpp": cpp, "great_floor": bar, "new": False, "slow": False, "cpp_at_typical": None, **kw}
+            "cpp": cpp, "great_floor": bar, "new": False, "slow": False, "cpp_at_typical": None,
+            "fare_this_run": True, **kw}
 
 
 def test_still_available_picks_only_exceptional_repeats_best_first_capped_at_three():

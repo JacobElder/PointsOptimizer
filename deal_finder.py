@@ -536,6 +536,9 @@ class Scored:
             "cpp_at_typical": (round(self.cpp_at_typical, 3)
                                if self.cpp_at_typical is not None else None),
             "rank_cash": round(self.rank_cash) if self.rank_cash is not None else None,
+            # This date's own fare came from Google in this run (not a saved or
+            # borrowed one): what "re-checked today" in the email needs.
+            "fare_this_run": _fetched_this_run(self),
             "fare_spike": round(self.fare_spike, 2) if self.fare_spike else None,
             "held_miles": self.held_miles, "bookable_now": self.bookable_now,
             "top_up_needed": max(c.points - self.held_miles, 0) if self.held_miles else None,
@@ -1552,10 +1555,16 @@ def pick_still_available(pairs: list[tuple[str, dict]], routes: dict[str, dict],
     One email is easy to miss, and nothing in the inbox says a deal is still bookable.
     Each is shown at most once a week. The original email date in `routes` is left
     alone, so the repeat rule (ROUTE_MEMORY_DAYS) works as before.
+
+    Only a card whose fare was fetched in this run qualifies: the section says
+    "re-checked today", and 4 of 6 shown Nov 11-14 were on a fare borrowed from a
+    nearby date days earlier (EWR-TLV Nov 14 on a Nov 8 fare). The week is counted in
+    UTC dates: runs start 12-16 UTC, so 168 hours often meant 8 days.
     """
     best: dict[str, tuple[float, dict]] = {}
+    today = now.astimezone(timezone.utc).date() if now.tzinfo else now.date()
     for _, d in pairs:
-        if d.get("new"):
+        if d.get("new") or not d.get("fare_this_run"):
             continue
         rk = route_report_key(d)
         prev = routes.get(rk)
@@ -1565,11 +1574,16 @@ def pick_still_available(pairs: list[tuple[str, dict]], routes: dict[str, dict],
         if ratio < STILL_AVAILABLE_MULTIPLE:
             continue
         last = max(prev["at"], shown.get(rk, ""))
-        if now - datetime.fromisoformat(last) < timedelta(days=STILL_AVAILABLE_GAP_DAYS):
+        if (today - _utc_date(last)).days < STILL_AVAILABLE_GAP_DAYS:
             continue
         if rk not in best or ratio > best[rk][0]:
             best[rk] = (ratio, d)
     return [d for _, d in sorted(best.values(), key=lambda t: -t[0])][:STILL_AVAILABLE_MAX]
+
+
+def _utc_date(iso: str) -> date_cls:
+    t = datetime.fromisoformat(iso.replace("Z", "+00:00"))
+    return t.astimezone(timezone.utc).date() if t.tzinfo else t.date()
 
 
 def route_report_key(d: dict) -> str:
@@ -2314,7 +2328,7 @@ def run(max_lookups: int, top: int, send_email: bool, include_planned: bool = Fa
                   "economy price — worth it if you'd fly up front, not cash you'd have spent.",
                   [d for d in top_new if is_premium(d)]),
                  ("🔁 Still available from earlier emails",
-                  "Not new: sent at least a week ago, still bookable, and re-checked today at "
+                  "Not new: sent at least a week ago, still bookable, and re-priced today at "
                   f"{STILL_AVAILABLE_MULTIPLE:g}x its bar or better. Each is shown here at most "
                   "once a week.", still_available)],
                 subject=(f"✈️ {n_unique} new award deal{'s' if n_unique != 1 else ''}: "

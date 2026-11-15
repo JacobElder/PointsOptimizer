@@ -237,3 +237,39 @@ def test_route_memory_keeps_the_value_at_the_usual_fare():
                      "cpp_at_usual": 3.185}
     # The next card is judged against 3.185, not 4.254.
     assert deal_finder.materially_better({**eze, "cpp": 3.70, "cpp_at_typical": 3.70}, entry)
+
+
+# ── 7. "Still available" only on a fare fetched today, a week by UTC date ─────
+def _again(**over):
+    return {**_card(source="united", origin="EWR", dest="TLV", cpp=4.0, great_floor=2.10,
+                    new=False), "fare_this_run": True, **over}
+
+
+def test_still_available_needs_a_fare_fetched_in_this_run():
+    """The section says "re-checked today", but 4 of 6 such cards Nov 11-14 were valued on
+    a fare borrowed from a nearby date and fetched days earlier (EWR-TLV Nov 14 on a
+    Nov 8 fare)."""
+    now = datetime(2026, 11, 14, 13, 0, tzinfo=timezone.utc)
+    routes = {"united|EWR|TLV|BUSINESS": {"at": "2026-11-01T13:00:00+00:00", "cpp": 3.0,
+                                          "points": 88000}}
+    pairs = [("k", _again())]
+    assert deal_finder.pick_still_available(pairs, routes, {}, now) == [pairs[0][1]]
+    assert deal_finder.pick_still_available([("k", _again(fare_this_run=False))], routes, {}, now) == []
+    assert deal_finder.pick_still_available([("k", _again(fare_this_run=None))], routes, {}, now) == []
+
+
+def test_still_available_waits_seven_calendar_days_not_168_hours():
+    """Runs start 12-16 UTC, so a deal emailed at 16:00 and checked a week later at 12:00
+    was 6.8 days old by the clock and waited until day 8."""
+    now = datetime(2026, 11, 14, 12, 0, tzinfo=timezone.utc)
+    routes = {"united|EWR|TLV|BUSINESS": {"at": "2026-11-07T16:00:00+00:00", "cpp": 3.0,
+                                          "points": 88000}}
+    assert len(deal_finder.pick_still_available([("k", _again())], routes, {}, now)) == 1
+    routes["united|EWR|TLV|BUSINESS"]["at"] = "2026-11-08T01:00:00+00:00"  # 6 dates ago
+    assert deal_finder.pick_still_available([("k", _again())], routes, {}, now) == []
+
+
+def test_a_card_says_whether_its_fare_was_fetched_in_this_run():
+    s = _ist(3536, "2027-03-01", "a", fetched_at=_now_ts(0.1))
+    assert s.to_dict()["fare_this_run"] is True
+    assert _ist(3536, "2027-03-01", "a", fetched_at=_now_ts(30)).to_dict()["fare_this_run"] is False
