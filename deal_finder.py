@@ -1277,7 +1277,11 @@ def still_bookable(s: Scored, sources_reporting_seats: set[str]) -> bool:
         return False
     if not s.trip.price_matches:
         return False
-    return not (s.trip.seats == 0 and s.c.source in sources_reporting_seats)
+    # Both checks matter: the scan started reporting American seats around Nov 6,
+    # but its trip details still give 0 on every itinerary, so trusting the scan
+    # alone dropped every American award checked (42 of 42, Nov 6-16).
+    return not (s.trip.seats == 0 and s.trip.seats_known
+                and s.c.source in sources_reporting_seats)
 
 
 # ── ranking ──────────────────────────────────────────────────────────────────
@@ -1905,6 +1909,7 @@ def verify_selection(scored: list[Scored], select, rt_cache: dict | None, trip_c
         if not pending:
             break
         before = {id(s) for s in selection}
+        valued = {id(s): (s.cpp, s.cash) for s in pending}
         attach_trips(pending, trip_cache, log=log, budget=max_trip_lookups)
         for s in pending:
             if not still_bookable(s, sources_reporting_seats):
@@ -1912,7 +1917,7 @@ def verify_selection(scored: list[Scored], select, rt_cache: dict | None, trip_c
             elif round_trip and rt_cache is not None and s.trip is not None:
                 apply_round_trip(s, rt_cache)  # cached offers: re-match now stops are known
         selection = current_selection()
-        round_notes.append(_round_note(rounds_used, pending, selection, before, bar_fn))
+        round_notes.append(_round_note(rounds_used, pending, selection, before, bar_fn, valued))
     else:
         # Out of rounds with some of the selection still unchecked (Sep 30: four
         # deals, including JFK-HND, were emailed without a live check or a round
@@ -1939,10 +1944,23 @@ SLOW_SELECTION_ROUNDS = 8  # Oct 6-22 settled in 5-11; log round detail from her
 
 
 def _round_note(n: int, checked: list[Scored], selection: list[Scored], before: set[int],
-                bar_fn) -> str:
+                bar_fn, valued: dict | None = None) -> str:
     """One selection round in a line: each deal checked and what became of it
-    (kept, gone, below bar, or replaced by another option), plus what moved in."""
+    (kept, gone, below bar, or replaced by another option), plus what moved in.
+
+    "below bar" carries the value before and after the check: Nov 16's held-miles
+    JFK/EWR-KEF JetBlue economy went below bar on 12 dates in a row and the log
+    couldn't say whether the fare, the taxes or the stops had moved."""
     now = {id(s) for s in selection}
+    valued = valued or {}
+
+    def change(s: Scored) -> str:
+        cpp0, cash0 = valued.get(id(s), (None, None))
+        if cpp0 is None or s.cpp is None:
+            return ""
+        return (f" ({cpp0:.2f}→{s.cpp:.2f}¢ vs {bar_fn(s):.2f}"
+                + (f", ${cash0:,.0f}→${s.cash:,.0f}" if cash0 and s.cash and cash0 != s.cash else "")
+                + (f", {s.trip.stops} stop(s)" if s.trip is not None else "") + ")")
 
     def tag(s: Scored) -> str:
         return f"{s.c.origin}-{s.c.dest} {s.c.cabin[:1]} {s.c.source} {s.c.date}"
@@ -1951,7 +1969,7 @@ def _round_note(n: int, checked: list[Scored], selection: list[Scored], before: 
         if s.dropped:
             return "gone"
         if s.cpp is None or s.cpp < bar_fn(s):
-            return "below bar"
+            return "below bar" + change(s)
         if id(s) not in now:
             return "replaced" + (" (connects)" if s.connecting else "")
         return "kept"

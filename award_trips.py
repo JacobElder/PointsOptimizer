@@ -57,6 +57,9 @@ class TripInfo:
     stops: int = 0
     nonstop: bool = False  # ONE segment. seats.aero's "direct" flag only means one flight number.
     seats: int = 0
+    # False when no itinerary in the lookup reports a seat count at all: American's
+    # trip details give 0 on every one, meaning "not reported", not sold out.
+    seats_known: bool = True
     current_points: int = 0  # cheapest price for this cabin now
     price_matches: bool = True  # still bookable at the points the scan reported
 
@@ -86,6 +89,13 @@ def _with_cabin(url: str | None, cabin: str) -> str | None:
         return url
 
 
+def _seats(trip: dict) -> int:
+    try:
+        return int(trip.get("RemainingSeats") or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
 def _cost(trip: dict) -> int:
     try:
         return int(trip.get("MileageCost") or 0)
@@ -108,7 +118,8 @@ def fetch(availability_id: str, cabin: str, points: int, session: requests.Sessi
     except (requests.RequestException, ValueError, seats_aero.NotConfigured) as e:
         raise LookupFailed(str(e)) from e
     want = _SEATS_CABIN.get(cabin.upper(), "economy")
-    trips = [t for t in payload.get("data", []) if t.get("Cabin") == want]
+    every_trip = payload.get("data", [])
+    trips = [t for t in every_trip if t.get("Cabin") == want]
     if not trips:
         return None  # award no longer offered in this cabin
     # A trip with no price or no flights says nothing about this award: a missing
@@ -155,6 +166,7 @@ def fetch(availability_id: str, cabin: str, points: int, session: requests.Sessi
         stops=max(len(segs) - 1, 0),
         nonstop=len(segs) == 1,
         seats=int(t.get("RemainingSeats") or 0),
+        seats_known=any(_seats(x) > 0 for x in every_trip),
         current_points=cheapest_now,
         price_matches=cheapest_now <= int(points),
     )

@@ -6,6 +6,25 @@ revisit it. Code comments point here; change the entry when you change the decis
 
 ---
 
+## 2026-11-16 — A seat count of 0 is trusted only when the trip lookup reports counts
+
+**Decision.** `still_bookable` drops an award for 0 seats only if the program reports seats in
+the scan *and* at least one itinerary in its trip-details lookup reports a non-zero count
+(`TripInfo.seats_known`). Otherwise 0 means "not reported" and the award is kept.
+
+**Why.** Around Nov 6 the scan began reporting American seat counts (in a 1,000-row JFK/EWR
+sample on Nov 16, 619 of 846 business rows had 1–3 seats), which put American among the
+programs whose 0 is trusted. But seats.aero's trip details still give 0 on every American
+itinerary: 36 of 36 for a JFK–ANU award whose scan row said 3. Every American check since then
+came back "gone" (42 of 42 in the logged selection rounds), and no American card was published
+after Nov 5 (1–5 a day Oct 9–Nov 5). In held miles alone, Nov 16 spent 18 lookups re-checking
+STT/GCM/ANU dates that were all thrown away.
+
+**Rejected.** Dropping the seat check for American by name: the next program to change its
+reporting would break the same way. Judging from the scan alone (the old rule) is what failed.
+
+---
+
 ## 2026-11-15 — Audit-driven fixes: repeats at the usual fare, email exclusions, hard check cap
 
 From a 7-agent audit of the code, the digest history and the site. Code changes, so the

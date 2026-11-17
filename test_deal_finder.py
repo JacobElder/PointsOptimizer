@@ -277,6 +277,19 @@ def test_still_bookable_drops_gone_repriced_and_soldout_awards():
         == [False, False, False, True, True]
 
 
+def test_a_zero_seat_count_the_trip_lookup_never_reports_is_not_sold_out():
+    """Nov 6-16: the scan started reporting American seat counts, so American joined
+    the programs whose 0 is trusted, but its trip details report 0 on every
+    itinerary. All 42 American checks in the logs came back "gone" and no American
+    card has been published since Nov 6 (1-5 a day before)."""
+    s = _scored("ANU", "ECONOMY", "american", "JFK", 9500, 320)
+    s.trip = _trip(seats=0)
+    s.trip.seats_known = False
+    assert deal_finder.still_bookable(s, {"american", "united"}) is True
+    s.trip.seats_known = True  # the lookup does report counts: a 0 is sold out
+    assert deal_finder.still_bookable(s, {"american", "united"}) is False
+
+
 def test_a_demoted_leader_does_not_take_its_destination_group_down(monkeypatch):
     # Leader looks best on the one-way fare but is gone; the runner-up should be reported.
     leader = _scored("ZRH", "BUSINESS", "aeroplan", "JFK", 60000, 3000)
@@ -1578,3 +1591,14 @@ def test_an_empty_fresh_answer_is_asked_again_before_the_old_fare_is_kept(monkey
     assert asked == [("JFK", "PUJ", "2026-11-09")] * 2
     assert s.cash == 154.0
     assert stats["repriced"] == 1 and stats["failed"] == 0 and stats["retried"] == 1
+
+
+def test_a_round_note_says_what_a_check_changed_on_a_deal_that_fell_below_bar():
+    """Nov 16: JetBlue KEF economy fell below bar on 12 checked dates in a row and
+    the round notes only said "below bar", so the cause couldn't be read off the log."""
+    s = _scored("KEF", "ECONOMY", "jetblue", "JFK", 12700, 380)
+    valued = {id(s): (2.15, 380.0)}
+    s.trip = _trip(stops=1, nonstop=False)
+    deal_finder._set_cash(s, 300.0)  # (300 - 50 taxes) / 12,700 = 1.97c
+    note = deal_finder._round_note(3, [s], [], {id(s)}, lambda _s: 2.08, valued)
+    assert "below bar (2.15→1.97¢ vs 2.08, $380→$300, 1 stop(s))" in note

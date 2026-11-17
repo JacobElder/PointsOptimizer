@@ -207,6 +207,20 @@ rationale and tallies live in `docs/decisions.md`; what to watch next is in `CLA
   round, each Aeroplan/United connecting route (EWR–CAI 8 times, then EWR–CUZ, –PMO, –CTA) "replaced (connects)"
   by a sibling date on the same route that is assumed nonstop until checked. That is the reproducing test to
   write next: a route already seen connecting should mark its unchecked siblings as connecting.
+- **Nov 15–16: audited Nov 16; one code fix.** Nov 15 ran on GitHub's schedule (15:39 UTC, before the Nov 15
+  fixes were pushed); Nov 16 on the schedule at 18:31 UTC. The Claude routine fired at 16:06 Nov 16 but failed
+  with `USAGE_LIMIT_REACHED` (the user's plan limit), so it did not request a run. Nov 16 (first run with the
+  Nov 15 fixes): 1 emailed, JFK–CDG Virgin Atlantic premium economy 24k+$162, 3.48¢ → 3.47¢ live (bar 2.10);
+  0 repeats; no `OLD FARE` or estimated-round-trip emails (Nov 15 emailed EWR–CAI United on both). `fares:` 14 →
+  9 → 4 of ~28 (Nov 14/15/16): falling, not ~0; the 4 match the 4 "unavailable" in fresh re-pricing. Still
+  THROTTLED (round trips 61–62% both days). Flight lookups 94 → 89. Main selection settled in 9 rounds; **held
+  miles hit 12 rounds with the warning** (32 lookups). Cause, half of it: **every American check was "gone"
+  since ~Nov 6** — the scan now reports American seats, so its trip lookup's 0 (on every itinerary) was read as
+  sold out (see decisions.md). Fixed with `seats_known`. The other half, JetBlue JFK/EWR–KEF economy going
+  "below bar" on 12 checked dates in a row, is not understood: the round notes now print the value before →
+  after the check, the bar, fare change and stops. **Watch Nov 17:** American cards back (held miles /
+  Caribbean); held-miles selection under 12 rounds; if KEF cascades again, read the new `below bar (…)` detail.
+  Clean-day count: 0 of 5.
 - **Google empties on the runner (investigated Oct 15–16).** Every daily run since Oct 10 lost 17–55% of
   round trips (Sep 28–Oct 9: 98–100%, except Oct 4). Not our code (the drop predates the Oct 11 changes) and
   not a block page: the empties are Google's ordinary "no flights" answer, sometimes false (CPT priced from the

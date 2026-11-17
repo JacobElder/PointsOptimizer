@@ -79,7 +79,9 @@ layer produced that day's digest. Workflows are pinned to `ubuntu-24.04` (see TO
 
 - seats.aero `direct` means "one flight number", not nonstop, and isn't reliable even then
   (Ethiopian EWR–JNB, two numbers and two stops, is flagged direct). Stops come from the
-  flight details (`award_trips`). American reports 0 seats meaning "unknown".
+  flight details (`award_trips`). American's trip details report 0 seats on every itinerary
+  ("unknown") even though its scan rows report counts since ~Nov 6; a 0 is trusted only when the
+  lookup reports a count somewhere (`seats_known`, Nov 16).
 - seats.aero taxes are in cents. Gulf carriers quote taxes in AED/QAR/SAR (FX fallback).
 - A deal is valued at the lower of the one-way fare and half a round trip. When no round
   trip can be priced it's valued at 81% of the one-way (`RT_HALF_ESTIMATE_RATIO`) — never at
@@ -125,15 +127,16 @@ removed Oct 12), deleting SERPAPI_KEY from the Streamlit Cloud secrets.
   stepping in, every emailed deal verified and still above its bar at live fares, no repeat
   emails (outside the labeled "Still available" section), no code fixes needed — then switch to a
   weekly `make audit-live`.
-- **Clean days so far: 0 of 5.** The Nov 15 audit-driven fixes restart it (Nov 8–14 had emailed
-  `OLD FARE` cards and throttled days; earlier resets are in docs/run-log.md).
+- **Clean days so far: 0 of 5.** The Nov 16 American seat fix restarts it (Nov 6–16 dropped every
+  American award; earlier resets are in docs/run-log.md).
 - **Watch next run:**
-  - `make audit` `fares:` count near 0 even on a throttled day (fresh re-pricing now asks twice).
-  - Selection rounds settle well under 12 now that the per-card check cap is hard.
-  - Flight lookups are now logged per phase; the total should drop from Nov 8–14's 99–129.
-  - Emails exclude cards on an estimated round trip and cards with unknown taxes.
-  - Repeats are judged at the lower of today's and the usual fare (no more fare-driven repeats).
-  - Run time vs the new 40-minute timeout (runs were 18–22 min).
+  - American cards appear again (held miles, Caribbean watchlist); none since Nov 6.
+  - Held-miles selection settles under 12 rounds. If JetBlue KEF economy cascades again, the round
+    notes' `below bar (before→after¢ vs bar, $fare change, stops)` says what the check changed.
+  - `make audit` `fares:` (14 → 9 → 4 Nov 14–16) keeps falling toward 0.
+  - Flight lookups (89 Nov 16) and run time (18 min) vs the 40-minute timeout.
+  - The 16:00 Claude routine failed Nov 16 on the plan's usage limit; if it recurs on a day the
+    GitHub schedule also misses, there is no working backup layer.
 - **cron-job.org layer has never fired** on schedule (since Oct 6) — treat it as missing; the
   GitHub schedule and the Claude routine produce the digest.
 - **One-off local searches** (e.g. the Oct 7 SE Asia search via `award_scanner.scan` +

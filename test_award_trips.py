@@ -188,3 +188,20 @@ def test_a_trip_without_segments_is_not_called_a_one_stop_or_nonstop():
     p["data"].append({**p["data"][0], "AvailabilitySegments": [], "MileageCost": 70000})
     trip = award_trips.fetch("id", "BUSINESS", 88000, session=_Session(p))
     assert trip.flights == ["UA40 EWR–FCO"] and trip.nonstop is True and trip.stops == 0
+
+
+def test_a_payload_that_reports_no_seats_anywhere_leaves_the_count_unknown():
+    """seats.aero's trips endpoint gives RemainingSeats 0 on every American
+    itinerary (36 of 36 for JFK-ANU on Nov 16, business included, where the scan
+    row said 3 seats), so 0 there means "not reported", not sold out. Since about
+    Nov 6 the scan does report American seats, which put American among the
+    programs whose 0 is trusted, and every American check came back "gone"."""
+    american = {"data": [
+        {"Cabin": c, "MileageCost": cost, "TotalDuration": 300, "RemainingSeats": 0,
+         "Carriers": "AA", "AvailabilitySegments": [_segment("AA1", "JFK", "ANU", cabin=c)]}
+        for c, cost in (("business", 81000), ("economy", 9500), ("economy", 12500))]}
+    trip = award_trips.fetch("id", "ECONOMY", 9500, session=_Session(american))
+    assert trip.seats == 0 and trip.seats_known is False
+
+    american["data"][0]["RemainingSeats"] = 2  # any trip reporting a count: 0 is real
+    assert award_trips.fetch("id", "ECONOMY", 9500, session=_Session(american)).seats_known is True
