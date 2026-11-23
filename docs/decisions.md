@@ -6,6 +6,26 @@ revisit it. Code comments point here; change the entry when you change the decis
 
 ---
 
+## 2026-11-22 — An award with no round trip yet is judged by its route's other dates
+
+**Decision.** During selection, an award whose own round trip hasn't been looked at must
+still clear its bar when its one-way fare is scaled by the median value/one-way ratio of
+this run's awards on the same origin, destination and cabin whose round trips have been
+(priced, or estimated at 81%). With no such sibling, or a ratio ≥ 1, nothing changes. The
+award's own round trip still sets its value once priced.
+
+**Why.** Nov 19–22 the held-miles selection used all 12 rounds: JFK/EWR–KEF economy is $407
+one-way on nearly every date (2.40¢, bar 2.08¢) and $190 as half a round trip (0.69¢). Each
+date looked like a deal until its own round trip was priced, so dates were priced and dropped
+one at a time, and 12 seats.aero lookups went on dates that were then below bar. Nov 21–22
+published no held-miles deals at all.
+
+**Rejected.** Valuing every unpriced award at 81% of its one-way fare: that would change
+ranking for every route, including ones where the round trip runs above the one-way.
+Using the route's *lowest* ratio: one cheap round trip would then rule out the whole route.
+
+---
+
 ## 2026-11-16 — A seat count of 0 is trusted only when the trip lookup reports counts
 
 **Decision.** `still_bookable` drops an award for 0 seats only if the program reports seats in

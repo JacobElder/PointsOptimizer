@@ -320,3 +320,51 @@ def test_a_fresh_quote_with_no_comparable_fare_is_not_counted_as_repriced(monkey
     stats = deal_finder.reprice_fresh([s], log=lambda *a: None)
     assert stats["repriced"] == 0 and stats["failed"] == 1
     assert s.cash == 3536
+
+
+# ── Nov 19-22: one route's round trips priced one date at a time ─────────────
+def test_a_route_whose_round_trips_fail_the_bar_stops_promoting_its_other_dates(monkeypatch):
+    """Nov 19-22 the held-miles selection used all 12 rounds: JFK/EWR-KEF JetBlue economy
+    is $407 one-way (Icelandair nonstop) on nearly every date, 2.40c against a 2.08c
+    bar, but half the round trip is $190 (0.69c). Each date stayed ranked on its
+    one-way fare until its own round trip was priced, so the free round-trip stage
+    priced one date per pass, ran out of passes, and the next date cost a seats.aero
+    lookup -- 12 of them, and 0 held-miles deals published on Nov 21 and 22."""
+    import types
+    rt_lookups, trip_lookups = [], []
+
+    def rt(origin, dest, depart, ret, cabin):
+        rt_lookups.append((origin, dest, depart))
+        price = 380.0 if dest == "KEF" else 900.0  # KEF: half is $190; GCM: half above one-way
+        return [types.SimpleNamespace(price_usd=price, stops=0)]
+
+    def fetch(aid, cabin, points):
+        trip_lookups.append(aid)
+        return _trip_info(points, flights=["B6 1"], connections=[], stops=0, nonstop=True,
+                          leg_cabins=["economy"])
+
+    monkeypatch.setattr(deal_finder.flight_search, "search_round_trip_offers", rt)
+    monkeypatch.setattr(deal_finder.award_trips, "fetch", fetch)
+    scored = []
+    for i in range(40):
+        origin = "JFK" if i % 2 else "EWR"
+        date = f"2027-0{1 + i // 10}-{10 + i % 10:02d}"
+        s = _scored("KEF", "jetblue", 407.0, date, f"KEF:{i}", points=12500, origin=origin,
+                    cabin="ECONOMY")
+        s.taxes_usd = 107.0
+        deal_finder._set_cash(s, 407.0)
+        scored.append(s)
+    gcm = _scored("GCM", "american", 450.0, "2027-02-21", "GCM:1", points=15000, origin="JFK",
+                  cabin="ECONOMY")
+    scored.append(gcm)
+    msgs = []
+    published = deal_finder.verify_selection(
+        scored, lambda ls: sorted(ls, key=lambda s: -s.rank_value)[:4], rt_cache={},
+        trip_cache={}, sources_reporting_seats=set(), round_trip=True,
+        bar_fn=lambda s: 2.08, log=msgs.append)
+    assert not any("didn't settle" in m for m in msgs), msgs
+    kef_trips = [a for a in trip_lookups if a.startswith("KEF")]
+    assert len(kef_trips) == 0, kef_trips  # every KEF date is below bar on its round trip
+    kef_rt = [k for k in rt_lookups if k[1] == "KEF"]
+    assert len(kef_rt) <= 4, len(kef_rt)  # a couple per origin, not one per date
+    assert [s.c.dest for s in published] == ["GCM"]

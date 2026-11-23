@@ -221,6 +221,22 @@ rationale and tallies live in `docs/decisions.md`; what to watch next is in `CLA
   after the check, the bar, fare change and stops. **Watch Nov 17:** American cards back (held miles /
   Caribbean); held-miles selection under 12 rounds; if KEF cascades again, read the new `below bar (…)` detail.
   Clean-day count: 0 of 5.
+- **Nov 17–22: audited Nov 22; one code fix.** All six digests came from the 16:00 Claude routine (16:07 UTC);
+  GitHub's cron fired only after it (16:16–20:56 UTC), queued behind it in the concurrency group and skipped, so
+  the routine is effectively the only working layer. Emails Nov 19, 20, 22; none Nov 17, 18, 21 (nothing new
+  cleared). 0 repeats. Live (Nov 22): all 4 emailed cards unchanged (JFK–CMN Alaska J 55k 4.22¢, JFK–GRU Alaska PE
+  32.5k 4.07¢, JFK–PTY Flying Blue J 24k 3.62¢, EWR–RAK United J 80k 2.91¢). American is back (JFK–STT/GCM held-miles
+  cards Nov 17–20): the Nov 16 seat fix worked. `fares:` 4, 0, 4, 2, 3, 3; THROTTLED 5 of 6 days (round trips
+  46–68% priced, 92% Nov 18). **Held-miles selection hit 12 rounds with the warning Nov 19–22 and published 0
+  held-miles deals Nov 21–22.** The new round notes explained it: every JFK/EWR–KEF JetBlue economy date is
+  $407 one-way (Icelandair nonstop), 2.40¢ vs a 2.08¢ bar, but $190 as half a round trip (or $330 = the 81%
+  estimate when Google returns none). A date stayed ranked on its one-way fare until its own round trip was
+  priced, so the free round-trip stage dropped one date per pass and the leftover date cost a seats.aero lookup,
+  12 times. Fix: until its own round trip is priced, an award is valued at the median value/one-way ratio of this
+  run's priced dates on the same route and cabin (`_clears_bar_on_route_round_trips`); reproducing test
+  `test_a_route_whose_round_trips_fail_the_bar_stops_promoting_its_other_dates` (3 KEF lookups before, 0 after).
+  **Watch Nov 23:** held-miles `Selection:` under 12 rounds, no KEF `below bar` chain; round-trip checks
+  (589–660 a day) should drop. Clean-day count: 0 of 5 (code fix).
 - **Google empties on the runner (investigated Oct 15–16).** Every daily run since Oct 10 lost 17–55% of
   round trips (Sep 28–Oct 9: 98–100%, except Oct 4). Not our code (the drop predates the Oct 11 changes) and
   not a block page: the empties are Google's ordinary "no flights" answer, sometimes false (CPT priced from the

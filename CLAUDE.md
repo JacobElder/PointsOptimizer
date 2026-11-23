@@ -127,16 +127,15 @@ removed Oct 12), deleting SERPAPI_KEY from the Streamlit Cloud secrets.
   stepping in, every emailed deal verified and still above its bar at live fares, no repeat
   emails (outside the labeled "Still available" section), no code fixes needed — then switch to a
   weekly `make audit-live`.
-- **Clean days so far: 0 of 5.** The Nov 16 American seat fix restarts it (Nov 6–16 dropped every
-  American award; earlier resets are in docs/run-log.md).
+- **Clean days so far: 0 of 5.** The Nov 22 KEF round-trip fix restarts it (held-miles selection
+  hit 12 rounds Nov 19–22; earlier resets are in docs/run-log.md). American cards are back since Nov 17.
 - **Watch next run:**
-  - American cards appear again (held miles, Caribbean watchlist); none since Nov 6.
-  - Held-miles selection settles under 12 rounds. If JetBlue KEF economy cascades again, the round
-    notes' `below bar (before→after¢ vs bar, $fare change, stops)` says what the check changed.
-  - `make audit` `fares:` (14 → 9 → 4 Nov 14–16) keeps falling toward 0.
-  - Flight lookups (89 Nov 16) and run time (18 min) vs the 40-minute timeout.
-  - The 16:00 Claude routine failed Nov 16 on the plan's usage limit; if it recurs on a day the
-    GitHub schedule also misses, there is no working backup layer.
+  - Held-miles selection settles under 12 rounds with no JFK/EWR–KEF `below bar` chain; held-miles
+    deals published again (0 on Nov 21–22).
+  - Round-trip checks (589–660 a day Nov 17–22) should drop; THROTTLED on 5 of those 6 days.
+  - `make audit` `fares:` (2–4 a day Nov 17–22) toward 0.
+  - The 16:00 Claude routine produced every digest Nov 17–22; GitHub's cron now fires only after it
+    (16:16–20:56 UTC). A routine failure (as on Nov 16, usage limit) leaves only the late cron.
 - **cron-job.org layer has never fired** on schedule (since Oct 6) — treat it as missing; the
   GitHub schedule and the Claude routine produce the digest.
 - **One-off local searches** (e.g. the Oct 7 SE Asia search via `award_scanner.scan` +

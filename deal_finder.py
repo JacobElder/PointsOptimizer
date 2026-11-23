@@ -1874,9 +1874,12 @@ def verify_selection(scored: list[Scored], select, rt_cache: dict | None, trip_c
     `select` takes the current leaders and returns the deals that would be published.
     """
     bar_fn = bar_fn or (lambda s: s.floor)
+    use_rt = round_trip and rt_cache is not None
 
     def current_selection():
-        kept = [s for s in scored if not s.dropped and s.cpp is not None and s.cpp >= bar_fn(s)]
+        ratios = _route_rt_ratios(scored) if use_rt else {}
+        kept = [s for s in scored if not s.dropped and s.cpp is not None and s.cpp >= bar_fn(s)
+                and _clears_bar_on_route_round_trips(s, ratios, bar_fn)]
         return select(group_leaders(kept, bar_fn))
 
     selection: list[Scored] = current_selection()
@@ -1941,6 +1944,41 @@ def verify_selection(scored: list[Scored], select, rt_cache: dict | None, trip_c
 
 
 SLOW_SELECTION_ROUNDS = 8  # Oct 6-22 settled in 5-11; log round detail from here
+
+
+def _rt_route(s: Scored) -> tuple:
+    return (s.c.origin, s.c.dest, price_cabin(s.c.cabin))
+
+
+def _route_rt_ratios(scored: list[Scored]) -> dict[tuple, float]:
+    """Per route and cabin: the median of value / one-way fare over this run's awards
+    whose round trip has been looked at (priced, or estimated because none could be)."""
+    by_route: dict[tuple, list[float]] = {}
+    for s in scored:
+        if (s.one_way_cash and s.cash is not None
+                and (s.round_trip_half is not None or s.rt_unavailable)):
+            by_route.setdefault(_rt_route(s), []).append(s.cash / s.one_way_cash)
+    return {k: sorted(v)[len(v) // 2] for k, v in by_route.items()}
+
+
+def _clears_bar_on_route_round_trips(s: Scored, ratios: dict[tuple, float], bar_fn) -> bool:
+    """An award whose round trip hasn't been looked at yet still clears its bar when
+    valued like the other dates on its route whose round trips have.
+
+    Nov 19-22: JFK/EWR-KEF economy is $407 one-way on nearly every date but $190 as
+    half a round trip. Each date was ranked on its one-way fare until its own round
+    trip was priced, so selection priced and dropped one date per pass and spent a
+    seats.aero lookup on whichever date was left when the passes ran out -- 12 rounds,
+    and no held-miles deals at all on Nov 21-22. Fares move together across dates on
+    one route; the award's own round trip still decides once it is priced.
+    """
+    if s.round_trip_half is not None or s.rt_unavailable or not s.one_way_cash or s.cash is None:
+        return True
+    ratio = ratios.get(_rt_route(s))
+    if ratio is None or s.one_way_cash * ratio >= s.cash:
+        return True
+    cpp = valuation.compute_cpp(s.one_way_cash * ratio, s.taxes_usd, s.c.points)
+    return cpp is not None and cpp >= bar_fn(s)
 
 
 def _round_note(n: int, checked: list[Scored], selection: list[Scored], before: set[int],
