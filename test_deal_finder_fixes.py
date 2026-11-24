@@ -368,3 +368,6 @@ def test_a_route_whose_round_trips_fail_the_bar_stops_promoting_its_other_dates(
     kef_rt = [k for k in rt_lookups if k[1] == "KEF"]
     assert len(kef_rt) <= 4, len(kef_rt)  # a couple per origin, not one per date
     assert [s.c.dest for s in published] == ["GCM"]
+    # Held-back awards are named, so a real deal hidden by the rule shows in the log.
+    held = [m for m in msgs if m.startswith("Held back")]
+    assert held and "JFK-KEF E jetblue" in held[0] and "EWR-KEF E jetblue" in held[0], msgs

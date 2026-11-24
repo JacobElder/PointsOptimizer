@@ -1875,11 +1875,18 @@ def verify_selection(scored: list[Scored], select, rt_cache: dict | None, trip_c
     """
     bar_fn = bar_fn or (lambda s: s.floor)
     use_rt = round_trip and rt_cache is not None
+    held_back: dict[tuple, int] = {}  # last selection's awards held back by their route's round trips
 
     def current_selection():
         ratios = _route_rt_ratios(scored) if use_rt else {}
-        kept = [s for s in scored if not s.dropped and s.cpp is not None and s.cpp >= bar_fn(s)
-                and _clears_bar_on_route_round_trips(s, ratios, bar_fn)]
+        above = [s for s in scored if not s.dropped and s.cpp is not None and s.cpp >= bar_fn(s)]
+        kept = [s for s in above if _clears_bar_on_route_round_trips(s, ratios, bar_fn)]
+        held_back.clear()
+        kept_ids = {id(s) for s in kept}
+        for s in above:
+            if id(s) not in kept_ids:
+                k = (s.c.origin, s.c.dest, s.c.cabin[:1], s.c.source)
+                held_back[k] = held_back.get(k, 0) + 1
         return select(group_leaders(kept, bar_fn))
 
     selection: list[Scored] = current_selection()
@@ -1937,6 +1944,13 @@ def verify_selection(scored: list[Scored], select, rt_cache: dict | None, trip_c
     if log and round_notes and (rounds_used >= SLOW_SELECTION_ROUNDS or rounds_used == max_rounds):
         # Oct 23-25 used all 12 rounds and the totals alone couldn't say why.
         log("Selection rounds: " + " | ".join(round_notes))
+    if log and held_back:
+        # Nov 23: the first run with this rule published no held-miles deals; this is
+        # how to tell whether the rule or the availability did that.
+        top = sorted(held_back.items(), key=lambda kv: -kv[1])[:6]
+        log(f"Held back {sum(held_back.values())} award(s) over the bar on their one-way fare but "
+            "not at their route's round trips: "
+            + ", ".join(f"{o}-{d} {c} {src} x{n}" for (o, d, c, src), n in top))
     if log and trip_cache is not None:
         log(f"Selection: {len(selection)} deal(s) settled in {rounds_used} round(s), "
             f"{_trip_calls(trip_cache) - calls_before} seats.aero lookup(s)")

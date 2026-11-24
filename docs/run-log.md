@@ -237,6 +237,15 @@ rationale and tallies live in `docs/decisions.md`; what to watch next is in `CLA
   `test_a_route_whose_round_trips_fail_the_bar_stops_promoting_its_other_dates` (3 KEF lookups before, 0 after).
   **Watch Nov 23:** held-miles `Selection:` under 12 rounds, no KEF `below bar` chain; round-trip checks
   (589–660 a day) should drop. Clean-day count: 0 of 5 (code fix).
+- **Nov 23: audited; logging only.** Claude routine at 16:07 UTC (cron again only later). First run with the KEF
+  fix: round-trip checks 644 → 323 (89% priced, not throttled), flight lookups 48, main selection 7 rounds,
+  `fares:` 0 of 27. Held miles: **0 deals, settled in 1 round, 0 lookups** — the cascade is gone, but whether
+  the new rule or real availability emptied it can't be told from the log (award_history keeps only a subset of
+  routes; JFK–GCM American economy shows 10,000 in May+ only, no 8,000 winter dates). Added a `Held back N
+  award(s) …` line naming routes the rule filters. Emailed 3 + 2 "Still available": all above bar live (JFK–EZE
+  Alaska J 5.19 → 3.64¢, fare $2,620 → $1,845; JFK–PTY Aeroplan Y 4.60 → 3.72¢; JFK–AKL 4.65¢ flat; JFK–MAD Iberia
+  PE $964 confirmed on a retry). **Watch Nov 24:** the `[held miles] Held back` line — if it names a route that
+  used to publish (JFK–GCM/STT American, JFK–SJU JetBlue), the rule is too strict. Clean-day count: 0 of 5.
 - **Google empties on the runner (investigated Oct 15–16).** Every daily run since Oct 10 lost 17–55% of
   round trips (Sep 28–Oct 9: 98–100%, except Oct 4). Not our code (the drop predates the Oct 11 changes) and
   not a block page: the empties are Google's ordinary "no flights" answer, sometimes false (CPT priced from the

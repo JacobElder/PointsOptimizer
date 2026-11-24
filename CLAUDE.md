@@ -130,9 +130,10 @@ removed Oct 12), deleting SERPAPI_KEY from the Streamlit Cloud secrets.
 - **Clean days so far: 0 of 5.** The Nov 22 KEF round-trip fix restarts it (held-miles selection
   hit 12 rounds Nov 19–22; earlier resets are in docs/run-log.md). American cards are back since Nov 17.
 - **Watch next run:**
-  - Held-miles selection settles under 12 rounds with no JFK/EWR–KEF `below bar` chain; held-miles
-    deals published again (0 on Nov 21–22).
-  - Round-trip checks (589–660 a day Nov 17–22) should drop; THROTTLED on 5 of those 6 days.
+  - Held miles: Nov 23 settled in 1 round but published 0 (also 0 Nov 21–22). Read the
+    `[held miles] Held back N award(s)` line: if it names JFK–GCM/STT American or JFK–SJU JetBlue
+    (routes that published Nov 17–20), the Nov 22 route round-trip rule is too strict.
+  - Round-trip checks fell 644 → 323 on Nov 23 (89% priced); keep an eye that it holds.
   - `make audit` `fares:` (2–4 a day Nov 17–22) toward 0.
   - The 16:00 Claude routine produced every digest Nov 17–22; GitHub's cron now fires only after it
     (16:16–20:56 UTC). A routine failure (as on Nov 16, usage limit) leaves only the late cron.
